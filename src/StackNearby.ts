@@ -5,15 +5,7 @@ import { ContainerReferenceType } from "game/item/IItem";
 import { Registry } from "mod/ModRegistry";
 import SmartStack from "./SmartStack";
 
-export declare enum StackAttemptResults {
-    StackedAll = 0,
-    StackedSome = 1,
-    StackedNone = 2,
-    NoMatch = 3,
-    TargetInvalid = 4
-};
-
-export default new Action()
+export const StackNearby = new Action()
     .setUsableBy(EntityType.Player)
     .setHandler((action) => {
         const player = action.executor;
