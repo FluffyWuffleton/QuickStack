@@ -7,8 +7,7 @@ import { IActionHandlerApi } from "game/entity/action/IAction";
 import Player from "game/entity/player/Player";
 import { IActionUsable } from "game/entity/action/IAction";
 import Item from "game/item/Item";
-
-import { TurnType } from "game/entity/player/IPlayer";
+import { Delay } from "game/entity/IHuman";
 
 export function handleStackNearby(action: IActionHandlerApi<Player, IActionUsable>): void {
     const player = action.executor;
@@ -68,8 +67,8 @@ export function handleStackNearby(action: IActionHandlerApi<Player, IActionUsabl
     });
     if(!haveMatched) player.messages.send(SmartStack.INSTANCE.messageNoMatch);
     else if(haveMoved) {
-        player.updateStatsAndAttributes();
-        player.passTurn(TurnType.Idle);
+        player.addDelay(Delay.LongPause);
+        game.passTurn(player);
     }
 
 }
