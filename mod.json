@@ -1,0 +1,17 @@
+{
+	"name": "SmartStack",
+	"description": "Automatically deposit matching items into nearby containers and tiles.",
+	"version": "1.0.0",
+	"author": "Fluffy",
+	"file": "out/SmartStack",
+	"waywardVersion": "2.12.0-beta",
+	"allowUnlockingMilestones": true,
+	"unloadable": true,
+	"tags": [
+		"User Interface"
+	],
+	"languages": [
+		"lang/english"
+	],
+	"multiplayer": "clientside"
+}
