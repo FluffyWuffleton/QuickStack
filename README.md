@@ -1,2 +1,3 @@
 # QuickStack
-### Stack items from inventory to nearby chests/tiles with matching items. 
+### Wayward mod for easily stacking inventory contents to nearby chests/tiles with matching items. 
+Default keybind shift+/
