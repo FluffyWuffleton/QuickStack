@@ -5,8 +5,8 @@
 			"modSmartStackSearch": "SmartStack: Looking through nearby containers...",
 			"modSmartStackNoMatch": "SmartStack: None of the nearby containers are a good match.",
 			"modSmartStackStackedNone": "SmartStack: Tried depositing {0} but it was too full.",
-			"modSmartStackStackedSome": "SmartStack: Deposited {0}/{1} {2} before it filled up.",
-			"modSmartStackStackedAll": "SmartStack: Deposited {0} {1}."
+			"modSmartStackStackedSome": "SmartStack: Deposited {0} before it filled up.",
+			"modSmartStackStackedAll": "SmartStack: Deposited {0}."
 		},
 		"bindable": {
 			"modSmartStackStackNearby": "Stack Nearby"

@@ -1,79 +1,97 @@
 import Doodad from "game/doodad/Doodad";
 import { Action } from "game/entity/action/Action";
 import { EntityType } from "game/entity/IEntity";
-import { ContainerReferenceType, ItemType } from "game/item/IItem";
-import SmartStack from "./SmartStack";
+import { ContainerReferenceType } from "game/item/IItem";
 import { IActionHandlerApi } from "game/entity/action/IAction";
 import Player from "game/entity/player/Player";
 import { IActionUsable } from "game/entity/action/IAction";
-import Item from "game/item/Item";
 import { Delay } from "game/entity/IHuman";
 
-export function handleStackNearby(action: IActionHandlerApi<Player, IActionUsable>): void {
-    const player = action.executor;
-    const IMgr = player.island.items;
-    const validContainerTypes = [ContainerReferenceType.Doodad, ContainerReferenceType.Tile];
-    const containers = IMgr.getAdjacentContainers(player, false)
-        .filter((c) => validContainerTypes.includes(IMgr.getContainerReference(c, undefined).crt))
-        .filter((c) => c.containedItems.length > 0);
+import QSTransferHandler from "QSTransferHandler";
+import { QSHandlerState, QSTargettingFlag } from "IQSTransferHandler";
+import QuickStack from "QuickStack";
 
-    let haveMatched = false;
-    let haveMoved = false;
-    let invChanged: boolean = true;
-    let invFreeItems: Item[];
-    let invTypes: ItemType[];
-    let invTypesUnique: ItemType[];
+function handleStackNearby(action: IActionHandlerApi<Player, IActionUsable>): void {
+    const handler = new QSTransferHandler(
+        action.executor,
+        QSTargettingFlag.self,
+        QSTargettingFlag.nearbyDoodads | QSTargettingFlag.nearbyTiles
+    );
+    const itemMgr = action.executor.island.items;
+    let movedSome: boolean = false;
 
-    if(containers.length) player.messages.send(SmartStack.INSTANCE.messageSearch);
-    containers.forEach((c) => {
-        let cRef = IMgr.getContainerReference(c, undefined);
-        let tgtStr: string;
-        // let isTile: boolean;
-        if (cRef.crt == ContainerReferenceType.Doodad) {
-            tgtStr = "into " + (c as Doodad).getName().getString();
-            // isTile = false;
-        } else {
-            tgtStr = "onto the ground";
-            // isTile = true;
-        }
-
-        if (invChanged) {
-            invFreeItems = player.inventory.containedItems.filter(it => (!it.isEquipped() && !it.isProtected())); // Exclude protected and equipped.
-            invTypes = invFreeItems.map(it => it.type);
-            invTypesUnique = invTypes.filter((ty, i) => invTypes.indexOf(ty) === i);
-        }
-        invChanged = false;
-
-        const cTypes = c.containedItems.map(it => it.type);
-        const cTypesUniqueMatched = cTypes.filter((ty, i) => cTypes.indexOf(ty) === i)
-            .filter(ty => invTypesUnique.includes(ty));
-
-        cTypesUniqueMatched.forEach((type) => {
-            const nHave = invFreeItems.filter(it => it.type == type).length;
-            const itMoved = IMgr.moveAllFromContainerToContainer(player, player.inventory, c, type, undefined, true);
-            const nMoved = itMoved.length
-            const itemStr = IMgr.getItemTypeGroupName(type, false, nMoved > 0 ? nMoved : 2).getString();
-
-            haveMatched = true;
-            if (!nMoved) {
-                haveMoved = true;
-                player.messages.send(SmartStack.INSTANCE["messageStackedNone"], itemStr + " " + tgtStr);
-            } else {
-                invChanged = true;
-                if (nMoved < nHave) player.messages.send(SmartStack.INSTANCE["messageStackedSome"], nMoved, nHave, itemStr + " " + tgtStr);
-                else player.messages.send(SmartStack.INSTANCE["messageStackedAll"], nMoved, itemStr + " " + tgtStr);
-            }
-        });
-    });
-    if(!haveMatched) player.messages.send(SmartStack.INSTANCE.messageNoMatch);
-    else if(haveMoved) {
-        player.addDelay(Delay.LongPause);
-        game.passTurn(player);
+    // Initialization error?
+    if (handler.state & QSHandlerState.error) {
+        QuickStack.LOG.error(`Error flag in handler after initialization. Code ${handler.state.toString(2)}`);
+        return;
     }
 
+    // Initialization success
+    QuickStack.LOG.info(`Handler initialized for StackNearby. Identified ` +
+        `${handler.destinations.reduce((n, d) => { return d.type === ContainerReferenceType.Doodad ? n + 1 : 0; }, 0)} nearby doodads and ` +
+        `${handler.destinations.reduce((n, d) => { return d.type === ContainerReferenceType.Tile ? n + 1 : 0; }, 0)} nearby tiles.`);
+
+    // Transfer error?
+    if ((handler.executeTransfer() as QSHandlerState) & QSHandlerState.error) {
+        QuickStack.LOG.error(`Error flag in handler during execution. Code ${handler.state.toString(2)}`);
+        return;
+    }
+
+    // Transfer success. Or maybe nothing.
+    // Send messages.
+    handler.executionResults.forEach(pairList => {
+        pairList.forEach(pair => {
+            // <Destination container>-string ("into [containername]", "onto the ground")
+            let tgtStr: string = "";
+            switch (pair.destination.type) {
+                case ContainerReferenceType.Doodad:
+                    tgtStr = "into " + (pair.destination.container as Doodad).getName().getString();
+                    break;
+                case ContainerReferenceType.Tile:
+                    tgtStr = "onto the ground";
+                    break;
+                default:
+                    tgtStr = "somewhere"
+            }
+
+            // somestr = <transferred item>-strings ("5 bones", "1/7 piles of ashes") 
+            // nonestr = <non-transferred item>-strings ("bones", "mud")
+            const somestr:string[] = [];
+            const nonestr:string[] = [];
+            let filledup = false; 
+            pair.matches.forEach((match) => {
+                let str = "";
+                let plural = 5;
+                if (match.sent === match.had) {
+                    str = `${match.sent} `;
+                    plural = match.sent;
+                } else if (match.sent > 0) {
+                    str = `${match.sent}/${match.had} `;
+                    plural = match.had;
+                    filledup = true;
+                }
+                str += `${itemMgr.getItemTypeGroupName(match.type, false, plural).getString()}`;
+                if(match.sent) somestr.push(str);
+                else nonestr.push(str);
+            });
+            
+            // Send messages for this destination's results
+            if(somestr.length) {
+                movedSome = true;
+                action.executor.messages.send(QuickStack.INSTANCE[filledup ? "messageStackedSome" : "messageStackedAll"], somestr.join(', ').concat(tgtStr));
+            }
+            if(nonestr.length) action.executor.messages.send(QuickStack.INSTANCE.messageStackedNone, somestr.join(', ').concat(tgtStr));
+            
+        }); // foreach pair in pairList
+    }); // foreach pairlist in executionResults
+
+    if (!movedSome) action.executor.messages.send(QuickStack.INSTANCE.messageNoMatch);
+    else {
+        action.executor.addDelay(Delay.LongPause);
+        game.passTurn(action.executor);
+    }
 }
 
 export const StackNearby = new Action()
     .setUsableBy(EntityType.Player)
     .setHandler(handleStackNearby);
-

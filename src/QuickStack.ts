@@ -1,7 +1,3 @@
-// import Doodad from "game/doodad/Doodad";
-// import { Action } from "game/entity/action/Action";
-// import { EntityType } from "game/entity/IEntity";
-// import { ContainerReferenceType } from "game/item/IItem";
 import Mod from "mod/Mod";
 import Register, { Registry } from "mod/ModRegistry";
 import { ActionType } from "game/entity/action/IAction"
@@ -10,16 +6,13 @@ import { IInput } from "ui/input/IInput"
 import Message from "language/dictionary/Message";
 import Log from "utilities/Log";
 import Bind from "ui/input/Bind";
-import { StackNearby } from "./StackNearby";
 import ActionExecutor from "game/entity/action/ActionExecutor";
-// import { EventHandler } from "event/EventManager";
-// import { EventBus } from "event/EventBuses";
-// import { Game } from "game/Game";
+import { StackNearby } from "StackNearby";
 
 
-export default class SmartStack extends Mod {
-    @Mod.instance<SmartStack>("SmartStack")
-    public static readonly INSTANCE: SmartStack;
+export default class QuickStack extends Mod {
+    @Mod.instance<QuickStack>("QuickStack")
+    public static readonly INSTANCE: QuickStack;
 
     @Mod.log()
     public static readonly LOG: Log;
@@ -52,9 +45,9 @@ export default class SmartStack extends Mod {
     @Register.bindable("StackNearby", IInput.key("slash", "Shift"))
     public readonly bindableStackNearby: Bindable;
 
-    @Bind.onDown(Registry<SmartStack>().get("bindableStackNearby"))
+    @Bind.onDown(Registry<QuickStack>().get("bindableStackNearby"))
     public Activate() {
-        SmartStack.LOG.info("Received keybind!");
+        QuickStack.LOG.info("Received keybind!");
         ActionExecutor.get(StackNearby).execute(localPlayer);
         return true;
     };
