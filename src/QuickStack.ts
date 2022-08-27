@@ -4,18 +4,16 @@ import { ActionType } from "game/entity/action/IAction"
 import Bindable from "ui/input/Bindable";
 import { IInput } from "ui/input/IInput"
 import Message from "language/dictionary/Message";
-import Log from "utilities/Log";
 import Bind from "ui/input/Bind";
 import ActionExecutor from "game/entity/action/ActionExecutor";
-import { StackNearby } from "StackNearby";
+import { StackNearby } from "./actions/StackNearby";
+import Log from "utilities/Log";
 
-
-export default class QuickStack extends Mod {
-    @Mod.instance<QuickStack>("QuickStack")
-    public static readonly INSTANCE: QuickStack;
-
-    @Mod.log()
-    public static readonly LOG: Log;
+export default class QuickStack extends Mod {    
+    @Mod.instance<QuickStack>()
+	public static readonly INSTANCE: QuickStack;
+	@Mod.log()
+	public static readonly LOG: Log;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Messages 

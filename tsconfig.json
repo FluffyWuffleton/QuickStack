@@ -4,8 +4,8 @@
 		"baseUrl": "./",
 		"outDir": "./out",
 		"rootDir": "./src"
-	},
-	"include": [
-		"src/**/*"
-	]
+	}//,
+//	"include": [
+//		"src/**/*"
+//	]
 }

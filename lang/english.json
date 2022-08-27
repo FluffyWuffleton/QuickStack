@@ -2,14 +2,29 @@
 	"extends": "English",
 	"dictionaries": {
 		"message": {
-			"modSmartStackSearch": "SmartStack: Looking through nearby containers...",
-			"modSmartStackNoMatch": "SmartStack: None of the nearby containers are a good match.",
-			"modSmartStackStackedNone": "SmartStack: Tried depositing {0} but it was too full.",
-			"modSmartStackStackedSome": "SmartStack: Deposited {0} before it filled up.",
-			"modSmartStackStackedAll": "SmartStack: Deposited {0}."
+			// An example of the desired output for the interpolated messages is given in the context of 
+			// trying to deposit 1 apple, 3 rocks, and 5 koalas into a chest or onto the ground. 
+			
+			// When first receiving the keybind input.
+			"modQuickStackSearch": "QuickStack: Looking through nearby containers...",
+			
+			// If there are no nearby containers with items matching your inventory. 
+			"modQuickStackNoMatch": "QuickStack: None of the nearby containers are a good match.",
+			
+			// When everything fits in the destination..
+			// "Moved 1 apple, 3 rocks, and 5 koalas <into [target]|onto the ground>."
+			"modQuickStackStackedAll": "QuickStack: Moved {0...} {1}.",
+			
+			// When only some of it fits
+			// "Moved 1 apple, 3 rocks, and 1/5 koalas <into [target]|onto the ground> before it filled up."
+			"modQuickStackStackedSome": "QuickStack: Moved {0...} {1} before it filled up.",
+			
+			// When nothing fits in a destination...
+			// "Tried moving apples, rocks, and koalas <into [target]|onto the ground> but it was too full."
+			"modQuickStackStackedNone": "QuickStack: Tried moving {0...} {1} but it was too full."
 		},
 		"bindable": {
-			"modSmartStackStackNearby": "Stack Nearby"
+			"modQuickStackStackNearby": "Stack Nearby"
 		}
 	}
 }
