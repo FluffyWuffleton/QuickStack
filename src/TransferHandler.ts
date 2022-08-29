@@ -142,7 +142,7 @@ export class TransferHandler {
                                 if(canFit) {
                                     canFit = dest.type === ContainerReferenceType.Tile
                                         ? !this.island.isTileFull(dest.container as ITile)
-                                        : it.weight > weightCap - itemMgr.computeContainerWeight(dest.container);
+                                        : it.weight <= weightCap - itemMgr.computeContainerWeight(dest.container);
                                     if(canFit) return itemMgr.moveToContainer(this.player, it, dest.container);                                            
                                     }
                                 return false;
