@@ -2,9 +2,9 @@ import Mod from "mod/Mod";
 import Log from "utilities/Log";
 import QuickStack from "./QuickStack";
 
-export default class QSStaticHelper {
+export default class StaticHelper {
     @Mod.instance<QuickStack>("Quick Stack")
-    public static readonly INSTANCE: QuickStack;
+    public static readonly QS_INSTANCE: QuickStack;
     @Mod.log("Quick Stack")
-    public static readonly LOG: Log;
+    public static readonly QS_LOG: Log;
 };

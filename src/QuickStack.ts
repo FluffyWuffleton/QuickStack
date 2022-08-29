@@ -38,6 +38,9 @@ export default class QuickStack extends Mod {
     @Register.action("StackNearby", StackNearby)
     public readonly actionStackNearby: ActionType;
 
+    //@Register.usableActions("StackNearby", StackNearby)
+    //public readonly actionStackNearby: ActionType;
+
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Binds
     @Register.bindable("StackNearby", IInput.key("slash", "Shift"))
