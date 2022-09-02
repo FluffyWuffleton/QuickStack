@@ -1,30 +1,115 @@
 {
-	"extends": "English",
-	"dictionaries": {
-		"message": {
-			// An example of the desired output for the interpolated messages is given in the context of 
-			// trying to deposit 1 apple, 3 rocks, and 5 koalas into a chest or onto the ground. 
-			
-			// When first receiving the keybind input.
-			"modQuickStackSearch": "QuickStack: Looking through nearby containers...",
-			
-			// If there are no nearby containers with items matching your inventory. 
-			"modQuickStackNoMatch": "QuickStack: None of the nearby containers are a good match.",
-			
-			// When everything fits in the destination..
-			// "Moved 1 apple, 3 rocks, and 5 koalas <into [target]|onto the ground>."
-			"modQuickStackStackedAll": "QuickStack: Moved {0...} {1}.",
-			
-			// When only some of it fits
-			// "Moved 1 apple, 3 rocks, and 1/5 koalas <into [target]|onto the ground> before it filled up."
-			"modQuickStackStackedSome": "QuickStack: Moved {0...} {1} before it filled up.",
-			
-			// When nothing fits in a destination...
-			// "Tried moving apples, rocks, and koalas <into [target]|onto the ground> but it was too full."
-			"modQuickStackStackedNone": "QuickStack: Tried moving {0...} {1} but it was too full."
-		},
-		"bindable": {
-			"modQuickStackStackNearby": "Stack Nearby"
-		}
-	}
+    "extends": "English",
+    "dictionaries": {
+        "message": {
+            // When first receiving the keybind input.
+            "modQuickStackSearch": "{#--color-command:QuickStack:} Looking through nearby containers...",
+            /*********************************************************************************
+                Subsegments used for constructing a results message (next section)
+            */
+            // Subsegments comprising number item pairs, depending on context.
+            // An array of these segments is passed to result messages in the 'items' argument field
+            "modQuickStackItemAll": "{0} {1}", 		// {#Moved} {ItemName(s)}			(7 apples)
+            "modQuickStackItemSome": "{0}/{1} {2}", // {#Moved}/{#Had} {ItemName(s)}	(4/7 apples)
+            // Subsegments describing the source container. 
+            // One of these will be passed to result messages in the 'source' argument field 
+            "modQuickStackFromInventory": "from {#--color-pearl:your inventory}",
+            "modQuickStackFromContainer": "from {0}",
+            "modQuickStackFromTile": "from {#--color-brown:the ground}",
+            "modQuickStackFromUnknown": "from somewhere",
+            // Subsegments describing the destination container.
+            // One of these will be passed to result messages in the 'destination' argument field
+            "modQuickStackToInventory": "into {#--color-pearl:your inventory}",
+            "modQuickStackToTile": "onto {#--color-brown:the ground}",
+            "modQuickStackToContainer": "into {0}",
+            "modQuickStackToUnknown": "to somewhere",
+
+
+            /***************************************************************** 
+                Results messages...
+
+            */
+            // If there are no nearby containers with items matching your inventory. 
+            // This should only happen when using a keybind, as none of the actions should be usable from menu/hotbar in this case.
+            "modQuickStackNoMatch": "{#--color-command:QuickStack:} {#--text-secondary:None of the nearby containers are a good match.}",
+            // If there are no nearby containers with items matching the selected type.
+            //    {0}: Item type name.
+            "modQuickStackNoTypeMatch": "{#--color-command:QuickStack:} {#--text-secondary:None of the nearby containers have any }{0}.",
+            
+            // Valid destination was found, and transfer was attempted...
+            // In the context of trying to deposit 1 apple, 3 rocks, and 5 koalas onto the ground, this should produce the following statements
+            //   Success:  "Moved 1 apple, 3 rocks, and 5 koalas on the ground."
+            //   Parial:   "Moved 1 apple, 2/3 rocks, and 1/5 koalas onto the ground before it filled up."
+            //   Failed:   "Tried moving an apple, rocks, and koalas onto the ground but it was too full."
+            /*  Argument structure:
+                {   
+                    items:       ITranslationImpl[], // item segments array
+                    source:		 ItranslationImpl,   // source segment
+                    destination: ITranslationImpl,   // desination segment
+                	failed: {                  // Flags indicating the failure state of the transfer. Fields are undefined unless trueonly defined when true.
+                        some?: true|undefined, // if some items were successsfully moved, but not all.
+                        all?: true|undefined   // if no items were successfully moved.
+                    } 
+               }
+            */
+            "modQuickStackStackResult": "{#--color-command:QuickStack:} {#--color-bad:{failed.all?Tried}}{failed.all? moving:Moved} {items...} {source} {destination}{failed.some? before {#--color-warning:it filled up}}{#--color-bad:{failed.all? but it was too full}}.",
+            
+            //////////////////////////////////////////////////////////////////////////////
+            // Menu and action labels
+            "modQuickStackQuickStack": "QuickStack (MENU)", // Submenu label
+            "modQuickStackQuickStackType": "Only {0??UNDEFINED}", // Submenu label
+            "modQuickStackQuickStackAll": "All types", // Submenu label
+            // Stack all from inventory to nearby containers
+            "modQuickStackAllMainNearby": [
+                "Deposit nearby from main inventory",
+                "Quick-stack items from main inventory into nearby containers."
+            ],
+            "modQuickStackAllSubNearby": [
+                "Deposit nearby from {0}",
+                "Quick-stack items from {0} into nearby containers."
+            ],
+            "modQuickStackAllSelfNearby": [
+                "Deposit nearby from everywhere",
+                "Quick-stack items from all inventories (main, bags, quiver, etc) into nearby containers."
+            ],
+            // Stack type from inventory to nearby containers
+            //"modQuickStackTypeMainNearby": ["Deposit {0} from main inventory", "Quick-stack all {0} from main inventory into nearby containers."],
+            //"modQuickStackTypeSubNearby":  ["Deposit {0} from {1})", "Quick-stack all {0} from {1} into nearby containers."],
+            "modQuickStackTypeSelfNearby": [
+                "Deposit {0} nearby from everywhere",
+                "Quick-stack all {0} from all inventories (main, bags, quiver, etc) into nearby containers."
+            ],
+            "modQuickStackTypeHereNearby": [
+                "Deposit {0} nearby from here",
+                "Quick-stack all {0} from the current bag into nearby containers."
+            ],
+            // Stack all from nearby to inventory
+            "modQuickStackAllNearbyMain": [
+                "Restock",
+                "Restock main inventory from nearby containers."
+            ],
+            "modQuickStackAllNearbySub": [
+                "Restock {0}",
+                "Restock the contents of {0} from nearby containers."
+            ],
+            "modQuickStackAllNearbySelf": [
+                "Restock (+bags)",
+                "Restock all inventories (main, bags, quivers, etc) from nearby containers."
+            ],
+            // Stack type from nearby to inventory
+            "modQuickStackTypeNearbyMain": [
+                "Restock inventory with {0}",
+                "Restock main inventory with {0} from nearby containers."
+            ],
+            "modQuickStackTypeNearbySub": [
+                "Restock {0} with {1}",
+                "Restock {0} with {1} from nearby containers."
+            ]
+        },
+        "bindable": {
+            "modQuickStackStackAllMainNearby": "Quick-deposit nearby from main inventory",
+            "modQuickStackStackAllSubNearby": "Quick-deposit nearby from selected bag",
+            "modQuickStackStackAllSelfNearby": "Quick-deposit nearby from inventory + bags"
+        }
+    }
 }

@@ -27,42 +27,24 @@ export enum THTargettingFlag {
     everywhere = self | nearbyDoodads | nearbyTiles // Union value of every location-specific flag
 }
 
+export interface ITHTargetRecursive { recursive?: true; }
+
+export interface ITHTargetSelf extends ITHTargetRecursive { self: true; };
+export interface ITHTargetTiles extends ITHTargetRecursive { tiles: true; };
+export interface ITHTargetDoodads extends ITHTargetRecursive { doodads: true; };
+export interface ITHTargetSpecific extends ITHTargetRecursive { container: IContainer | IContainer[] };
+
+export type THTargettingParam = (ITHTargetSelf) | (ITHTargetTiles) | (ITHTargetDoodads) | (ITHTargetSpecific);
+
 /**
- * A container, its reference type, and a name string for messages.
+ * A container, its reference type, and optional links within a nested-container hierarchy.
  */
 export interface ITransferTarget {
     container: IContainer;
     type: ContainerReferenceType;
+    children?: ITransferTarget[];
+    parent?: ITransferTarget;
 }
-        /* readonly msgString: string | TranslationImpl;
-
-    constructor(container: IContainer, island: Island) {
-        this.container = container;
-        this.refType = island.items.getContainerReference(container, undefined).crt;
-        switch (this.refType) {
-            case ContainerReferenceType.Doodad:
-                this.msgString = (container as Doodad).getName("indefinite", 1);
-            case ContainerReferenceType.Item:
-                this.msgString = (container as Item).getName("indefinite", 1, false, false, true);
-            case ContainerReferenceType.PlayerInventory:
-                this.msgString = Translation.message("yourinventory");
-            case ContainerReferenceType.Tile:
-                let ttype:ITerrainDecoration = island.getTerrainItems() getTile(1,2,3).data
-                //((container as ITile).x ?? -1, (container as ITile).y ?? -1, (container as ITile).z ?? -1);
-                //this.msgString = ttype ? Translation.resolve(Dictionary.Terrain, ttype[0].)'';
-
-            case ContainerReferenceType.Invalid:
-            case ContainerReferenceType.NPCInventory:
-            case ContainerReferenceType.World:
-            default:
-                return Translation.message("unknown");
-
-        }
-    }
-
-} */
-
-
 
 /**
  * Describes the transfer of a single ItemType.
