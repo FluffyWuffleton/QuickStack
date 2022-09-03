@@ -35,7 +35,6 @@ export default class QuickStack extends Mod {
     readonly messageSub: Message;
     readonly messageAlike: Message;
     readonly bindableStackAllSelfNearby: Bindable;
-    readonly bindableStackAllSubNearby: Bindable;
     readonly bindableStackAllMainNearby: Bindable;
     readonly actionStackAction: ActionType;
     readonly actionStackActionLimited: ActionType;

@@ -104,9 +104,6 @@ export default class QuickStack extends Mod {
     @Register.bindable("StackAllSelfNearby", IInput.key("slash", "Shift"))
     public readonly bindableStackAllSelfNearby: Bindable;
 
-    @Register.bindable("StackAllSubNearby")
-    public readonly bindableStackAllSubNearby: Bindable;
-
     @Register.bindable("StackAllMainNearby")
     public readonly bindableStackAllMainNearby: Bindable;
 

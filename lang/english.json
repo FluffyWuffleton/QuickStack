@@ -110,8 +110,7 @@
         },
         "bindable": {
             "modQuickStackStackAllMainNearby": "Quick-deposit nearby from main inventory",
-            "modQuickStackStackAllSubNearby": "Quick-deposit nearby from selected bag",
-            "modQuickStackStackAllSelfNearby": "Quick-deposit nearby from inventory + bags"
+            "modQuickStackStackAllSelfNearby": "Quick-deposit nearby from inventory and bags"
         }
     }
 }

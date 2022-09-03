@@ -23,7 +23,7 @@ export const UsableActionsQuickStack = new UsableActionGenerator(reg => {
     StackAllMainNearby.register(reg, false);
     StackAllSubNearby.register(reg, false);
     StackTypeSelfNearby.register(reg, false);       // Stack from inventory recursively 
-    StackAllAlikeSubNearby.register(reg,false);
+    StackAllAlikeSubNearby.register(reg, false);
     //StackAllHereNearby.register(reg, false, true); // Stack from this container
     //StackAllHereNearby.register(reg, false, false); // Stack from main inventory
     //StackAllAlikeSubNearby.register(reg, false);     // Stack from all similar containers
@@ -183,14 +183,13 @@ export const StackAllSubNearby = new UsableActionGenerator<[boolean]>((reg, inSu
     .create({
         slottable: !inSubmenu,
         displayLevel: inSubmenu ? ActionDisplayLevel.Always : ActionDisplayLevel.Never,
-        bindable: (using) => inSubmenu ? StaticHelper.QS_INSTANCE.bindableStackAllSubNearby : undefined,
-
-    translate: (translator) => translator.name(({ item, itemType }) => {
+        //bindable: (using) => inSubmenu ? StaticHelper.QS_INSTANCE.bindableStackAllSubNearby : undefined,
+        translate: (translator) => translator.name(({ item, itemType }) => {
             const fromSegment = Translation
-            .message(StaticHelper.QS_INSTANCE.messageFrom).addArgs(item
-                ? item.getName(false)
-                : itemType 
-                        ? Translation.nameOf(Dictionary.Item, itemType, 999, false) 
+                .message(StaticHelper.QS_INSTANCE.messageFrom).addArgs(item
+                    ? item.getName(false)
+                    : itemType
+                        ? Translation.nameOf(Dictionary.Item, itemType, 999, false)
                         : Translation.message(StaticHelper.QS_INSTANCE.messageSub));
 
             return inSubmenu
