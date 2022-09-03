@@ -5,9 +5,11 @@ import Player from "game/entity/player/Player";
 import { ITransferTarget, THState, ITransferPairing, ITransferTypeMatch, THTargettingParam } from "./ITransferHandler";
 import Log from "utilities/Log";
 export declare function isHeldContainer(player: Player, item: Item): boolean;
+export declare function isContainerType(player: Player, type: ItemType): boolean;
 export declare function isInHeldContainer(player: Player, item: Item): boolean;
 export declare function playerHasItem(player: Player, item: Item): boolean;
-export declare function playerHeldContainers(player: Player): IContainer[];
+export declare function playerHasType(player: Player, type: ItemType): boolean;
+export declare function playerHeldContainers(player: Player, type?: ItemType[]): IContainer[];
 export declare function MakeAndRunTransferHandler(player: Player, source: THTargettingParam[] | IContainer[], dest: THTargettingParam[] | IContainer[], filter?: ItemType[] | undefined, log?: Log): void;
 export default class TransferHandler {
     readonly player: Player;

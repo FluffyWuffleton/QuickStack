@@ -1,6 +1,6 @@
 import Island from "game/island/Island";
 import Item from "game/item/Item";
-import { ContainerReferenceType, IContainer, ItemType } from "game/item/IItem";
+import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
 import Player from "game/entity/player/Player";
 import StaticHelper from "./StaticHelper";
 import Doodad from "game/doodad/Doodad";
@@ -12,21 +12,24 @@ import Translation from "language/Translation";
 import TranslationImpl from "language/impl/TranslationImpl";
 import Dictionary from "language/Dictionary";
 
+// Utility functions for item and inventory fetching/checking.
+// Pretty self-explanatory.
 
-/**
- * @export
- * @param {Player} player
- * @param {Item} item
- * @return {boolean} True if the {@link item} resides in a container held by {@link player}.
- */
 export function isHeldContainer(player: Player, item: Item): boolean { return player.island.items.isContainer(item) && player === player.island.items.getPlayerWithItemInInventory(item); }
-
-export function isInHeldContainer(player: Player, item: Item): boolean {
-    return !(item?.containedWithin) ? false : player.island.items.getContainedContainers(player.inventory).includes(item.containedWithin);
-}
+export function isContainerType(player: Player, type: ItemType): boolean { return player.island.items.isInGroup(type, ItemTypeGroup.Storage); }
+export function isInHeldContainer(player: Player, item: Item): boolean { return (item?.containedWithin) ? player.island.items.getContainedContainers(player.inventory).includes(item.containedWithin) : false; }
 export function playerHasItem(player: Player, item: Item): boolean { return item.getCurrentOwner() === player; }
-export function playerHeldContainers(player: Player): IContainer[] { return player.island.items.getContainedContainers(player.inventory); }
+export function playerHasType(player: Player, type: ItemType): boolean { return player.inventory.containedItems.some(i => i.type === type); }
+export function playerHeldContainers(player: Player, type?: ItemType[]): IContainer[] {
+    return (type === undefined || !type.length)
+        ? player.island.items.getContainedContainers(player.inventory)
+        : player.island.items.getContainedContainers(player.inventory)
+            .map(c => player.island.items.resolveContainer(c))
+            .filter(i => type.some(t => t === (i as Item)?.type)) as IContainer[];
+}
 
+
+// Called by executeStackAction. Construct, execute, and report on a transfer, with some error flag checking in between.
 export function MakeAndRunTransferHandler(
     player: Player,
     source: THTargettingParam[] | IContainer[],
@@ -445,7 +448,7 @@ export default class TransferHandler {
                     });
 
                     StaticHelper.QS_LOG.info(`ITEM LISTS: All(${str.items.all.length})   Some(${str.items.some.length})    None(${str.items.none.length})`);
-                    
+
                     // Send messages for this source/destination pairing results
                     // If any items were successfully transferred, the failed items are omitted from the list.
                     /* Message parameter structure, copypasted from english.json...     

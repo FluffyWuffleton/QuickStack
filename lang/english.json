@@ -53,36 +53,38 @@
                }
             */
             "modQuickStackStackResult": "{#--color-command:QuickStack:} {#--color-bad:{failed.all?Tried}}{failed.all? moving:Moved} {items...} {source} {destination}{failed.some? before {#--color-warning:it filled up}}{#--color-bad:{failed.all? but it was too full}}.",
-            
+
             //////////////////////////////////////////////////////////////////////////////
             // Menu and action labels
             "modQuickStackQuickStack": "QuickStack (MENU)", // Submenu label
             "modQuickStackQuickStackType": "Only {0??UNDEFINED}", // Submenu label
             "modQuickStackQuickStackAll": "All types", // Submenu label
-            // Stack all from inventory to nearby containers
-            "modQuickStackAllMainNearby": [
-                "Deposit nearby from main inventory",
-                "Quick-stack items from main inventory into nearby containers."
-            ],
-            "modQuickStackAllSubNearby": [
-                "Deposit nearby from {0}",
-                "Quick-stack items from {0} into nearby containers."
-            ],
-            "modQuickStackAllSelfNearby": [
-                "Deposit nearby from everywhere",
-                "Quick-stack items from all inventories (main, bags, quiver, etc) into nearby containers."
-            ],
-            // Stack type from inventory to nearby containers
-            //"modQuickStackTypeMainNearby": ["Deposit {0} from main inventory", "Quick-stack all {0} from main inventory into nearby containers."],
-            //"modQuickStackTypeSubNearby":  ["Deposit {0} from {1})", "Quick-stack all {0} from {1} into nearby containers."],
-            "modQuickStackTypeSelfNearby": [
-                "Deposit {0} nearby from everywhere",
-                "Quick-stack all {0} from all inventories (main, bags, quiver, etc) into nearby containers."
-            ],
-            "modQuickStackTypeHereNearby": [
-                "Deposit {0} nearby from here",
-                "Quick-stack all {0} from the current bag into nearby containers."
-            ],
+            
+
+            // "Deposit{ OPTIONAL_ITEMTYPE}{ OPTIONAL_ORIGIN_STRING}"
+            "modQuickStackDeposit": "Deposit{0? }{0??}{1? }{1??}", 
+            
+            // Restack all to <SOMEWHERE> from nearby containers
+            "modQuickStackRestockAllFrom": "Restock all {0}",
+            // Restock item type to <SOMEWHERE> from nearby containers
+            "modQuickStackRestockTypeFrom": "Restock {0} {0}",
+            
+            
+            // The word 'from' with optional location.
+            "modQuickStackFrom": "from{0? }{0??}",
+            
+            // The word 'to' with optional location.
+            "modQuickStackTo": "to{0? }{0??}",
+
+            // definitions of SOMEWHERE...
+            "modQuickStackAllX": "all {0}",  // All <plural-thing>
+            "modQuickStackMain": "top-level inventory", // main inventory only
+            "modQuickStackHere": "here",              // an item's immediate location
+            "modQuickStackSelf": "full inventory",    // Full inventory recursively 
+            "modQuickStackSub": "this container",         // specific subcontainer  // used in the slottable tooltips for certain item-actions, since
+            "modQuickStackAlike": "similar containers",    // all like subcontainers // tooltips aren't given context of the specific item being used..
+
+
             // Stack all from nearby to inventory
             "modQuickStackAllNearbyMain": [
                 "Restock",

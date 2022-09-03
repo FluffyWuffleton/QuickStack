@@ -1,22 +1,20 @@
 import { ActionType } from "game/entity/action/IAction";
 import Message from "language/dictionary/Message";
 import Mod from "mod/Mod";
-import Register, { Registry } from "mod/ModRegistry";
-import Bind from "ui/input/Bind";
+import Register from "mod/ModRegistry";
 import Bindable from "ui/input/Bindable";
 import { IInput } from "ui/input/IInput";
 import { UsableActionSet } from "game/entity/action/usable/actions/UsableActionsMain";
 import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
 import Log from "utilities/Log";
 
-import { executeStackAction, StackAction, StackActionLimited } from "./actions/Actions";
-import { QSUsableActions } from "./actions/UsableActions";
+import { StackAction, StackActionLimited } from "./actions/Actions";
+import { UsableActionsQuickStack } from "./actions/UsableActionsQuickStack";
 
 // TODO: ADD OPTIONS
 // Bottom up- top down
 // Allow tiles.
 // Never move subcontainers.
-
 
 export default class QuickStack extends Mod {
     @Mod.instance<QuickStack>()
@@ -33,12 +31,8 @@ export default class QuickStack extends Mod {
     public readonly messageSearch: Message;
     @Register.message("NoMatch") // No items in inventory match available targets.
     public readonly messageNoMatch: Message;
-    @Register.message("StackedNone") // Target found but too full to deposit anything.
-    public readonly messageStackedNone: Message;
-    @Register.message("StackedSome") // Some matching items deposited to a target, but it filled up.
-    public readonly messageStackedSome: Message;
-    @Register.message("StackedAll") // All matching items deposited to a target.
-    public readonly messageStackedAll: Message;
+    @Register.message("NoTypeMatch") // No available targets for selected item type.
+    public readonly messageNoTypeMatch: Message;
     @Register.message("StackResult")
     public readonly messageStackResult: Message;
     
@@ -67,6 +61,12 @@ export default class QuickStack extends Mod {
     @Register.message("ItemSome")
     public readonly messageItemSome: Message;
     
+    // "top-level inventory"
+    @Register.message("MainInventory")
+    public readonly messageMainInventory: Message;
+    // "here" (this inventory container)
+    @Register.message("ThisInventory")
+    public readonly messageThisInventory: Message;
 
 
     //////////////////////////////////////////////////////////////////////////////////
@@ -79,56 +79,36 @@ export default class QuickStack extends Mod {
     @Register.message("QuickStackAll") // All-type submenu
     public readonly messageQuickStackAll: Message;
 
-    // All types :: Main inventory -> Nearby containers
-    @Register.message("AllMainNearby")
-    public readonly messageAllMainNearby: Message;
-    // All types :: Sub-inventory -> Nearby containers
-    @Register.message("AllSubNearby")
-    public readonly messageAllSubNearby: Message;
-    // All types :: All inventories -> Nearby containers
-    @Register.message("AllSelfNearby")
-    public readonly messageAllSelfNearby: Message;
+    @Register.message("Deposit") // Submenu label and master interpolator for labelling 'deposit' slottables.
+    public readonly messageDeposit: Message;
+    
+    @Register.message("From") // "from" || "from <THING>"
+    public readonly messageFrom: Message;
+    
 
-    // Selected type :: Main inventory -> Nearby containers
-    @Register.message("TypeMainNearby")
-    public readonly messageTypeMainNearby: Message;
-    // Selected type :: Sub-inventory -> Nearby containers
-    // Selected type :: All inventories -> Nearby containers 
-    @Register.message("TypeSelfNearby")
-    public readonly messageTypeSelfNearby: Message;
-    // Immediate containing inventory -> nearby containers
-    @Register.message("TypeHereNearby")
-    public readonly messageTypeHereNearby: Message;
-
-    // ALl types :: Nearby containers -> Main inventory
-    @Register.message("AllNearbyMain")
-    public readonly messageAllNearbyMain: Message;
-    // ALl types :: Nearby containers -> Sub-inventory
-    @Register.message("AllNearbySub")
-    public readonly messageAllNearbySub: Message;
-    // ALl types :: Nearby containers -> All inventories
-    @Register.message("AllNearbySelf")
-    public readonly messageAllNearbySelf: Message;
-
-
-    // Selected type :: Nearby containers -> Main inventory
-    @Register.message("TypeNearbyMain")
-    public readonly messageTypeNearbyMain: Message;
-    // Selected type :: Nearby containers -> Sub-inventory
-    @Register.message("TypeNearbySub")
-    public readonly messageTypeNearbySub: Message;
-
+    @Register.message("AllX") // "all <THING>"
+    public readonly messageAllX: Message;
+    @Register.message("Main") // main inventory
+    public readonly messageMain: Message;
+    @Register.message("Self") // full inventory
+    public readonly messageSelf: Message;
+    @Register.message("Here") // immediate location
+    public readonly messageHere: Message;
+    @Register.message("Sub") // this container 
+    public readonly messageSub: Message;
+    @Register.message("Alike") // alike containers
+    public readonly messageAlike: Message;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Binds
-    @Register.bindable("StackAllMainNearby", IInput.key("slash", "Shift"))
-    public readonly bindableStackAllMainNearby: Bindable;
+    @Register.bindable("StackAllSelfNearby", IInput.key("slash", "Shift"))
+    public readonly bindableStackAllSelfNearby: Bindable;
 
     @Register.bindable("StackAllSubNearby")
     public readonly bindableStackAllSubNearby: Bindable;
 
-    @Register.bindable("StackAllSelfNearby")
-    public readonly bindableStackAllSelfNearby: Bindable;
+    @Register.bindable("StackAllMainNearby")
+    public readonly bindableStackAllMainNearby: Bindable;
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////
@@ -140,13 +120,13 @@ export default class QuickStack extends Mod {
 
     // Register the top-level QuickStack submenu.
     // The rest of the actions and menus are registered to this menu when its submenu function is called.
-    @Register.usableActions("QSActions", UsableActionSet.ItemMoveMenus, reg => QSUsableActions.MainSubmenu.register(reg))
-    public readonly QSActions: UsableActionGenerator;
+    @Register.usableActions("QSUsableActions", UsableActionSet.ItemMoveMenus, reg => UsableActionsQuickStack.register(reg))
+    public readonly QSUsableActions: UsableActionGenerator;
     
-    @Bind.onDown(Registry<QuickStack>().get("bindableStackAllMainNearby"))
-    public Activate() {
-        QuickStack.LOG.info("Received keybind!");
-        executeStackAction(localPlayer, [{ self: true }], [{ tiles: true }, { doodads: true }], []);
-        return true;
-    };
+    // @Bind.onDown(Registry<QuickStack>().get("bindableStackAllMainNearby"))
+    // public Activate() {
+    //     QuickStack.LOG.info("Received keybind!");
+    //     executeStackAction(localPlayer, [{ self: true }], [{ tiles: true }, { doodads: true }], []);
+    //     return true;
+    // };
 }

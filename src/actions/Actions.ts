@@ -9,7 +9,7 @@ import Player from "game/entity/player/Player";
 
 
 //@ts-ignore // for JSDoc
-import type { QSUsableActions } from "./UsableActions";
+import type { QSUsable } from "./UsableActionsQuickStack";
 import ActionExecutor from "game/entity/action/ActionExecutor";
 
 // function validateSubInventories(player: Player, subs: Item[]): boolean {
@@ -48,7 +48,7 @@ export const StackAction = new Action(ActionArgument.Array, ActionArgument.Array
  *      @arg {IContainer[] as any[]} Arg1 Destinations.
  *      @arg {ItemType | undefined} Arg2 Type list to filter for.
  *  
- * For use by UsableActions in the {@module QSUsableActions} module.
+ * For use by UsableActions in the {@module QSUsable} module.
  * The action executor should only be called via {@link executeStackLimited} for type validation.
  */
 export const StackActionLimited = new Action(ActionArgument.Array, ActionArgument.Array, [ActionArgument.ItemType, ActionArgument.Undefined])
