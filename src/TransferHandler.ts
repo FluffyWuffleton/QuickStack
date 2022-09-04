@@ -38,7 +38,6 @@ export function MakeAndRunTransferHandler(
     log?: Log,
     sFlag?: {pass:boolean}
 ): void {
-
     log?.info("Constructing TransferHandler.");
 
     const handler = new TransferHandler(player, source, dest, filter ?? []);
@@ -70,7 +69,7 @@ export function MakeAndRunTransferHandler(
     }
 
     // Transfer error?
-    if((handler.executeTransfer() as THState) & THState.error) {
+    if(handler.executeTransfer(log) & THState.error) {
         log?.error(`Error flag in handler during execution. Code ${handler.state.toString(2)}`);
         if(sFlag) sFlag.pass = false;
         return;
@@ -78,7 +77,7 @@ export function MakeAndRunTransferHandler(
 
     // Transfer success. Or maybe nothing.
     // Send messages.
-    if(!handler.reportMessages()) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
+    if(!handler.reportMessages(player, log)) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
 
     if(handler.anySuccess || handler.anyPartial) {
         player.addDelay(Delay.LongPause);
@@ -264,7 +263,7 @@ export default class TransferHandler {
     * Returns immediately if state has any error flag set, or if the 'complete' flag is already set. 
     * @returns {THState} The handler state. 
     */
-    public executeTransfer(): THState {
+    public executeTransfer(log: Log = StaticHelper.QS_LOG): THState {
         // Active error or already complete
         if(this._state & (THState.error | THState.complete)) return this._state;
 
@@ -294,13 +293,14 @@ export default class TransferHandler {
                 let badMatches: number[] = [];
 
                 // For each type-match
-
+                log?.info(`executeTransfer: PAIRING:\n Length ${thisPairing.matches.length} \n ${itemMgr.resolveContainer(thisPairing.destination.container)} from ${itemMgr.resolveContainer(thisPairing.source.container)}`);
                 thisPairing.matches.forEach((match, k) => {
 
                     // Original number of this item in source
                     match.had = src.container.containedItems.reduce((n, item) => { return (item.type === match.type) ? n + 1 : n }, 0);
 
-                    StaticHelper.QS_LOG.info(`~~ PAIRING ~~ \n${thisPairing.destination.container} from ${thisPairing.source.container} ::: Match ${k} (${Translation.nameOf(Dictionary.Item, match.type).toString()}) :::: Had ${match.had}`);
+                    
+                    log?.info(`executeTransfer: Match ${k} :: (${Translation.nameOf(Dictionary.Item, match.type, false).toString()}) :: Had ${match.had}`);
 
                     // Make a fixed copy of our matched items first, otherwise NIGHTMARE BUGS as containedItems reference changes while we deposit.
                     const itHad = src.container.containedItems.filter(it => {
@@ -333,7 +333,7 @@ export default class TransferHandler {
                     // Number transferred.
                     match.sent = itMoved.length;
 
-                    StaticHelper.QS_LOG.info(`TRANSFERRED TO ${dest.container} :: ${match.sent} ${Translation.nameOf(Dictionary.Item, match.type).toString()} HAD ${match.had}`);
+                    log?.info(`executeTransfer: Sent :: ${match.sent} ${Translation.nameOf(Dictionary.Item, match.type, false).toString()} :: Had ${match.had}`);
 
                     allItemsMoved.push(...itMoved);
 
@@ -343,14 +343,18 @@ export default class TransferHandler {
                         else this._anyFailed = true;
                     } else { // If 'had' has ended up at zero, this typematch is exclusively driven by protected/equipped items. 
                         badMatches.push(k);
-                        if(match.had < 0) StaticHelper.QS_LOG.warn(`match.had ended up negative (${match.had}). This shouldn't happen wtf. Throwing out.`);
+                        if(match.had < 0) log?.warn(`match.had ended up negative (${match.had}). This shouldn't happen wtf. Throwing out.`);
                     }
 
                 }, this); // foreach type-match
 
                 // Remove bad matches from the pairing before collection.
-                if(badMatches.length) thisPairing.matches.spliceWhere((_, k) => badMatches.includes(k));
+                if(badMatches.length) {
+                    log?.info(`executeTransfer: Excising bad matches (${badMatches})`);
+                    thisPairing.matches = thisPairing.matches.filter((_, k) => !badMatches.includes(k)); // Can't use splicewhere because indices desync after splicing one element.
+                }
 
+                log?.info(`executeTransfer: Final matches count for pairing: ${thisPairing.matches.length}`);
                 thesePairings.push(thisPairing);
 
             }, this); // foreach destination
@@ -390,7 +394,7 @@ export default class TransferHandler {
      * @param player 
      * @returns {boolean} Successfully sent messages?
      */
-    public reportMessages(player: Player = this.player): boolean {
+    public reportMessages(player: Player = this.player, log: Log = StaticHelper.QS_LOG): boolean {
         // Active error or not yet complete
         if((this._state & THState.error) || !(this._state & THState.complete)) return false;
 
@@ -400,9 +404,7 @@ export default class TransferHandler {
         this._executionResults.forEach(pairList => {
             pairList.forEach(pair => {
                 if(pair.matches.length) {
-                    StaticHelper.QS_LOG.info(`ReportMessages() PAIRING:\n`
-                        + `\t${itemMgr.resolveContainer(pair.source.container)}`
-                        + `\t${itemMgr.resolveContainer(pair.destination.container)}`);
+                    log?.info(`ReportMessage:\nPAIRING: Length ${pair.matches.length} :: ${itemMgr.resolveContainer(pair.destination.container)}(${pair.destination.type}) from ${itemMgr.resolveContainer(pair.source.container)}`);
 
                     type sdKey = keyof Pick<typeof pair, "source" | "destination">;
                     const str: { [key in sdKey]: TranslationImpl | "UNDEFINED"; } & { items: { [key in 'all' | 'some' | 'none']: TranslationImpl[]; } } = {
@@ -435,7 +437,7 @@ export default class TransferHandler {
 
                     // Transferred item segment strings
                     let resultFlags: { [key in keyof typeof str.items]?: true } = {}; // Fields are set if any items fall into the category
-
+                    
                     pair.matches.forEach(match => {
                         if(match.sent === match.had) { // Complete transfer
                             resultFlags.all = true;
@@ -451,7 +453,7 @@ export default class TransferHandler {
                         }
                     });
 
-                    StaticHelper.QS_LOG.info(`ITEM LISTS: All(${str.items.all.length})   Some(${str.items.some.length})    None(${str.items.none.length})`);
+                    log?.info(`ReportMessages: All(${str.items.all.length})  Some(${str.items.some.length})  None(${str.items.none.length})`);
 
                     // Send messages for this source/destination pairing results
                     // If any items were successfully transferred, the failed items are omitted from the list.

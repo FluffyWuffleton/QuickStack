@@ -26,11 +26,6 @@ export function executeStackAction(executor: Player, src: THTargettingParam[], d
     ActionExecutor.get(StackAction).execute(executor, src, dest, types, successFlag);
 }
 
-// export function executeStackActionLimited(executor: Player, src: IContainer[], dest: IContainer[], type: ItemType | undefined = undefined): void {
-//     executor.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageSearch);
-//     ActionExecutor.get(StackActionLimited).execute(executor, src, dest, type);
-// }
-
 /**
  * Stack items from one or more source locations one or more destinations, optionally filtering by type. 
  * 
@@ -43,7 +38,7 @@ export function executeStackAction(executor: Player, src: THTargettingParam[], d
  */
 export const StackAction = new Action(ActionArgument.Array, ActionArgument.Array, ActionArgument.Array, ActionArgument.Object)
     .setUsableBy(EntityType.Player)
-    .setHandler((action, src, dest, types, sFlag) => MakeAndRunTransferHandler(action.executor, src, dest, types, StaticHelper.QS_LOG, sFlag??undefined));
+    .setHandler((action, src, dest, types, sFlag) => MakeAndRunTransferHandler(action.executor, src, dest, types, undefined/*StaticHelper.QS_LOG*/, sFlag??undefined));
 
 /**
  * Stack items from one or more source locations one or more destinations, optionally filtering by type. Specified by container array.

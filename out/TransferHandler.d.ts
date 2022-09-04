@@ -37,7 +37,7 @@ export default class TransferHandler {
     static hasMatchType(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter?: ItemType[]): boolean;
     static hasType(X: Pick<IContainer, "containedItems">[], type: ItemType): boolean;
     private resolveTargetting;
-    executeTransfer(): THState;
-    reportMessages(player?: Player): boolean;
+    executeTransfer(log?: Log): THState;
+    reportMessages(player?: Player, log?: Log): boolean;
     constructor(executor: Player, source?: THTargettingParam[] | IContainer[], dest?: THTargettingParam[] | IContainer[], filterTypes?: ItemType[], bottomUp?: boolean);
 }
