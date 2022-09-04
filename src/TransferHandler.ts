@@ -35,8 +35,9 @@ export function MakeAndRunTransferHandler(
     source: THTargettingParam[] | IContainer[],
     dest: THTargettingParam[] | IContainer[],
     filter?: ItemType[] | undefined,
-    log?: Log
-) {
+    log?: Log,
+    sFlag?: {pass:boolean}
+): void {
 
     log?.info("Constructing TransferHandler.");
 
@@ -44,6 +45,7 @@ export function MakeAndRunTransferHandler(
 
     if(handler.state & THState.error) { // Initialization error
         log?.error(`Error flag in handler after construction. Code ${handler.state.toString(2)}`);
+        if(sFlag) sFlag.pass = false;
         return;
     }
 
@@ -70,6 +72,7 @@ export function MakeAndRunTransferHandler(
     // Transfer error?
     if((handler.executeTransfer() as THState) & THState.error) {
         log?.error(`Error flag in handler during execution. Code ${handler.state.toString(2)}`);
+        if(sFlag) sFlag.pass = false;
         return;
     }
 
@@ -80,6 +83,7 @@ export function MakeAndRunTransferHandler(
     if(handler.anySuccess || handler.anyPartial) {
         player.addDelay(Delay.LongPause);
         game.passTurn(player);
+        if(sFlag) sFlag.pass = true;
     }
 }
 

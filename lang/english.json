@@ -54,15 +54,17 @@
             */
             "modQuickStackStackResult": "{#--color-command:QuickStack:} {#--color-bad:{failed.all?Tried}}{failed.all? moving:Moved} {items...} {source} {destination}{failed.some? before {#--color-warning:it filled up}}{#--color-bad:{failed.all? but it was too full}}.",
 
-            //////////////////////////////////////////////////////////////////////////////
-            // Menu and action labels
+            
+            /************************************************************
+                Menu and action labels
+            */
             "modQuickStackQuickStack": "QuickStack (MENU)", // Submenu label
             "modQuickStackQuickStackType": "Only {0??UNDEFINED}", // Submenu label
             "modQuickStackQuickStackAll": "All types", // Submenu label
             
 
             // "Deposit{ OPTIONAL_ITEMTYPE}{ OPTIONAL_ORIGIN_STRING}"
-            "modQuickStackDeposit": "Deposit{0? }{0??}{1? }{1??}", 
+            "modQuickStackDeposit": "Deposit{ 0??}{ 1??}", 
             
             // Restack all to <SOMEWHERE> from nearby containers
             "modQuickStackRestockAllFrom": "Restock all {0}",
@@ -71,10 +73,10 @@
             
             
             // The word 'from' with optional location.
-            "modQuickStackFrom": "from{0? }{0??}",
+            "modQuickStackFrom": "from{ 0??}",
             
             // The word 'to' with optional location.
-            "modQuickStackTo": "to{0? }{0??}",
+            "modQuickStackTo": "to{ 0??}",
 
             // definitions of SOMEWHERE...
             "modQuickStackAllX": "all {0}",  // All <plural-thing>
@@ -110,7 +112,9 @@
         },
         "bindable": {
             "modQuickStackStackAllMainNearby": "Quick-deposit nearby from main inventory",
-            "modQuickStackStackAllSelfNearby": "Quick-deposit nearby from inventory and bags"
+            "modQuickStackStackAllSelfNearby": "Quick-deposit nearby from inventory and bags",
+            "modQuickStackStackAllMainNearby_submenu": "Quick-deposit nearby from main inventory (from quickmenu)",
+            "modQuickStackStackAllSelfNearby_submenu": "Quick-deposit nearby from inventory and bags (from quickmenu)"
         }
     }
 }

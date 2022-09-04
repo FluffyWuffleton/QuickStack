@@ -7,6 +7,7 @@ import Log from "utilities/Log";
 export default class QuickStack extends Mod {
     static readonly INSTANCE: QuickStack;
     static readonly LOG: Log;
+    readonly messageArgBase: Message;
     readonly messageSearch: Message;
     readonly messageNoMatch: Message;
     readonly messageNoTypeMatch: Message;
@@ -34,9 +35,12 @@ export default class QuickStack extends Mod {
     readonly messageHere: Message;
     readonly messageSub: Message;
     readonly messageAlike: Message;
-    readonly bindableStackAllSelfNearby: Bindable;
-    readonly bindableStackAllMainNearby: Bindable;
+    readonly bindableSASN: Bindable;
+    readonly bindableSAMN: Bindable;
+    readonly bindableSASN_submenu: Bindable;
+    readonly bindableSAMN_submenu: Bindable;
     readonly actionStackAction: ActionType;
-    readonly actionStackActionLimited: ActionType;
     readonly QSUsableActions: UsableActionGenerator;
+    SAMNBind(): boolean;
+    SASNBind(): boolean;
 }

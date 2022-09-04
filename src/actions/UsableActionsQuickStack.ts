@@ -1,7 +1,7 @@
 import UsableAction from "game/entity/action/usable/UsableAction";
 //import { Bindable } from "ui/input/Bindable";
 import StaticHelper from "../StaticHelper";
-import { executeStackAction } from "./Actions";
+import { executeStackAction, executeStackAction_notify } from "./Actions";
 import { ActionDisplayLevel } from "game/entity/action/IAction";
 import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
 import Translation from "language/Translation";
@@ -9,9 +9,26 @@ import TransferHandler, { playerHeldContainers, isHeldContainer, playerHasItem, 
 import { IContainer } from "game/item/IItem";
 import Dictionary from "language/Dictionary";
 import { TextContext } from "language/ITranslation";
+import { ItemDetailIconLocation } from "ui/screen/screens/game/component/Item";
+import { IIcon } from "game/inspection/InfoProvider";
+import Player from "game/entity/player/Player";
 
 // isApplicable should return true if the action can accept that type of item
 // and isUsable should return true if it can actually be performed right now
+
+
+const menuScaling: Omit<IIcon, 'path'> = { width: 16, height: 16, scale: 1 };
+const slotScaling: Omit<IIcon, 'path'> = { width: 16, height: 16, scale: 2 };
+const pngAllMainNearby: Pick<IIcon, 'path'> = { path: 'AllMainNearby.png' };
+const pngAllSelfNearby: Pick<IIcon, 'path'> = { path: 'AllSelfNearby.png' };
+//type validateTypeFcn = (p: Player, t: ItemType) => boolean;
+//type validateItemFcn = (p: Player, i: Item) => boolean;
+
+
+//const x : path
+//const pngAllSubNearby: Pick<IIcon,'path'> = { path: '../../AllSubNearby.png' };
+//const pngAllAlikeNearby: Pick<IIcon,'path'> = { path: '../../AllAlikeNearby.png' };
+
 
 export const UsableActionsQuickStack = new UsableActionGenerator(reg => {
     // 2nd-level submenus are registered by Top.
@@ -110,6 +127,7 @@ export namespace QSSubmenu {
  * Usability:
  *      Full inventory contents have type match(es) nearby
  */
+export const execSASeN = (p: Player): boolean => executeStackAction_notify(p, [{ self: true, recursive: true }], [{ tiles: true }, { doodads: true }], []);
 export const StackAllSelfNearby = new UsableActionGenerator<[boolean]>((reg, inSubmenu) => reg.add("StackAllSelfNearby", UsableAction
     .requiring(
         // I want this option to still appear when right-clicking inventory items, but the slottable version should be non-item specific
@@ -117,9 +135,14 @@ export const StackAllSelfNearby = new UsableActionGenerator<[boolean]>((reg, inS
     )
     .create({
         slottable: true,
-        bindable: StaticHelper.QS_INSTANCE.bindableStackAllSelfNearby,
+        icon: {
+            ...pngAllSelfNearby, ...{ path: StaticHelper.QS_INSTANCE.getPath().concat('/move.png') }, ...(inSubmenu ? menuScaling : slotScaling)
+        } as IIcon,
+        iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing. In this case
+        bindable: inSubmenu ? StaticHelper.QS_INSTANCE.bindableSASN_submenu : undefined,
         displayLevel: inSubmenu ? ActionDisplayLevel.Always : ActionDisplayLevel.Never,
         translate: (translator) => translator.name(() => {
+            StaticHelper.QS_LOG.info(`PATH: '${StaticHelper.QS_INSTANCE.getPath()}'`);
             const fromSegment = Translation.message(StaticHelper.QS_INSTANCE.messageFrom).addArgs(Translation.message(StaticHelper.QS_INSTANCE.messageSelf));
             return inSubmenu
                 ? fromSegment
@@ -130,10 +153,7 @@ export const StackAllSelfNearby = new UsableActionGenerator<[boolean]>((reg, inS
         isUsable: (player) => TransferHandler.hasMatchType(
             player.island.items.getAdjacentContainers(player, false),
             [player.inventory, ...playerHeldContainers(player)]),
-        execute: (player) => executeStackAction(player,
-            [{ self: true, recursive: true }],
-            [{ tiles: true }, { doodads: true }],
-            [])
+        execute: execSASeN
     })
 ));
 
@@ -144,11 +164,14 @@ export const StackAllSelfNearby = new UsableActionGenerator<[boolean]>((reg, inS
  * Applicability:   Always
  * Usability:       Main inventory contents have type match(es) nearby 
  */
+// Execute function extracted for bindable.
+export const execSAMN = (p: Player): boolean => executeStackAction_notify(p, [{ self: true }], [{ tiles: true }, { doodads: true }], []);
 export const StackAllMainNearby = new UsableActionGenerator<[boolean]>((reg, inSubmenu) => reg.add("StackAllMainNearby", UsableAction
     .requiring(inSubmenu ? { item: { allowNone: true, validate: (p, i) => playerHasItem(p, i) } } : {})
     .create({
+        icon: { ...pngAllMainNearby, ...inSubmenu ? menuScaling : slotScaling },
         slottable: true,
-        bindable: StaticHelper.QS_INSTANCE.bindableStackAllMainNearby,
+        bindable: StaticHelper.QS_INSTANCE[inSubmenu ? "bindableSAMN_submenu" : "bindableSAMN"],
         displayLevel: inSubmenu ? ActionDisplayLevel.Always : ActionDisplayLevel.Never,
         translate: (translator) => translator.name(() => {
             const fromSegment = Translation.message(StaticHelper.QS_INSTANCE.messageFrom).addArgs(Translation.message(StaticHelper.QS_INSTANCE.messageMain));
@@ -159,7 +182,7 @@ export const StackAllMainNearby = new UsableActionGenerator<[boolean]>((reg, inS
         }),
         isApplicable: () => true,
         isUsable: (player) => TransferHandler.hasMatchType(player.island.items.getAdjacentContainers(player, false), [player.inventory]),
-        execute: (player) => executeStackAction(player, [{ self: true }], [{ tiles: true }, { doodads: true }], [])
+        execute: execSAMN
     })
 ));
 
@@ -173,6 +196,7 @@ export const StackAllMainNearby = new UsableActionGenerator<[boolean]>((reg, inS
  * Usability:
  *      Selected container(s) contents have type match(es) nearby 
  */
+// Execute function extracted for bindable.
 export const StackAllSubNearby = new UsableActionGenerator<[boolean]>((reg, inSubmenu) => reg.add("StackAllSubNearby", UsableAction
     .requiring({
         item: {
@@ -209,8 +233,8 @@ export const StackAllSubNearby = new UsableActionGenerator<[boolean]>((reg, inSu
             player.island.items.getAdjacentContainers(player, false),
             using.itemType ? playerHeldContainers(player, [using.itemType]) : [using.item as IContainer]
         ),
-        execute: (player, using, _context) => executeStackAction(player,
-            [{ container: using.itemType ? playerHeldContainers(player, [using.itemType]) : using.item as IContainer }],
+        execute: (p, u) => executeStackAction(p,
+            [{ container: u.itemType ? playerHeldContainers(p, [u.itemType]) : u.item as IContainer }],
             [{ tiles: true }, { doodads: true }],
             [])
     })
@@ -236,6 +260,8 @@ export const StackAllAlikeSubNearby = new UsableActionGenerator<[boolean]>((reg,
     })
     .create({
         slottable: true,
+        //icon: {...pngAllAlikeNearby,... menuScaling},
+        //iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing.
         displayLevel: inSubmenu ? ActionDisplayLevel.Always : ActionDisplayLevel.Never,
         translate: (translator) => translator.name(({ item, itemType }) => {
             const fromSegment = Translation.message(StaticHelper.QS_INSTANCE.messageFrom)

@@ -10,7 +10,9 @@ export declare function isInHeldContainer(player: Player, item: Item): boolean;
 export declare function playerHasItem(player: Player, item: Item): boolean;
 export declare function playerHasType(player: Player, type: ItemType): boolean;
 export declare function playerHeldContainers(player: Player, type?: ItemType[]): IContainer[];
-export declare function MakeAndRunTransferHandler(player: Player, source: THTargettingParam[] | IContainer[], dest: THTargettingParam[] | IContainer[], filter?: ItemType[] | undefined, log?: Log): void;
+export declare function MakeAndRunTransferHandler(player: Player, source: THTargettingParam[] | IContainer[], dest: THTargettingParam[] | IContainer[], filter?: ItemType[] | undefined, log?: Log, sFlag?: {
+    pass: boolean;
+}): void;
 export default class TransferHandler {
     readonly player: Player;
     readonly sources: ITransferTarget[];

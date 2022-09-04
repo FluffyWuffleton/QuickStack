@@ -1,15 +1,16 @@
 import { ActionType } from "game/entity/action/IAction";
 import Message from "language/dictionary/Message";
 import Mod from "mod/Mod";
-import Register from "mod/ModRegistry";
+import Register, { Registry } from "mod/ModRegistry";
 import Bindable from "ui/input/Bindable";
 import { IInput } from "ui/input/IInput";
 import { UsableActionSet } from "game/entity/action/usable/actions/UsableActionsMain";
 import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
 import Log from "utilities/Log";
 
-import { StackAction, StackActionLimited } from "./actions/Actions";
-import { UsableActionsQuickStack } from "./actions/UsableActionsQuickStack";
+import { StackAction } from "./actions/Actions";
+import { execSAMN, execSASeN, UsableActionsQuickStack } from "./actions/UsableActionsQuickStack";
+import Bind from "ui/input/Bind";
 
 // TODO: ADD OPTIONS
 // Bottom up- top down
@@ -25,6 +26,9 @@ export default class QuickStack extends Mod {
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Messages 
     //
+
+    @Register.message("ArgBase") // {0}{ 1??} -- utility and debugging
+    public readonly messageArgBase: Message;
 
     // Activation and result messages...
     @Register.message("Search") // Smart-stack initiated 
@@ -102,28 +106,31 @@ export default class QuickStack extends Mod {
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Binds
     @Register.bindable("StackAllSelfNearby", IInput.key("slash", "Shift"))
-    public readonly bindableStackAllSelfNearby: Bindable;
-
+    public readonly bindableSASN: Bindable;
     @Register.bindable("StackAllMainNearby")
-    public readonly bindableStackAllMainNearby: Bindable;
+    public readonly bindableSAMN: Bindable;
+    
+    @Register.bindable("StackAllSelfNearby_submenu", IInput.key("slash", "Shift"))
+    public readonly bindableSASN_submenu: Bindable;
+    @Register.bindable("StackAllMainNearby_submenu")
+    public readonly bindableSAMN_submenu: Bindable;
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Actions
     @Register.action("StackAction", StackAction)
     public readonly actionStackAction: ActionType;
-    @Register.action("StackActionLimited", StackActionLimited)
-    public readonly actionStackActionLimited: ActionType;
+    //@Register.action("StackActionLimited", StackActionLimited)
+    //public readonly actionStackActionLimited: ActionType;
 
     // Register the top-level QuickStack submenu.
     // The rest of the actions and menus are registered to this menu when its submenu function is called.
     @Register.usableActions("QSUsableActions", UsableActionSet.ItemMoveMenus, reg => UsableActionsQuickStack.register(reg))
     public readonly QSUsableActions: UsableActionGenerator;
     
-    // @Bind.onDown(Registry<QuickStack>().get("bindableStackAllMainNearby"))
-    // public Activate() {
-    //     QuickStack.LOG.info("Received keybind!");
-    //     executeStackAction(localPlayer, [{ self: true }], [{ tiles: true }, { doodads: true }], []);
-    //     return true;
-    // };
+    @Bind.onDown(Registry<QuickStack>().get("bindableSAMN"))
+    public SAMNBind() : boolean { return execSAMN(localPlayer); }
+    
+    @Bind.onDown(Registry<QuickStack>().get("bindableSASN"))
+    public SASNBind() : boolean { return execSASeN(localPlayer); }
 }

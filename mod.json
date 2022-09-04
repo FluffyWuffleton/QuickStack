@@ -13,6 +13,6 @@
 	"languages": [
 		"lang/english"
 	],
-	"multiplayer": "clientside",
+	"multiplayer": "compatible",
 	"publishedFileId": "2854879083"
 }
