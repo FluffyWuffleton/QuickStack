@@ -36,11 +36,11 @@ export function MakeAndRunTransferHandler(
     dest: THTargettingParam[] | IContainer[],
     filter?: ItemType[] | undefined,
     log?: Log,
-    sFlag?: {pass:boolean}
+    sFlag?: { pass: boolean }
 ): void {
     log?.info("Constructing TransferHandler.");
 
-    const handler = new TransferHandler(player, source, dest, filter ?? []);
+    const handler = new TransferHandler(player, source, dest, filter ?? [], !StaticHelper.QS_INSTANCE.globalData.optionTopDown);
 
     if(handler.state & THState.error) { // Initialization error
         log?.error(`Error flag in handler after construction. Code ${handler.state.toString(2)}`);
@@ -100,19 +100,6 @@ export default class TransferHandler {
     readonly typeFilter: ItemType[];
     readonly log: Log | undefined;
 
-    /** 
-     * In transfers that operate across multiple nested source containers, i.e. 
-     *      (INVENTORY)[..invitems.., (BACKPACK)[..bpitems.., (POUCH1)[..p1items..], (POUCH2)[..p2items..] ] ] ]
-     * such as "Stack ALL from inventory+bags", should subcontainer contents be transfered before parent contents, or the other way around?
-     *      Bottom-Up: items in sub are transfered before items in parent.
-     *      Top-down: items in parent are transferred before items in sub. 
-     * 
-     * This mainly affects behavior when a bag item itself is a valid match to be transferred...
-     *      Bottom-up means any valid bag contents will be transferred OUT of the bag before the bag itself is moved.
-     *      Top-down means the bag itself will be transferred (if possible), in which case its contents are untouched.
-     * 
-     * Note that an equipped bag will never be transferred via QuickStack (though its contents might).
-     */
     readonly bottomUp: boolean;
 
     private _state: THState;
@@ -222,7 +209,7 @@ export default class TransferHandler {
 
                 // Identify target containers
                 if('self' in p) adding = [{ container: this.player.inventory, type: ContainerReferenceType.PlayerInventory }];
-                else if('tiles' in p) adding = nearby.filter(near => near.type === ContainerReferenceType.Tile);
+                else if('tiles' in p) adding = StaticHelper.QS_INSTANCE.globalData.optionForbidTiles ? [] : adding = nearby.filter(near => near.type === ContainerReferenceType.Tile);
                 else if('doodads' in p) adding = nearby.filter(near => near.type === ContainerReferenceType.Doodad);
                 else adding = (Array.isArray(p.container) ? p.container : [p.container]).map(c => ({ container: c, type: this.island.items.getContainerReference(c, undefined).crt }));
 
@@ -241,6 +228,8 @@ export default class TransferHandler {
             target.forEach(t => resolveParam(t as THTargettingParam));
             targetsFlat = [...targetSet];
         }
+
+        if(!nested) return targetsFlat;
 
         // Resolve the nesting structure
         // This doesn't account for the possibility of circular inheritance, but we have bigger problems if that somehow appears.
@@ -272,8 +261,9 @@ export default class TransferHandler {
 
         const itemMgr = this.island.items;
 
-
+        // Helper function doTransfer. To be called once on each source.
         const doTransfer = (src: ITransferTarget): Item[] => {
+
             // Pairings for this source, to be added as a row in executionResults.
             const thesePairings: ITransferPairing[] = [];
             const allItemsMoved: Item[] = [];
@@ -288,6 +278,10 @@ export default class TransferHandler {
                     matches: TransferHandler.matchTypes([src.container], [dest.container], this.typeFilter)
                 };
 
+                // Remove any forbidden types
+                if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers) 
+                    thisPairing.matches = thisPairing.matches.filter(m => !itemMgr.isInGroup(m.type, ItemTypeGroup.Storage));
+
                 // We'll want to keep track of any type-matches caused exclusively by protected/equipped items when drawing from player inventory,
                 // No action will be taken for these matches, and we'll want to remove the pairing from executionResults before returning.
                 let badMatches: number[] = [];
@@ -299,7 +293,6 @@ export default class TransferHandler {
                     // Original number of this item in source
                     match.had = src.container.containedItems.reduce((n, item) => { return (item.type === match.type) ? n + 1 : n }, 0);
 
-                    
                     log?.info(`executeTransfer: Match ${k} :: (${Translation.nameOf(Dictionary.Item, match.type, false).toString()}) :: Had ${match.had}`);
 
                     // Make a fixed copy of our matched items first, otherwise NIGHTMARE BUGS as containedItems reference changes while we deposit.
@@ -337,6 +330,7 @@ export default class TransferHandler {
 
                     allItemsMoved.push(...itMoved);
 
+
                     if(match.had > 0) {
                         if(match.sent === match.had) this._anySuccess = true;
                         else if(match.sent > 0) this._anyPartial = true;
@@ -362,6 +356,8 @@ export default class TransferHandler {
             return allItemsMoved;
         }
 
+        // Helper function handleSource. Called once for each top-level source container, then recursively for any child containers. 
+        // Handles calls to doTransfer() for each source according to topDown/bottomUp recursion order.
         const handleSource = (src: ITransferTarget, dummy: boolean = false) => {
             if(this.bottomUp) { // Handle children first
                 src.children?.forEach(child => handleSource(child), this);
@@ -410,43 +406,50 @@ export default class TransferHandler {
                     const str: { [key in sdKey]: TranslationImpl | "UNDEFINED"; } & { items: { [key in 'all' | 'some' | 'none']: TranslationImpl[]; } } = {
                         source: "UNDEFINED", //  will hold TranslationImpl for the source string segment.
                         destination: "UNDEFINED", //  will hold TranslationImpl for the destination string segment.
-                        items: { all: new Array<TranslationImpl>, some: new Array<TranslationImpl>, none: new Array<TranslationImpl> } // separate arrays so they can be sorted in the output
+                        items: {
+                            all: new Array<TranslationImpl>, // separate arrays so they can be sorted in the output (full, then)
+                            some: new Array<TranslationImpl>,
+                            none: new Array<TranslationImpl>
+                        }
                     };
 
                     // Source and Destination strings...
                     (["source", "destination"] as sdKey[]).forEach(k => {
                         switch(pair[k].type) {
                             case ContainerReferenceType.PlayerInventory:
-                                str[k] = Translation.message(StaticHelper.QS_INSTANCE[k === "source" ? "messageFromInventory" : "messageToInventory"]);
+                                str[k] = StaticHelper.TLget(k === "source" ? "fromX" : "toX").addArgs(StaticHelper.TLget("yourInventory"));
                                 break;
                             case ContainerReferenceType.Doodad:
-                                str[k] = Translation.message(StaticHelper.QS_INSTANCE[k === "source" ? "messageFromContainer" : "messageToContainer"])
-                                    .addArgs((pair[k].container as Doodad).getName("indefinite", 1));
+                                str[k] = StaticHelper.TLget(k === "source" ? "fromX" : "toX").addArgs((pair[k].container as Doodad).getName("indefinite", 1));
                                 break;
                             case ContainerReferenceType.Item:
-                                str[k] = Translation.message(StaticHelper.QS_INSTANCE[k === "source" ? "messageFromContainer" : "messageToContainer"])
-                                    .addArgs((pair[k].container as Item).getName("indefinite", 1, false, false, true, false));
+                                str[k] = StaticHelper.TLget(k === "source" ? "fromX" : "toX").addArgs((pair[k].container as Item).getName("indefinite", 1, false, false, true, false));
                                 break;
                             case ContainerReferenceType.Tile:
-                                str[k] = Translation.message(StaticHelper.QS_INSTANCE[k === "source" ? "messageFromTile" : "messageToTile"]);
+                                str[k] = StaticHelper.TLget(k === "source" ? "fromTile" : "toTile");
                                 break;
                             default:
-                                str[k] = Translation.message(StaticHelper.QS_INSTANCE[k === "source" ? "messageFromUnknown" : "messageToUnknown"]);
+                                str[k] = StaticHelper.TLget(k === "source" ? "fromUnknown" : "toUnknown");
                         }
                     });
 
-                    // Transferred item segment strings
+                    // Transferred item fragment strings
                     let resultFlags: { [key in keyof typeof str.items]?: true } = {}; // Fields are set if any items fall into the category
-                    
+
                     pair.matches.forEach(match => {
                         if(match.sent === match.had) { // Complete transfer
                             resultFlags.all = true;
-                            str.items.all.push(Translation.message(StaticHelper.QS_INSTANCE.messageItemAll)
-                                .addArgs(match.sent, Translation.nameOf(Dictionary.Item, match.type, match.sent, match.sent > 1 ? "indefinite" : false, true)));
+                            str.items.all.push(StaticHelper.TLget("XOutOfY").addArgs({
+                                X: match.sent,
+                                name: Translation.nameOf(Dictionary.Item, match.type, match.sent, match.sent > 1 ? "indefinite" : false, true)
+                            }));
                         } else if(match.sent > 0) { // Partial transfer
                             resultFlags.some = true;
-                            str.items.some.push(Translation.message(StaticHelper.QS_INSTANCE.messageItemSome)
-                                .addArgs(match.sent, match.had, Translation.nameOf(Dictionary.Item, match.type, match.had, false, true)));
+                            str.items.all.push(StaticHelper.TLget("XOutOfY").addArgs({
+                                X: match.sent,
+                                Y: match.had,
+                                name: Translation.nameOf(Dictionary.Item, match.type, match.had, false, true)
+                            }));
                         } else { // Failed transfer
                             resultFlags.none = true;
                             str.items.none.push(Translation.nameOf(Dictionary.Item, match.type, match.had, match.had > 1 ? "indefinite" : false, true));
@@ -468,6 +471,7 @@ export default class TransferHandler {
                         }
                     */
                     player.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageStackResult, {
+                        prefix: StaticHelper.TLget("qsPrefix"),
                         items: [...str.items.all, ...str.items.some, ...(resultFlags.some || resultFlags.all ? [] : str.items.none)],
                         source: str.source,
                         destination: str.destination,
@@ -482,7 +486,7 @@ export default class TransferHandler {
         }, this); // foreach pairlist in executionResults
 
 
-        if(!(this._anySuccess || this._anyPartial || this._anyFailed)) player.messages.send(StaticHelper.QS_INSTANCE.messageNoMatch)
+        if(!(this._anySuccess || this._anyPartial || this._anyFailed)) player.messages.send(StaticHelper.QS_INSTANCE.messageNoMatch, { prefix: StaticHelper.TLget("qsPrefix") })
 
         return true;
     }

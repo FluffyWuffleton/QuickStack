@@ -2,7 +2,7 @@ import UsableAction from "game/entity/action/usable/UsableAction";
 //import { Bindable } from "ui/input/Bindable";
 import StaticHelper from "../StaticHelper";
 import { executeStackAction, executeStackAction_notify } from "./Actions";
-import { ActionDisplayLevel } from "game/entity/action/IAction";
+import { ActionDisplayLevel, ActionType } from "game/entity/action/IAction";
 import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
 import Translation from "language/Translation";
 import TransferHandler, { playerHeldContainers, isHeldContainer, playerHasItem, isContainerType, playerHasType } from "../TransferHandler";
@@ -16,13 +16,14 @@ import Player from "game/entity/player/Player";
 // isApplicable should return true if the action can accept that type of item
 // and isUsable should return true if it can actually be performed right now
 
-
+//@ts-ignore
+const pngAllMainNearby: Pick<IIcon, 'path'> = { path: 'static/image/ui/icons/action/modquickstackallmainnearby' };
+//@ts-ignore
 const menuScaling: Omit<IIcon, 'path'> = { width: 16, height: 16, scale: 1 };
+//@ts-ignore
 const slotScaling: Omit<IIcon, 'path'> = { width: 16, height: 16, scale: 2 };
-const pngAllMainNearby: Pick<IIcon, 'path'> = { path: 'AllMainNearby.png' };
-const pngAllSelfNearby: Pick<IIcon, 'path'> = { path: 'AllSelfNearby.png' };
-//type validateTypeFcn = (p: Player, t: ItemType) => boolean;
-//type validateItemFcn = (p: Player, i: Item) => boolean;
+//@ts-ignore
+const pngAllSelfNearby: Pick<IIcon, 'path'> = { path: 'static/image/ui/icons/action/modquickstackallselfnearby' };
 
 
 //const x : path
@@ -52,7 +53,7 @@ export namespace QSSubmenu {
         .requiring({ item: { allowNone: true } })
         .create({
             displayLevel: ActionDisplayLevel.Always,
-            translate: (translator) => translator.name(Translation.message(StaticHelper.QS_INSTANCE.messageDeposit)),
+            translate: (translator) => translator.name(StaticHelper.TLget("deposit")),
             isApplicable: () => true,
             isUsable: (player, { item, itemType }) => {
                 if(!item && !itemType) return true;
@@ -66,7 +67,6 @@ export namespace QSSubmenu {
                 // Add subsubmenu for item-type actions. Requires Item.
                 Type.register(subreg);
 
-                StaticHelper.QS_LOG.info('TopSubmenu');
             }
         })
     ));
@@ -76,12 +76,10 @@ export namespace QSSubmenu {
         .requiring({ item: { allowNone: true } })
         .create({
             displayLevel: ActionDisplayLevel.Always,
-            translate: (translator) => translator.name(({ item, itemType }) => Translation.message(StaticHelper.QS_INSTANCE.messageQuickStackAll)),
+            translate: (translator) => translator.name(StaticHelper.TLget("allTypes")),
             isApplicable: () => true,
             isUsable: () => true,
             submenu: (subreg) => {
-                StaticHelper.QS_LOG.info('AllSubmenu');
-
                 StackAllSelfNearby.register(subreg, true);
                 StackAllMainNearby.register(subreg, true);
                 StackAllSubNearby.register(subreg, true);
@@ -97,9 +95,9 @@ export namespace QSSubmenu {
         .requiring({ item: true })
         .create({
             displayLevel: ActionDisplayLevel.Always,
-            translate: (translator) => translator.name(({ item, itemType }) => Translation
-                .message(StaticHelper.QS_INSTANCE.messageQuickStackType)
-                .addArgs(item?.getName(false, 999, false, false, false, false) ?? ((!!itemType ? Translation.nameOf(Dictionary.Item, itemType) : undefined)))),
+            translate: (translator) => translator.name(({ item, itemType }) => StaticHelper.TLget("onlyXType")
+                .addArgs(item?.getName(false, 999, false, false, false, false)
+                    ?? (itemType ? Translation.nameOf(Dictionary.Item, itemType) : undefined))),
             isApplicable: (player, using) => {
                 const type = using.item?.type ?? using.itemType;
                 return !type ? false : playerHasType(player, type);
@@ -109,7 +107,6 @@ export namespace QSSubmenu {
                 return !type ? false : playerHasType(player, type);
             },
             submenu: (subreg) => {
-                StaticHelper.QS_LOG.info('TypeSubmenu');
 
                 StackTypeSelfNearby.register(subreg, true);
                 StackTypeHereNearby.register(subreg);
@@ -135,19 +132,17 @@ export const StackAllSelfNearby = new UsableActionGenerator<[boolean]>((reg, inS
     )
     .create({
         slottable: true,
-        icon: {
-            ...pngAllSelfNearby, ...{ path: StaticHelper.QS_INSTANCE.getPath().concat('/move.png') }, ...(inSubmenu ? menuScaling : slotScaling)
-        } as IIcon,
+        icon: ActionType.Drop,//{...pngAllSelfNearby, ...(inSubmenu ? menuScaling : slotScaling)},
         iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing. In this case
         bindable: inSubmenu ? StaticHelper.QS_INSTANCE.bindableSASN_submenu : undefined,
         displayLevel: inSubmenu ? ActionDisplayLevel.Always : ActionDisplayLevel.Never,
         translate: (translator) => translator.name(() => {
-            StaticHelper.QS_LOG.info(`PATH: '${StaticHelper.QS_INSTANCE.getPath()}'`);
-            const fromSegment = Translation.message(StaticHelper.QS_INSTANCE.messageFrom).addArgs(Translation.message(StaticHelper.QS_INSTANCE.messageSelf));
+            const fromSegment = StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("fullInventory"));
             return inSubmenu
                 ? fromSegment
-                : Translation.message(StaticHelper.QS_INSTANCE.messageDeposit)
-                    .addArgs(Translation.message(StaticHelper.QS_INSTANCE.messageQuickStackAll).inContext(TextContext.Lowercase), fromSegment)
+                : StaticHelper.TLget("deposit").addArgs(
+                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase), 
+                    fromSegment);
         }),
         isApplicable: () => true,
         isUsable: (player) => TransferHandler.hasMatchType(
@@ -169,16 +164,18 @@ export const execSAMN = (p: Player): boolean => executeStackAction_notify(p, [{ 
 export const StackAllMainNearby = new UsableActionGenerator<[boolean]>((reg, inSubmenu) => reg.add("StackAllMainNearby", UsableAction
     .requiring(inSubmenu ? { item: { allowNone: true, validate: (p, i) => playerHasItem(p, i) } } : {})
     .create({
-        icon: { ...pngAllMainNearby, ...inSubmenu ? menuScaling : slotScaling },
         slottable: true,
+        icon: ActionType.Drop,// { ...pngAllMainNearby, ...inSubmenu ? menuScaling : slotScaling },
+        iconLocationOnItem: ItemDetailIconLocation.BottomRight,
         bindable: StaticHelper.QS_INSTANCE[inSubmenu ? "bindableSAMN_submenu" : "bindableSAMN"],
         displayLevel: inSubmenu ? ActionDisplayLevel.Always : ActionDisplayLevel.Never,
         translate: (translator) => translator.name(() => {
-            const fromSegment = Translation.message(StaticHelper.QS_INSTANCE.messageFrom).addArgs(Translation.message(StaticHelper.QS_INSTANCE.messageMain));
+            const fromSegment = StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("mainInventory"));
             return inSubmenu
                 ? fromSegment
-                : Translation.message(StaticHelper.QS_INSTANCE.messageDeposit)
-                    .addArgs(Translation.message(StaticHelper.QS_INSTANCE.messageQuickStackAll).inContext(TextContext.Lowercase), fromSegment)
+                : StaticHelper.TLget("deposit").addArgs(
+                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
+                    fromSegment);
         }),
         isApplicable: () => true,
         isUsable: (player) => TransferHandler.hasMatchType(player.island.items.getAdjacentContainers(player, false), [player.inventory]),
@@ -209,19 +206,16 @@ export const StackAllSubNearby = new UsableActionGenerator<[boolean]>((reg, inSu
         displayLevel: inSubmenu ? ActionDisplayLevel.Always : ActionDisplayLevel.Never,
         //bindable: (using) => inSubmenu ? StaticHelper.QS_INSTANCE.bindableStackAllSubNearby : undefined,
         translate: (translator) => translator.name(({ item, itemType }) => {
-            const fromSegment = Translation
-                .message(StaticHelper.QS_INSTANCE.messageFrom).addArgs(item
-                    ? item.getName(false)
-                    : itemType
-                        ? Translation.nameOf(Dictionary.Item, itemType, 999, false)
-                        : Translation.message(StaticHelper.QS_INSTANCE.messageSub));
-
+            const fromSegment = StaticHelper.TLget("fromX").addArgs(item
+                ? item.getName(false)
+                : itemType
+                    ? Translation.nameOf(Dictionary.Item, itemType, 999, false)
+                    : StaticHelper.TLget("thisContainer"));
             return inSubmenu
                 ? fromSegment
-                : Translation.message(StaticHelper.QS_INSTANCE.messageDeposit)
-                    .addArgs(
-                        Translation.message(StaticHelper.QS_INSTANCE.messageQuickStackAll).inContext(TextContext.Lowercase),
-                        fromSegment);
+                : StaticHelper.TLget("deposit").addArgs(
+                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
+                    fromSegment);
         }),
         isApplicable: (player, using) =>
             using.item
@@ -264,24 +258,23 @@ export const StackAllAlikeSubNearby = new UsableActionGenerator<[boolean]>((reg,
         //iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing.
         displayLevel: inSubmenu ? ActionDisplayLevel.Always : ActionDisplayLevel.Never,
         translate: (translator) => translator.name(({ item, itemType }) => {
-            const fromSegment = Translation.message(StaticHelper.QS_INSTANCE.messageFrom)
-                .addArgs(Translation.message(StaticHelper.QS_INSTANCE.messageAllX)
-                    .addArgs(item ? Translation.nameOf(Dictionary.Item, item.type, 999, false)
-                        : itemType ? Translation.nameOf(Dictionary.Item, itemType, 999, false)
-                            : Translation.message(StaticHelper.QS_INSTANCE.messageAlike)))
+            const fromSegment = StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("allX").addArgs(item
+                ? Translation.nameOf(Dictionary.Item, item.type, 999, false)
+                : itemType
+                    ? Translation.nameOf(Dictionary.Item, itemType, 999, false)
+                    : StaticHelper.TLget("likeContainers")));
             return inSubmenu
                 ? fromSegment
-                : Translation.message(StaticHelper.QS_INSTANCE.messageDeposit)
-                    .addArgs(
-                        Translation.message(StaticHelper.QS_INSTANCE.messageQuickStackAll).inContext(TextContext.Lowercase),
-                        fromSegment);
+                : StaticHelper.TLget("deposit").addArgs(
+                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
+                    fromSegment);
         }),
         isApplicable: (player, using) => using.item ? isHeldContainer(player, using.item) : using.itemType ? playerHasType(player, using.itemType) : false,
         isUsable: (player, using) => TransferHandler.hasMatchType(
             player.island.items.getAdjacentContainers(player, false),
             using.itemType ? playerHeldContainers(player, [using.itemType]) : [using.item as IContainer]),
         execute: (player, using, _context) => executeStackAction(player,
-            [{ container: using.item ? using.item as IContainer : playerHeldContainers(player, [using.itemType]) }],
+            [{ container: using.item ? using.item as IContainer : playerHeldContainers(player, using.itemType ? [using.itemType] : []) }],
             [{ tiles: true }, { doodads: true }],
             [])
     })
@@ -302,23 +295,22 @@ export const StackTypeSelfNearby = new UsableActionGenerator<[boolean]>((reg, in
     .requiring({
         item: {
             allowOnlyItemType: () => true,
-            validate: (player, value) => { const v = playerHasItem(player, value); StaticHelper.QS_LOG.info(`STSN VALIDATE: ${v}`); return v; }//playerHasItem(player, value); }
+            validate: (player, value) => playerHasItem(player, value)
         }
     })
     .create({
         slottable: true,
         displayLevel: inSubmenu ? ActionDisplayLevel.Always : ActionDisplayLevel.Never,
         translate: (translator) => translator.name(({ item, itemType }) => {
-            const fromSegment = Translation.message(StaticHelper.QS_INSTANCE.messageFrom)
-                .addArgs(Translation.message(StaticHelper.QS_INSTANCE.messageSelf))
+            const fromSegment = StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("fullInventory"));
             return inSubmenu
                 ? fromSegment
-                : Translation.message(StaticHelper.QS_INSTANCE.messageDeposit)
-                    .addArgs(item
-                        ? Translation.nameOf(Dictionary.Item, item.type, 999, false)
-                        : itemType ? Translation.nameOf(Dictionary.Item, itemType, 999, false)
-                            : undefined,
-                        fromSegment);
+                : StaticHelper.TLget("deposit").addArgs(item
+                    ? Translation.nameOf(Dictionary.Item, item.type, 999, false)
+                    : itemType
+                        ? Translation.nameOf(Dictionary.Item, itemType, 999, false)
+                        : undefined,
+                    fromSegment);
         }),
         isApplicable: (player, using) => {
             const type = (using.item?.type ?? using.itemType);
@@ -331,7 +323,7 @@ export const StackTypeSelfNearby = new UsableActionGenerator<[boolean]>((reg, in
         execute: (player, using, _context) => executeStackAction(player,
             [{ self: true, recursive: true }],
             [{ tiles: true }, { doodads: true }],
-            [using.item?.type ?? using.itemType])
+            using.item?.type ? [using.item.type] : using.itemType ? [using.itemType] : [])
     })
 ));
 
@@ -355,10 +347,7 @@ export const StackTypeHereNearby = new UsableActionGenerator(reg => reg.add("Sta
     .create({
         slottable: false,
         displayLevel: ActionDisplayLevel.Always,
-        translate: (translator) => translator.name(({ item, itemType }) => Translation
-            .message(StaticHelper.QS_INSTANCE.messageFrom)
-            .addArgs(Translation.message(StaticHelper.QS_INSTANCE.messageHere))
-        ),
+        translate: (translator) => translator.name(StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("here"))),
         isApplicable: (player, { item }) => item ? playerHasItem(player, item) : false,
         isUsable: (player, { item }) => TransferHandler.hasType(player.island.items.getAdjacentContainers(player, false), item.type),
         execute: (player, { item }, _context) => executeStackAction(player,

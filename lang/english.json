@@ -1,90 +1,107 @@
 {
     "extends": "English",
     "dictionaries": {
+        "modQuickStackQSDictionary": {
+            "qsPrefix": "{#--COLOR-COMMAND:QuickStack:} ", // Prepended to messages.
+
+            /*
+                Fragments used in result messages
+            */
+            "toX": "to{ 0??}",
+            "fromX": "from{ 0??}",
+            "yourInventory": "{#--COLOR-PEARL:your inventory}", 
+            
+            "toTile": "onto {#--COLOR-BROWN:the ground}",
+            "fromTile": "from {#--COLOR-BROWN:the ground}",
+            "toUnknown": "to somewhere",
+            "fromUnknown": "from somewhere",
+            
+            "XOutOfY": "{X}{Y?/}{Y??}{ name??}", // Used in constructing a list of fully or partly moved item types ("5 arrows", "3/5 arrows")
+
+            "allX": "all {0}", // All <plural-thing>
+            "here": "here", // an item's immediate location
+            
+            /*
+                Fragments used in action labels/descriptions
+            */
+            "onlyXType": "Only {0??similar}",
+            "allTypes": "All types",
+            "mainInventory": "top-level inventory",
+            "fullInventory": "full inventory",
+            "deposit": "Deposit{ 0??}{ 1??}", // "Deposit [optional: ITEM TYPE fragment] [optional: TO/FROM LOCATION fragment]
+            "withdraw": "Deposit{ 0??}{ 1??}", // "Withdraw [optional: ITEM TYPE fragment] [optional: TO/FROM LOCATION fragment]
+
+            /*
+                Used in the slottable tooltips for certain item-actions, since tooltips aren't given context of the specific item being used
+            */
+            "thisContainer": "this container",  // transfer from a particular container
+            "likeContainers": "similar containers", // transfer from all held containers of the same type
+
+
+            /*
+                Options
+            */
+            "optionTopDown": "Top-down transfer priority",
+            "optionKeepContainers": "Never move containers",
+            "optionForbidTiles": "No ground-targetting",
+            "optionTopDown_desc": "In transfers that operate across multiple nested source containers (e.g. \"Deposit from full inventory\"), what should be the order of transfers?\nBottom-Up: subcontainer content goes first.\nTop-down: parent-container content goes first.\nThis mainly affects behavior when a subcontainer item itself is a valid match to be transferred...\n  Bottom-up means any valid bag contents will be transferred OUT of the bag before the bag itself is moved.\n  Top-down means the bag itself will be transferred (if possible), in which case its contents are untouched.\nNote that an equipped bag will never be transferred (though its contents might), and no bags will ever be transfered with the \"never move containers\" option set."
+        },
         "message": {
             // When first receiving the keybind input.
-            "modQuickStackSearch": "{#--color-command:QuickStack:} Looking through nearby containers...",
-            /*********************************************************************************
-                Subsegments used for constructing a results message (next section)
-            */
-            // Subsegments comprising number item pairs, depending on context.
-            // An array of these segments is passed to result messages in the 'items' argument field
-            "modQuickStackItemAll": "{0} {1}", 		// {#Moved} {ItemName(s)}			(7 apples)
-            "modQuickStackItemSome": "{0}/{1} {2}", // {#Moved}/{#Had} {ItemName(s)}	(4/7 apples)
-            // Subsegments describing the source container. 
-            // One of these will be passed to result messages in the 'source' argument field 
-            "modQuickStackFromInventory": "from {#--color-pearl:your inventory}",
-            "modQuickStackFromContainer": "from {0}",
-            "modQuickStackFromTile": "from {#--color-brown:the ground}",
-            "modQuickStackFromUnknown": "from somewhere",
-            // Subsegments describing the destination container.
-            // One of these will be passed to result messages in the 'destination' argument field
-            "modQuickStackToInventory": "into {#--color-pearl:your inventory}",
-            "modQuickStackToTile": "onto {#--color-brown:the ground}",
-            "modQuickStackToContainer": "into {0}",
-            "modQuickStackToUnknown": "to somewhere",
-
-
-            /***************************************************************** 
-                Results messages...
-
-            */
+            "modQuickStackSearch": "{prefix??}Looking through nearby containers...",
+            
             // If there are no nearby containers with items matching your inventory. 
             // This should only happen when using a keybind, as none of the actions should be usable from menu/hotbar in this case.
-            "modQuickStackNoMatch": "{#--color-command:QuickStack:} {#--text-secondary:None of the nearby containers are a good match.}",
+            "modQuickStackNoMatch": "{prefix??}{#--TEXT-SECONDARY:None of the nearby containers are a good match.}",
             // If there are no nearby containers with items matching the selected type.
             //    {0}: Item type name.
-            "modQuickStackNoTypeMatch": "{#--color-command:QuickStack:} {#--text-secondary:None of the nearby containers have any }{0}.",
             
+            "modQuickStackNoTypeMatch": "{prefix??}{#--TEXT-SECONDARY:None of the nearby containers have any }{type??UNDEFINED}.",
+
             // Valid destination was found, and transfer was attempted...
-            // In the context of trying to deposit 1 apple, 3 rocks, and 5 koalas onto the ground, this should produce the following statements
-            //   Success:  "Moved 1 apple, 3 rocks, and 5 koalas on the ground."
-            //   Parial:   "Moved 1 apple, 2/3 rocks, and 1/5 koalas onto the ground before it filled up."
-            //   Failed:   "Tried moving an apple, rocks, and koalas onto the ground but it was too full."
             /*  Argument structure:
                 {   
-                    items:       ITranslationImpl[], // item segments array
-                    source:		 ItranslationImpl,   // source segment
-                    destination: ITranslationImpl,   // desination segment
+                    items:       ITranslationImpl[], // item-list fragments array, see above (itemAll and itemSome).
+                    source:		 ItranslationImpl,   // source fragment
+                    destination: ITranslationImpl,   // desination fragment
                 	failed: {                  // Flags indicating the failure state of the transfer. Fields are undefined unless trueonly defined when true.
                         some?: true|undefined, // if some items were successsfully moved, but not all.
                         all?: true|undefined   // if no items were successfully moved.
                     } 
                }
             */
-            "modQuickStackStackResult": "{#--color-command:QuickStack:} {#--color-bad:{failed.all?Tried}}{failed.all? moving:Moved} {items...} {source} {destination}{failed.some? before {#--color-warning:it filled up}}{#--color-bad:{failed.all? but it was too full}}.",
+            "modQuickStackStackResult": "{prefix??}{#--COLOR-BAD:{failed.all?Tried}}{failed.all? moving:Moved} {items...} {source} {destination}{failed.some? before {#--COLOR-WARNING:it filled up}}{#--COLOR-BAD:{failed.all? but it was too full}}.",
 
-            
+
             /************************************************************
                 Menu and action labels
             */
-            "modQuickStackQuickStack": "QuickStack (MENU)", // Submenu label
             "modQuickStackQuickStackType": "Only {0??UNDEFINED}", // Submenu label
             "modQuickStackQuickStackAll": "All types", // Submenu label
-            
+
 
             // "Deposit{ OPTIONAL_ITEMTYPE}{ OPTIONAL_ORIGIN_STRING}"
-            "modQuickStackDeposit": "Deposit{ 0??}{ 1??}", 
-            
+            "modQuickStackDeposit": "Deposit{ 0??}{ 1??}",
+
             // Restack all to <SOMEWHERE> from nearby containers
             "modQuickStackRestockAllFrom": "Restock all {0}",
             // Restock item type to <SOMEWHERE> from nearby containers
             "modQuickStackRestockTypeFrom": "Restock {0} {0}",
-            
-            
+
+
             // The word 'from' with optional location.
             "modQuickStackFrom": "from{ 0??}",
-            
+
             // The word 'to' with optional location.
             "modQuickStackTo": "to{ 0??}",
 
             // definitions of SOMEWHERE...
-            "modQuickStackAllX": "all {0}",  // All <plural-thing>
+            "modQuickStackAllX": "all {0}", // All <plural-thing>
             "modQuickStackMain": "top-level inventory", // main inventory only
-            "modQuickStackHere": "here",              // an item's immediate location
-            "modQuickStackSelf": "full inventory",    // Full inventory recursively 
-            "modQuickStackSub": "this container",         // specific subcontainer  // used in the slottable tooltips for certain item-actions, since
-            "modQuickStackAlike": "similar containers",    // all like subcontainers // tooltips aren't given context of the specific item being used..
+            "modQuickStackHere": "here", // an item's immediate location
+            "modQuickStackSelf": "full inventory", // Full inventory recursively 
+            "modQuickStackSub": "this container", // specific subcontainer  // used in the slottable tooltips for certain item-actions, since
+            "modQuickStackAlike": "similar containers", // all like subcontainers // tooltips aren't given context of the specific item being used..
 
 
             // Stack all from nearby to inventory

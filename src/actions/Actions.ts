@@ -22,7 +22,7 @@ export function executeStackAction_notify(executor: Player, src: THTargettingPar
     return sFlag.pass;
 }
 export function executeStackAction(executor: Player, src: THTargettingParam[], dest: THTargettingParam[], types: ItemType[], successFlag?:{pass:boolean}): void{
-    executor.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageSearch);
+    executor.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageSearch, {prefix: StaticHelper.TLget("qsPrefix")});
     ActionExecutor.get(StackAction).execute(executor, src, dest, types, successFlag);
 }
 
@@ -33,6 +33,7 @@ export function executeStackAction(executor: Player, src: THTargettingParam[], d
  *      @arg {THTargettingParam[] as any[]} Arg0 Source targetting parameters.
  *      @arg {THTargettingParam[] as any[]} Arg1 Destination targetting parameters.
  *      @arg {ItemType[] as any[]} Arg2 Type list to filter for, with [] accepting all types.
+ *      @arg {Log? as Object} Arg3 log or undefined, target for logging ouput.
  *
  * The action executor should only be called via {@link executeStackAction} for type validation.
  */

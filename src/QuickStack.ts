@@ -11,11 +11,44 @@ import Log from "utilities/Log";
 import { StackAction } from "./actions/Actions";
 import { execSAMN, execSASeN, UsableActionsQuickStack } from "./actions/UsableActionsQuickStack";
 import Bind from "ui/input/Bind";
+import Dictionary from "language/Dictionary";
+import Component from "ui/component/Component";
+import { CheckButton } from "ui/component/CheckButton";
+import Translation from "language/Translation";
 
-// TODO: ADD OPTIONS
-// Bottom up- top down
-// Allow tiles.
-// Never move subcontainers.
+//import Component from "ui/component/Component";
+//import { CheckButton } from "ui/component/CheckButton";
+
+export enum QSTranslation {
+    qsPrefix = 0,
+    toX,
+    fromX,
+    allX,
+    here,
+    yourInventory,
+    toTile,
+    fromTile,
+    toUnknown,
+    fromUnknown,
+    XOutOfY,
+    mainInventory,
+    fullInventory,
+    deposit,
+    withdraw,
+    onlyXType,
+    allTypes,
+    thisContainer,
+    likeContainers,
+    optionTopDown,
+    optionTopDown_desc,
+    optionKeepContainers,
+    optionForbidTiles
+};
+
+type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionTopDown" | "optionKeepContainers" | "optionForbidTiles">;
+export type IQSGlobalData = {
+    [k in QSToggleOptionKey]: boolean
+};
 
 export default class QuickStack extends Mod {
     @Mod.instance<QuickStack>()
@@ -24,84 +57,28 @@ export default class QuickStack extends Mod {
     public static readonly LOG: Log;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
+    // Dictionary
+    @Register.dictionary("QSDictionary", QSTranslation)
+    public readonly dictionary: Dictionary;
+    private readonly TLget = (id: keyof typeof QSTranslation) => Translation.get(this.dictionary, QSTranslation[id]);
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
     // Messages 
     //
+    //@Register.message("ArgBase") // {0}{ 1??} -- utility and debugging
+    //public readonly messageArgBase: Message;
 
-    @Register.message("ArgBase") // {0}{ 1??} -- utility and debugging
-    public readonly messageArgBase: Message;
-
-    // Activation and result messages...
+    /*
+        Activation and result messages...
+    */
     @Register.message("Search") // Smart-stack initiated 
     public readonly messageSearch: Message;
     @Register.message("NoMatch") // No items in inventory match available targets.
     public readonly messageNoMatch: Message;
     @Register.message("NoTypeMatch") // No available targets for selected item type.
     public readonly messageNoTypeMatch: Message;
-    @Register.message("StackResult")
+    @Register.message("StackResult") // Master interpolator for transfer results messaging.
     public readonly messageStackResult: Message;
-    
-    // Destination message segments
-    @Register.message("ToTile")
-    public readonly messageToTile: Message;
-    @Register.message("ToContainer")
-    public readonly messageToContainer: Message;
-    @Register.message("ToInventory")
-    public readonly messageToInventory: Message;
-    @Register.message("ToUnknown")
-    public readonly messageToUnknown: Message;
-    
-    // Source  message segments
-    @Register.message("FromTile")
-    public readonly messageFromTile: Message;
-    @Register.message("FromInventory")
-    public readonly messageFromInventory: Message;
-    @Register.message("FromContainer")
-    public readonly messageFromContainer: Message;
-    @Register.message("FromUnknown")
-    public readonly messageFromUnknown: Message;
-
-    @Register.message("ItemAll")
-    public readonly messageItemAll: Message;
-    @Register.message("ItemSome")
-    public readonly messageItemSome: Message;
-    
-    // "top-level inventory"
-    @Register.message("MainInventory")
-    public readonly messageMainInventory: Message;
-    // "here" (this inventory container)
-    @Register.message("ThisInventory")
-    public readonly messageThisInventory: Message;
-
-
-    //////////////////////////////////////////////////////////////////////////////////
-    // Action labels and descriptions for menus etc.    
-
-    @Register.message("QuickStack") // Main menu
-    public readonly messageQuickStack: Message;
-    @Register.message("QuickStackType") // Type-specific submenu
-    public readonly messageQuickStackType: Message;
-    @Register.message("QuickStackAll") // All-type submenu
-    public readonly messageQuickStackAll: Message;
-
-    @Register.message("Deposit") // Submenu label and master interpolator for labelling 'deposit' slottables.
-    public readonly messageDeposit: Message;
-    
-    @Register.message("From") // "from" || "from <THING>"
-    public readonly messageFrom: Message;
-    
-
-    @Register.message("AllX") // "all <THING>"
-    public readonly messageAllX: Message;
-    @Register.message("Main") // main inventory
-    public readonly messageMain: Message;
-    @Register.message("Self") // full inventory
-    public readonly messageSelf: Message;
-    @Register.message("Here") // immediate location
-    public readonly messageHere: Message;
-    @Register.message("Sub") // this container 
-    public readonly messageSub: Message;
-    @Register.message("Alike") // alike containers
-    public readonly messageAlike: Message;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Binds
@@ -109,7 +86,7 @@ export default class QuickStack extends Mod {
     public readonly bindableSASN: Bindable;
     @Register.bindable("StackAllMainNearby")
     public readonly bindableSAMN: Bindable;
-    
+
     @Register.bindable("StackAllSelfNearby_submenu", IInput.key("slash", "Shift"))
     public readonly bindableSASN_submenu: Bindable;
     @Register.bindable("StackAllMainNearby_submenu")
@@ -127,10 +104,38 @@ export default class QuickStack extends Mod {
     // The rest of the actions and menus are registered to this menu when its submenu function is called.
     @Register.usableActions("QSUsableActions", UsableActionSet.ItemMoveMenus, reg => UsableActionsQuickStack.register(reg))
     public readonly QSUsableActions: UsableActionGenerator;
-    
+
     @Bind.onDown(Registry<QuickStack>().get("bindableSAMN"))
-    public SAMNBind() : boolean { return execSAMN(localPlayer); }
-    
+    public SAMNBind(): boolean { return execSAMN(localPlayer); }
+
     @Bind.onDown(Registry<QuickStack>().get("bindableSASN"))
-    public SASNBind() : boolean { return execSASeN(localPlayer); }
+    public SASNBind(): boolean { return execSASeN(localPlayer); }
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    // Options and global data
+    // TODO: ADD OPTIONS
+    // Bottom up- top down
+    // Allow tiles.
+    // Never move subcontainers.
+    @Mod.globalData<QuickStack>("Quick Stack")
+    public globalData: IQSGlobalData;
+
+    @Register.optionsSection
+    public constructOptionsSection(section: Component) {
+        // Construct buttons for each of the toggleable options
+        const ToggleKeys:(keyof IQSGlobalData)[] = ["optionForbidTiles", "optionKeepContainers", "optionTopDown"];
+        ToggleKeys.forEach(k => {
+            QuickStack.LOG.info(`${k}`);
+            (!((k + "_desc") in QSTranslation)
+                ? new CheckButton()
+                : new CheckButton()
+                    .addDescription(desc => desc.setText(this.TLget(k + "_desc" as keyof typeof QSTranslation)).setStyle("--text-size","calc(var(--text-size-normal)*0.9)"))
+            )
+                .setText(this.TLget(k))
+                .setRefreshMethod(() => !!this.globalData[k])
+                .event.subscribe("toggle", (_, checked) => { this.globalData[k] = checked; })
+                .appendTo(section);
+        });
+    }
 }
