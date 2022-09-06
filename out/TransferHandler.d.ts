@@ -10,12 +10,7 @@ export declare function isInHeldContainer(player: Player, item: Item): boolean;
 export declare function playerHasItem(player: Player, item: Item): boolean;
 export declare function playerHasType(player: Player, type: ItemType): boolean;
 export declare function playerHeldContainers(player: Player, type?: ItemType[]): IContainer[];
-export declare function MakeAndRunTransferHandler(player: Player, source: THTargettingParam[] | IContainer[], dest: THTargettingParam[] | IContainer[], filterTypes?: ItemType[] | undefined, log?: Log, successFlag?: {
-    failed: boolean;
-}, suppress?: {
-    report?: true;
-    delay: true;
-}): void;
+export declare function validNearby(player: Player): IContainer[];
 export default class TransferHandler {
     readonly player: Player;
     readonly sources: ITransferTarget[];
@@ -39,11 +34,15 @@ export default class TransferHandler {
     static countMatchTypes(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter?: ItemType[]): number;
     static hasMatchType(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter?: ItemType[]): boolean;
     static hasType(X: Pick<IContainer, "containedItems">[], type: ItemType): boolean;
+    static canFitAny(src: Pick<IContainer, "containedItems">[], dest: IContainer[], player: Player, filter?: ItemType[]): boolean;
     private resolveTargetting;
-    executeTransfer(log?: Log): THState;
-    reportMessages(player?: Player, log?: Log): boolean;
-    constructor(executor: Player, source: IContainer[] | THTargettingParam[] | undefined, dest: IContainer[] | THTargettingParam[] | undefined, params: {
-        filter?: ItemType[];
-        bottomUp?: boolean;
-    });
+    private executeTransfer;
+    private reportMessages;
+    private constructor();
+    static MakeAndRun(player: Player, source: THTargettingParam[] | IContainer[], dest: THTargettingParam[] | IContainer[], filterTypes?: ItemType[] | undefined, log?: Log, successFlag?: {
+        failed: boolean;
+    }, suppress?: {
+        report?: true;
+        delay: true;
+    }): void;
 }

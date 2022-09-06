@@ -1,6 +1,6 @@
 import { Action } from "game/entity/action/Action";
 import { EntityType } from "game/entity/IEntity";
-import { MakeAndRunTransferHandler } from "../TransferHandler";
+import TransferHandler from "../TransferHandler";
 import { THTargettingParam } from "../ITransferHandler";
 import StaticHelper from "../StaticHelper";
 import { ActionArgument } from "game/entity/action/IAction";
@@ -47,7 +47,7 @@ export function executeStackAction(executor: Player, src: THTargettingParam[], d
  */
 export const StackAction = new Action(ActionArgument.Array, ActionArgument.Array, ActionArgument.Array, ActionArgument.Object)
     .setUsableBy(EntityType.Player)
-    .setHandler((action, src, dest, types, sFlag) => MakeAndRunTransferHandler(action.executor, src, dest, types, undefined/*StaticHelper.QS_LOG*/, sFlag??undefined));
+    .setHandler((action, src, dest, types, sFlag) => TransferHandler.MakeAndRun(action.executor, src, dest, types, undefined/*StaticHelper.QS_LOG*/, sFlag??undefined));
 
 /**
  * Stack items from one or more source locations one or more destinations, optionally filtering by type. Specified by container array.

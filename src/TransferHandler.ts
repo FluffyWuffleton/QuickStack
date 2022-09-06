@@ -12,9 +12,7 @@ import TranslationImpl from "language/impl/TranslationImpl";
 import Dictionary from "language/Dictionary";
 import { GLOBALCONFIG } from "./QuickStack";
 
-// Utility functions for item and inventory fetching/checking.
-// Pretty self-explanatory.
-
+// Utility functions for item and inventory fetching/checking. Pretty self-explanatory.
 export function isHeldContainer(player: Player, item: Item): boolean { return player.island.items.isContainer(item) && player === player.island.items.getPlayerWithItemInInventory(item); }
 export function isContainerType(player: Player, type: ItemType): boolean { return player.island.items.isInGroup(type, ItemTypeGroup.Storage); }
 export function isInHeldContainer(player: Player, item: Item): boolean { return (item?.containedWithin) ? player.island.items.getContainedContainers(player.inventory).includes(item.containedWithin) : false; }
@@ -28,76 +26,18 @@ export function playerHeldContainers(player: Player, type?: ItemType[]): IContai
             .filter(i => type.some(t => t === (i as Item)?.type)) as IContainer[];
 }
 
-
-// Called by executeStackAction. Construct, execute, and report on a transfer, with some error flag checking in between.
-export function MakeAndRunTransferHandler(
-    player: Player,
-    source: THTargettingParam[] | IContainer[],
-    dest: THTargettingParam[] | IContainer[],
-    filterTypes?: ItemType[] | undefined,
-    log?: Log,
-    successFlag?: { failed: boolean },
-    suppress?: {report?: true, delay: true}
-): void {
-    const thisfcn = `${MakeAndRunTransferHandler.name} :: `;
-    const t0 = performance.now();
-    log?.info(`${thisfcn}Constructing TransferHandler. Timestamp ${t0}`);
-
-    const handler = new TransferHandler(player, source, dest, { 
-        bottomUp: !StaticHelper.QS_INSTANCE.globalData.optionTopDown, 
-        ...(filterTypes ? { filter: filterTypes } : {}) 
-    });
-
-    if(handler.state & THState.error) { // Initialization error
-        log?.error(`${thisfcn}Error flag in handler after construction. Code ${handler.state.toString(2)}`);
-        if(successFlag) successFlag.failed = true;
-        return;
-    }
-
-    if(log) {
-        const crtKey = (crt: ContainerReferenceType): string => ContainerReferenceType[crt];
-        let str = `Handler initialized\n    Identified sources`;
-
-        const wrapChildren = (c: ITransferTarget): string => {
-            if(c.children) return `${crtKey(c.type)}[ ${c.children.map(cc => wrapChildren(cc)).join(', ')} ]`
-            return `${crtKey(c.type)}`;
-        }
-
-        handler.sources.forEach(s => { str = str + `\n        ${wrapChildren(s)}`; });
-
-        let destStr: string[] = [];
-        Object.values(ContainerReferenceType).forEach(v => {
-            const destCount = handler.destinations.reduce((n, itt) => { return itt.type === v ? n + 1 : n }, 0);
-            if(destCount) destStr.push(`${destCount} ${crtKey(v as ContainerReferenceType)}`);
-        });
-
-        log.info(`${thisfcn}${str}\n    Identified destinations:\n        ${destStr.join(',  ')}`);
-    }
-
-    // Transfer error?
-    if(handler.executeTransfer(log) & THState.error) {
-        log?.error(`${thisfcn}Error flag in handler during execution. Code ${handler.state.toString(2)}`);
-        if(successFlag) successFlag.failed = true;
-        return;
-    }
-
-    // Transfer complete. Send messages. Unless we're not.
-    if(suppress?.report) log?.info(`${thisfcn}Message reporting suppressed`);
-    else if(!handler.reportMessages(player, log)) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
-
-    if(handler.anySuccess || handler.anyPartial) {
-        if(!suppress?.delay) player.addDelay(GLOBALCONFIG.pause_length);
-        if(GLOBALCONFIG.pass_turn_success) game.passTurn(player);
-        if(successFlag) successFlag.failed = false;
-    }
-
-    const t1 = performance.now(); 
-    log?.info(`${thisfcn}Complete. Timestamp ${t1}. Elapsed ${t1-t0}`);
+// getAdjacentContainers with respect for forbidTiles option.
+export function validNearby(player: Player): IContainer[] {
+    const adj = player.island.items.getAdjacentContainers(player, false);
+    if(StaticHelper.QS_INSTANCE.globalData.optionForbidTiles)
+        return adj.filter(c => player.island.items.getContainerReference(c, undefined).crt !== ContainerReferenceType.Tile);
+    return adj;
 }
+
 
 /**
  * The catch-all class for constructing, executing, and reporting on type-match transfers to/from one or more source and destination containers.
- * Transfer parameters are configured entirely via the constructor, transfer execution is perform by {@link TransferHandler.executeTransfer}, and transfer-result messages are handled by {@link TransferHandler.reportMessages}.
+ * All construction and execution should be handled through {@link TransferHandler.MakeAndRun}
  * Any single instance of this class is expected to exist for less than one game turn, performing one batch of transfers.
  * @class TransferHandler
  */
@@ -195,6 +135,17 @@ export default class TransferHandler {
         return TransferHandler.setOfTypes(X).has(type);
     }
 
+    public static canFitAny(src: Pick<IContainer, "containedItems">[], dest: IContainer[], player: Player, filter: ItemType[] = []) {
+        const srcItems = src.flatMap(s => s.containedItems).filter(i=>!i.isProtected() && !i.isEquipped());
+        const srcTypes = filter.length > 0 ? new Set<ItemType>(filter) : TransferHandler.setOfTypes([{containedItems: srcItems}]);
+        if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers) srcTypes.retainWhere(t => !player.island.items.isInGroup(t, ItemTypeGroup.Storage));
+        for(let d of dest) {
+            const matchTypes = [...new Set<ItemType>(d.containedItems.map(i => i.type))].filter(t => srcTypes.has(t));
+            const remaining = (player.island.items.getWeightCapacity(d, undefined) ?? (player.island.isTileFull(d as ITile) ? 0 : Infinity)) - player.island.items.computeContainerWeight(d);
+            if(matchTypes.some(t => remaining >= srcItems.reduce((w,i) => (i.type === t && i.weight<w ? i.weight : w), Infinity))) return true;
+        };
+        return false;
+    }
 
     /******************************************************
         Meaty functions
@@ -279,7 +230,7 @@ export default class TransferHandler {
     * Returns immediately if state has any error flag set, or if the 'complete' flag is already set. 
     * @returns {THState} The handler state. 
     */
-    public executeTransfer(log: Log = StaticHelper.QS_LOG): THState {
+    private executeTransfer(log: Log = StaticHelper.QS_LOG): THState {
         // Active error or already complete
         if(this._state & (THState.error | THState.complete)) return this._state;
 
@@ -417,7 +368,7 @@ export default class TransferHandler {
      * @param player 
      * @returns {boolean} Successfully sent messages?
      */
-    public reportMessages(player: Player = this.player, log: Log = StaticHelper.QS_LOG): boolean {
+    private reportMessages(player: Player = this.player, log: Log = StaticHelper.QS_LOG): boolean {
         // Active error or not yet complete
         if((this._state & THState.error) || !(this._state & THState.complete)) return false;
 
@@ -527,7 +478,7 @@ export default class TransferHandler {
      * @param {THTargettingParam[] | IContainer[]} [source=[{self:true}]] Sources containers and/or flags to specify valid source targetting. If container list is passed directly IT'S ASSUMED TO BE VALID.
      * @param {THTargettingParam[] | IContainer[]} [dest=[{doodads: true}, {tiles: true}]] Destination containers, and/or flags to specify valid destination targetting. If container list is passed directly IT'S ASSUMED TO BE VALID.
      */
-    constructor(
+    private constructor(
         executor: Player,
         source: THTargettingParam[] | IContainer[] = [{ self: true }],
         dest: THTargettingParam[] | IContainer[] = [{ doodads: true }, { tiles: true }],
@@ -556,4 +507,72 @@ export default class TransferHandler {
             }
         });
     }
+
+    // Called by executeStackAction. Construct, execute, and report on a transfer, with some error flag checking in between.
+    public static MakeAndRun(
+        player: Player,
+        source: THTargettingParam[] | IContainer[],
+        dest: THTargettingParam[] | IContainer[],
+        filterTypes?: ItemType[] | undefined,
+        log?: Log,
+        successFlag?: { failed: boolean },
+        suppress?: { report?: true, delay: true }
+    ): void {
+        const thisfcn = `${TransferHandler.MakeAndRun.name} :: `;
+        const t0 = performance.now();
+        log?.info(`${thisfcn}Constructing TransferHandler. Timestamp ${t0}`);
+
+        const handler = new TransferHandler(player, source, dest, {
+            bottomUp: !StaticHelper.QS_INSTANCE.globalData.optionTopDown,
+            ...(filterTypes ? { filter: filterTypes } : {})
+        });
+
+        if(handler.state & THState.error) { // Initialization error
+            log?.error(`${thisfcn}Error flag in handler after construction. Code ${handler.state.toString(2)}`);
+            if(successFlag) successFlag.failed = true;
+            return;
+        }
+
+        if(log) {
+            const crtKey = (crt: ContainerReferenceType): string => ContainerReferenceType[crt];
+            let str = `Handler initialized\n    Identified sources`;
+
+            const wrapChildren = (c: ITransferTarget): string => {
+                if(c.children) return `${crtKey(c.type)}[ ${c.children.map(cc => wrapChildren(cc)).join(', ')} ]`
+                return `${crtKey(c.type)}`;
+            }
+
+            handler.sources.forEach(s => { str = str + `\n        ${wrapChildren(s)}`; });
+
+            let destStr: string[] = [];
+            Object.values(ContainerReferenceType).forEach(v => {
+                const destCount = handler.destinations.reduce((n, itt) => { return itt.type === v ? n + 1 : n }, 0);
+                if(destCount) destStr.push(`${destCount} ${crtKey(v as ContainerReferenceType)}`);
+            });
+
+            log.info(`${thisfcn}${str}\n    Identified destinations:\n        ${destStr.join(',  ')}`);
+        }
+
+        // Transfer error?
+        if(handler.executeTransfer(log) & THState.error) {
+            log?.error(`${thisfcn}Error flag in handler during execution. Code ${handler.state.toString(2)}`);
+            if(successFlag) successFlag.failed = true;
+            return;
+        }
+
+        // Transfer complete. Send messages. Unless we're not.
+        if(suppress?.report) log?.info(`${thisfcn}Message reporting suppressed`);
+        else if(!handler.reportMessages(player, log)) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
+
+        if(handler.anySuccess || handler.anyPartial) {
+            if(!suppress?.delay) player.addDelay(GLOBALCONFIG.pause_length);
+            if(GLOBALCONFIG.pass_turn_success) game.passTurn(player);
+            else player.update();
+            if(successFlag) successFlag.failed = false;
+        }
+
+        const t1 = performance.now();
+        log?.info(`${thisfcn}Complete. Timestamp ${t1}. Elapsed ${t1 - t0}`);
+    }
+
 };

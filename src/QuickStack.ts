@@ -91,7 +91,7 @@ export default class QuickStack extends Mod {
     public readonly bindableSASN: Bindable;
     @Register.bindable("StackAllMainNearby")
     public readonly bindableSAMN: Bindable;
-
+    
     @Register.bindable("StackAllSelfNearby_submenu", IInput.key("slash", "Shift"))
     public readonly bindableSASN_submenu: Bindable;
     @Register.bindable("StackAllMainNearby_submenu")
