@@ -15,9 +15,14 @@ import Dictionary from "language/Dictionary";
 import Component from "ui/component/Component";
 import { CheckButton } from "ui/component/CheckButton";
 import Translation from "language/Translation";
+import { UsableActionType } from "game/entity/action/usable/UsableActionType";
+import { Delay } from "game/entity/IHuman";
 
-//import Component from "ui/component/Component";
-//import { CheckButton } from "ui/component/CheckButton";
+
+export namespace GLOBALCONFIG {
+    export const pause_length = Delay.ShortPause;
+    export const pass_turn_success = false;
+}
 
 export enum QSTranslation {
     qsPrefix = 0,
@@ -97,27 +102,30 @@ export default class QuickStack extends Mod {
     // Actions
     @Register.action("StackAction", StackAction)
     public readonly actionStackAction: ActionType;
-    //@Register.action("StackActionLimited", StackActionLimited)
-    //public readonly actionStackActionLimited: ActionType;
+    
+    // Icon placeholder types
+    @Register.usableActionType("AllMainNearby")
+    public readonly UAPlaceholderAllMainNearby: UsableActionType;
+
+    @Register.usableActionType("AllSelfNearby")
+    public readonly UAPlaceholderAllSelfNearby: UsableActionType;
+
 
     // Register the top-level QuickStack submenu.
     // The rest of the actions and menus are registered to this menu when its submenu function is called.
     @Register.usableActions("QSUsableActions", UsableActionSet.ItemMoveMenus, reg => UsableActionsQuickStack.register(reg))
     public readonly QSUsableActions: UsableActionGenerator;
 
+
     @Bind.onDown(Registry<QuickStack>().get("bindableSAMN"))
-    public SAMNBind(): boolean { return execSAMN(localPlayer); }
+    public SAMNBind(): boolean { return !execSAMN(localPlayer); }
 
     @Bind.onDown(Registry<QuickStack>().get("bindableSASN"))
-    public SASNBind(): boolean { return execSASeN(localPlayer); }
+    public SASNBind(): boolean { return !execSASeN(localPlayer); }
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Options and global data
-    // TODO: ADD OPTIONS
-    // Bottom up- top down
-    // Allow tiles.
-    // Never move subcontainers.
     @Mod.globalData<QuickStack>("Quick Stack")
     public globalData: IQSGlobalData;
 

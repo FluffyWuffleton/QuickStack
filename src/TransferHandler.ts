@@ -7,10 +7,10 @@ import Doodad from "game/doodad/Doodad";
 import { ITransferTarget, THState, ITransferPairing, ITransferTypeMatch, THTargettingParam } from "./ITransferHandler";
 import { ITile } from "game/tile/ITerrain";
 import Log from "utilities/Log";
-import { Delay } from "game/entity/IHuman";
 import Translation from "language/Translation";
 import TranslationImpl from "language/impl/TranslationImpl";
 import Dictionary from "language/Dictionary";
+import { GLOBALCONFIG } from "./QuickStack";
 
 // Utility functions for item and inventory fetching/checking.
 // Pretty self-explanatory.
@@ -34,17 +34,23 @@ export function MakeAndRunTransferHandler(
     player: Player,
     source: THTargettingParam[] | IContainer[],
     dest: THTargettingParam[] | IContainer[],
-    filter?: ItemType[] | undefined,
+    filterTypes?: ItemType[] | undefined,
     log?: Log,
-    sFlag?: { pass: boolean }
+    successFlag?: { failed: boolean },
+    suppress?: {report?: true, delay: true}
 ): void {
-    log?.info("Constructing TransferHandler.");
+    const thisfcn = `${MakeAndRunTransferHandler.name} :: `;
+    const t0 = performance.now();
+    log?.info(`${thisfcn}Constructing TransferHandler. Timestamp ${t0}`);
 
-    const handler = new TransferHandler(player, source, dest, filter ?? [], !StaticHelper.QS_INSTANCE.globalData.optionTopDown);
+    const handler = new TransferHandler(player, source, dest, { 
+        bottomUp: !StaticHelper.QS_INSTANCE.globalData.optionTopDown, 
+        ...(filterTypes ? { filter: filterTypes } : {}) 
+    });
 
     if(handler.state & THState.error) { // Initialization error
-        log?.error(`Error flag in handler after construction. Code ${handler.state.toString(2)}`);
-        if(sFlag) sFlag.pass = false;
+        log?.error(`${thisfcn}Error flag in handler after construction. Code ${handler.state.toString(2)}`);
+        if(successFlag) successFlag.failed = true;
         return;
     }
 
@@ -65,25 +71,28 @@ export function MakeAndRunTransferHandler(
             if(destCount) destStr.push(`${destCount} ${crtKey(v as ContainerReferenceType)}`);
         });
 
-        log.info(str + `\n    Identified destinations:\n        ${destStr.join(',  ')}`);
+        log.info(`${thisfcn}${str}\n    Identified destinations:\n        ${destStr.join(',  ')}`);
     }
 
     // Transfer error?
     if(handler.executeTransfer(log) & THState.error) {
-        log?.error(`Error flag in handler during execution. Code ${handler.state.toString(2)}`);
-        if(sFlag) sFlag.pass = false;
+        log?.error(`${thisfcn}Error flag in handler during execution. Code ${handler.state.toString(2)}`);
+        if(successFlag) successFlag.failed = true;
         return;
     }
 
-    // Transfer success. Or maybe nothing.
-    // Send messages.
-    if(!handler.reportMessages(player, log)) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
+    // Transfer complete. Send messages. Unless we're not.
+    if(suppress?.report) log?.info(`${thisfcn}Message reporting suppressed`);
+    else if(!handler.reportMessages(player, log)) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
 
     if(handler.anySuccess || handler.anyPartial) {
-        player.addDelay(Delay.LongPause);
-        game.passTurn(player);
-        if(sFlag) sFlag.pass = true;
+        if(!suppress?.delay) player.addDelay(GLOBALCONFIG.pause_length);
+        if(GLOBALCONFIG.pass_turn_success) game.passTurn(player);
+        if(successFlag) successFlag.failed = false;
     }
+
+    const t1 = performance.now(); 
+    log?.info(`${thisfcn}Complete. Timestamp ${t1}. Elapsed ${t1-t0}`);
 }
 
 /**
@@ -113,6 +122,10 @@ export default class TransferHandler {
     public get anyPartial(): boolean { return this._anyPartial; } // If any given source->dest transfer of a single ItemType was only partially completed.
     public get anyFailed(): boolean { return this._anyFailed; } // If any given source->dest transfer of a single ItemType was failed outright due to capacity.
 
+    /******************************************************
+        Static helper functions
+    */
+
     /**
      * Return set of unique Item types in a given Container or Item array.
      * Mainly for overload handling.
@@ -124,9 +137,10 @@ export default class TransferHandler {
     }
 
     /** 
-     * Given two containers or item arrays returns a (unique) list of typeMatches for use in constructing ITransferPairings
+     * Given two IContainer (or anything with the 'containedItems' field) arrays, returns a (unique) list of typeMatches for use in constructing ITransferPairings
      * @param {IContainer|Item[]} A 
      * @param {IContainer|Item[]} B
+     * @param {ItemType[]} [filter = []] Only matches types found in the filter array (if specified).
      * @returns {ITransferTypeMatch[]} List of type matches.
      */
     public static matchTypes(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter: ItemType[] = []): ITransferTypeMatch[] {
@@ -140,9 +154,10 @@ export default class TransferHandler {
     }
 
     /**
-     * Given two containers or item arrays, returns the number of matched types between their content.
+     * Given two IContainer (or anything with the 'containedItems' field) arrays, returns the number of matched types between their content.
      * @param {IContainer|Item[]} A 
      * @param {IContainer|Item[]} B
+     * @param {ItemType[]} [filter = []] Only matches types found in the filter array (if specified).
      * @returns {number} Number of matching ItemTypes
      */
     public static countMatchTypes(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter: ItemType[] = []): number {
@@ -155,9 +170,10 @@ export default class TransferHandler {
     }
 
     /**
-     * Returns true if the input containers/item arrays have any shared item type. Short circuits on first match found.
-     * @param {IContainer|Item[]} A 
-     * @param {IContainer|Item[]} B
+     * Returns true if the input container arrays have any shared item type. 
+     * @param {Pick<IContainer, "containedItems">[]} A 
+     * @param {Pick<IContainer, "containedItems">} B
+     * @param {ItemType[]} [filter = []] Only matches types found in the filter array (if specified).
      * @returns {boolean}
      */
     public static hasMatchType(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter: ItemType[] = []): boolean {
@@ -169,9 +185,20 @@ export default class TransferHandler {
         return ATypes.some(type => BTypes.has(type));
     }
 
+    /**
+     * Returns true if the input containers have a given item type
+     * @param {Pick<IContainer, "containedItems">[]} A 
+     * @param {ItemType} type
+     * @returns {boolean}
+     */
     public static hasType(X: Pick<IContainer, "containedItems">[], type: ItemType): boolean {
         return TransferHandler.setOfTypes(X).has(type);
     }
+
+
+    /******************************************************
+        Meaty functions
+    */
 
     /**
      * This function resolves a list of Containers or TargettingParams into a list of TransferTargets.
@@ -279,7 +306,7 @@ export default class TransferHandler {
                 };
 
                 // Remove any forbidden types
-                if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers) 
+                if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers)
                     thisPairing.matches = thisPairing.matches.filter(m => !itemMgr.isInGroup(m.type, ItemTypeGroup.Storage));
 
                 // We'll want to keep track of any type-matches caused exclusively by protected/equipped items when drawing from player inventory,
@@ -490,6 +517,7 @@ export default class TransferHandler {
 
         return true;
     }
+
     /**
      * All relevant container and player references are passed to or found by the constructor.
      * They cannot be changed elsewhere.
@@ -503,16 +531,18 @@ export default class TransferHandler {
         executor: Player,
         source: THTargettingParam[] | IContainer[] = [{ self: true }],
         dest: THTargettingParam[] | IContainer[] = [{ doodads: true }, { tiles: true }],
-        filterTypes: ItemType[] = [],
-        bottomUp: boolean = true
+        params: {
+            filter?: ItemType[],
+            bottomUp?: boolean
+        }
     ) {
         this._state = THState.idle;
         this._executionResults = [];
 
         this.player = executor;
         this.island = executor.island;
-        this.typeFilter = filterTypes;
-        this.bottomUp = bottomUp;
+        this.typeFilter = params.filter ?? [];
+        this.bottomUp = (!!params.bottomUp);
 
         // Resolve target containers.
         this.sources = this.resolveTargetting(source, true);

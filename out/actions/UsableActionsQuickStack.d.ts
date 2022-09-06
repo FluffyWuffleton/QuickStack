@@ -6,10 +6,10 @@ export declare namespace QSSubmenu {
     const All: UsableActionGenerator<[]>;
     const Type: UsableActionGenerator<[]>;
 }
-export declare const execSASeN: (p: Player) => boolean;
 export declare const StackAllSelfNearby: UsableActionGenerator<[boolean]>;
-export declare const execSAMN: (p: Player) => boolean;
+export declare const execSASeN: (p: Player) => boolean;
 export declare const StackAllMainNearby: UsableActionGenerator<[boolean]>;
+export declare const execSAMN: (p: Player) => boolean;
 export declare const StackAllSubNearby: UsableActionGenerator<[boolean]>;
 export declare const StackAllAlikeSubNearby: UsableActionGenerator<[boolean]>;
 export declare const StackTypeSelfNearby: UsableActionGenerator<[boolean]>;

@@ -7,21 +7,29 @@ import { ActionArgument } from "game/entity/action/IAction";
 import { ItemType } from "game/item/IItem";
 import Player from "game/entity/player/Player";
 
-
 //@ts-ignore // for JSDoc
 import type { QSUsable } from "./UsableActionsQuickStack";
 import ActionExecutor from "game/entity/action/ActionExecutor";
 
-// function validateSubInventories(player: Player, subs: Item[]): boolean {
-//     return subs.every(s => s.containedWithin === player.inventory && ((s.containedItems?.length ?? undefined) !== undefined));
-// }
+
+/**
+ * Alternate signature for {@link executeStackAction}, returns true/false depending on transfer completion.
+ */
 export function executeStackAction_notify(executor: Player, src: THTargettingParam[], dest: THTargettingParam[], types: ItemType[]) : boolean {
-    const sFlag = {pass:false};
+    const sFlag = {failed:false};
     executeStackAction(executor, src, dest, types, sFlag);
-    StaticHelper.QS_LOG.info(`executeStackAction_notify: Flag ${sFlag.pass}`);
-    return sFlag.pass;
+    StaticHelper.QS_LOG.info(`executeStackAction_notify: Flag ${sFlag.failed}`);
+    return !sFlag.failed;
 }
-export function executeStackAction(executor: Player, src: THTargettingParam[], dest: THTargettingParam[], types: ItemType[], successFlag?:{pass:boolean}): void{
+/**
+ * 
+ * @param {Player} executor
+ * @param {THTargettingParam[]} src 
+ * @param {THTargettingParam[]} dest 
+ * @param {ItemType[]} types 
+ * @param {{failed:boolean}} [successFlag=undefined] Optional reference to an object containing boolean property 'pass', which will be set according to the success/failure of the transfer.
+ */
+export function executeStackAction(executor: Player, src: THTargettingParam[], dest: THTargettingParam[], types: ItemType[], successFlag?:{failed:boolean}): void {
     executor.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageSearch, {prefix: StaticHelper.TLget("qsPrefix")});
     ActionExecutor.get(StackAction).execute(executor, src, dest, types, successFlag);
 }

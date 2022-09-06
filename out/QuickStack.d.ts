@@ -6,6 +6,12 @@ import { UsableActionGenerator } from "game/entity/action/usable/UsableActionReg
 import Log from "utilities/Log";
 import Dictionary from "language/Dictionary";
 import Component from "ui/component/Component";
+import { UsableActionType } from "game/entity/action/usable/UsableActionType";
+import { Delay } from "game/entity/IHuman";
+export declare namespace GLOBALCONFIG {
+    const pause_length = Delay.ShortPause;
+    const pass_turn_success = false;
+}
 export declare enum QSTranslation {
     qsPrefix = 0,
     toX = 1,
@@ -49,6 +55,8 @@ export default class QuickStack extends Mod {
     readonly bindableSASN_submenu: Bindable;
     readonly bindableSAMN_submenu: Bindable;
     readonly actionStackAction: ActionType;
+    readonly UAPlaceholderAllMainNearby: UsableActionType;
+    readonly UAPlaceholderAllSelfNearby: UsableActionType;
     readonly QSUsableActions: UsableActionGenerator;
     SAMNBind(): boolean;
     SASNBind(): boolean;

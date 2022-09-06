@@ -28,8 +28,8 @@
             "allTypes": "All types",
             "mainInventory": "top-level inventory",
             "fullInventory": "full inventory",
-            "deposit": "Deposit{ 0??}{ 1??}", // "Deposit [optional: ITEM TYPE fragment] [optional: TO/FROM LOCATION fragment]
-            "withdraw": "Deposit{ 0??}{ 1??}", // "Withdraw [optional: ITEM TYPE fragment] [optional: TO/FROM LOCATION fragment]
+            "deposit": "Deposit{ 0??} nearby{ 1??}", // "Deposit [optional: ITEM TYPE fragment] [optional: TO/FROM LOCATION fragment]
+            "withdraw": "Withdraw{ 0??}{ 1??}", // "Withdraw [optional: ITEM TYPE fragment] [optional: TO/FROM LOCATION fragment]
 
             /*
                 Used in the slottable tooltips for certain item-actions, since tooltips aren't given context of the specific item being used

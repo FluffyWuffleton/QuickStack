@@ -10,8 +10,11 @@ export declare function isInHeldContainer(player: Player, item: Item): boolean;
 export declare function playerHasItem(player: Player, item: Item): boolean;
 export declare function playerHasType(player: Player, type: ItemType): boolean;
 export declare function playerHeldContainers(player: Player, type?: ItemType[]): IContainer[];
-export declare function MakeAndRunTransferHandler(player: Player, source: THTargettingParam[] | IContainer[], dest: THTargettingParam[] | IContainer[], filter?: ItemType[] | undefined, log?: Log, sFlag?: {
-    pass: boolean;
+export declare function MakeAndRunTransferHandler(player: Player, source: THTargettingParam[] | IContainer[], dest: THTargettingParam[] | IContainer[], filterTypes?: ItemType[] | undefined, log?: Log, successFlag?: {
+    failed: boolean;
+}, suppress?: {
+    report?: true;
+    delay: true;
 }): void;
 export default class TransferHandler {
     readonly player: Player;
@@ -39,5 +42,8 @@ export default class TransferHandler {
     private resolveTargetting;
     executeTransfer(log?: Log): THState;
     reportMessages(player?: Player, log?: Log): boolean;
-    constructor(executor: Player, source?: THTargettingParam[] | IContainer[], dest?: THTargettingParam[] | IContainer[], filterTypes?: ItemType[], bottomUp?: boolean);
+    constructor(executor: Player, source: IContainer[] | THTargettingParam[] | undefined, dest: IContainer[] | THTargettingParam[] | undefined, params: {
+        filter?: ItemType[];
+        bottomUp?: boolean;
+    });
 }
