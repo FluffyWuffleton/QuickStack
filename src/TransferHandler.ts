@@ -4,7 +4,7 @@ import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "gam
 import Player from "game/entity/player/Player";
 import StaticHelper from "./StaticHelper";
 import Doodad from "game/doodad/Doodad";
-import { ITransferTarget, THState, ITransferPairing, ITransferTypeMatch, THTargettingParam } from "./ITransferHandler";
+import { ITransferTarget, THState, ITransferPairing, ITransferItemMatch, THTargettingParam } from "./ITransferHandler";
 import { ITile } from "game/tile/ITerrain";
 import Log from "utilities/Log";
 import Translation from "language/Translation";
@@ -81,9 +81,9 @@ export default class TransferHandler {
      * @param {IContainer|Item[]} A 
      * @param {IContainer|Item[]} B
      * @param {ItemType[]} [filter = []] Only matches types found in the filter array (if specified).
-     * @returns {ITransferTypeMatch[]} List of type matches.
+     * @returns {ITransferItemMatch[]} List of type matches.
      */
-    public static matchTypes(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter: ItemType[] = []): ITransferTypeMatch[] {
+    public static matchTypes(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter: ItemType[] = []): ITransferItemMatch[] {
         const ATypes = TransferHandler.setOfTypes(A);
         const BTypes = TransferHandler.setOfTypes(B);
 

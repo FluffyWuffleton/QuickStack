@@ -35,11 +35,35 @@ export declare enum QSTranslation {
     optionTopDown = 19,
     optionTopDown_desc = 20,
     optionKeepContainers = 21,
-    optionForbidTiles = 22
+    optionForbidTiles = 22,
+    optionMatchSimilar = 23,
+    optionMatchSimilar_desc = 24,
+    Projectile = 25,
+    ProjectileWeapon = 26,
+    Equipment = 27,
+    Edible = 28,
+    Raw = 29,
+    Medical = 30,
+    Potable = 31,
+    Unpotable = 32,
+    Rock = 33,
+    Poles = 34,
+    CordageAndString = 35,
+    Needlework = 36,
+    Gardening = 37,
+    Paperwork = 38,
+    MatchGroupIncludes = 39,
+    ItemGroupX = 40,
+    ItemTypeX = 41
 }
 declare type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionTopDown" | "optionKeepContainers" | "optionForbidTiles">;
+declare type QSMatchableGroupKey = keyof Pick<typeof QSTranslation, "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable" | "Rock" | "Poles" | "CordageAndString" | "Needlework" | "Gardening" | "Paperwork">;
 export declare type IQSGlobalData = {
     [k in QSToggleOptionKey]: boolean;
+} & {
+    activeMatchGroups: {
+        [k in QSMatchableGroupKey]: boolean;
+    };
 };
 export default class QuickStack extends Mod {
     static readonly INSTANCE: QuickStack;

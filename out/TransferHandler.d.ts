@@ -2,7 +2,7 @@ import Island from "game/island/Island";
 import Item from "game/item/Item";
 import { IContainer, ItemType } from "game/item/IItem";
 import Player from "game/entity/player/Player";
-import { ITransferTarget, THState, ITransferPairing, ITransferTypeMatch, THTargettingParam } from "./ITransferHandler";
+import { ITransferTarget, THState, ITransferPairing, ITransferItemMatch, THTargettingParam } from "./ITransferHandler";
 import Log from "utilities/Log";
 export declare function isHeldContainer(player: Player, item: Item): boolean;
 export declare function isContainerType(player: Player, type: ItemType): boolean;
@@ -30,7 +30,7 @@ export default class TransferHandler {
     get anyPartial(): boolean;
     get anyFailed(): boolean;
     private static setOfTypes;
-    static matchTypes(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter?: ItemType[]): ITransferTypeMatch[];
+    static matchTypes(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter?: ItemType[]): ITransferItemMatch[];
     static countMatchTypes(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter?: ItemType[]): number;
     static hasMatchType(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter?: ItemType[]): boolean;
     static hasType(X: Pick<IContainer, "containedItems">[], type: ItemType): boolean;

@@ -1,9 +1,4 @@
-import { ContainerReferenceType, IContainer, ItemType } from "game/item/IItem";
-export declare enum TransferCompleteness {
-    none = 0,
-    some = 1,
-    all = 2
-}
+import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
 export declare enum THState {
     idle = 0,
     complete = 1,
@@ -35,13 +30,20 @@ export interface ITHTargetSpecific extends ITHTargetRecursive {
     container: IContainer | IContainer[];
 }
 export declare type THTargettingParam = (ITHTargetSelf) | (ITHTargetTiles) | (ITHTargetDoodads) | (ITHTargetSpecific);
+interface IMatchByType {
+    type: ItemType;
+}
+interface IMatchByGroup {
+    group: ItemTypeGroup;
+}
+export declare type IMatchParam = IMatchByType | IMatchByGroup;
 export interface ITransferTarget {
     container: IContainer;
     type: ContainerReferenceType;
     children?: ITransferTarget[];
     parent?: ITransferTarget;
 }
-export interface ITransferTypeMatch {
+export interface ITransferItemMatch {
     type: ItemType;
     had: number;
     sent: number;
@@ -49,5 +51,6 @@ export interface ITransferTypeMatch {
 export interface ITransferPairing {
     source: ITransferTarget;
     destination: ITransferTarget;
-    matches: ITransferTypeMatch[];
+    matches: ITransferItemMatch[];
 }
+export {};

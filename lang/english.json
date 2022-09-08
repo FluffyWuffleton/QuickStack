@@ -9,18 +9,18 @@
             */
             "toX": "to{ 0??}",
             "fromX": "from{ 0??}",
-            "yourInventory": "{#--COLOR-PEARL:your inventory}", 
-            
+            "yourInventory": "{#--COLOR-PEARL:your inventory}",
+
             "toTile": "onto {#--COLOR-BROWN:the ground}",
             "fromTile": "from {#--COLOR-BROWN:the ground}",
             "toUnknown": "to somewhere",
             "fromUnknown": "from somewhere",
-            
+
             "XOutOfY": "{X}{Y?/}{Y??}{ name??}", // Used in constructing a list of fully or partly moved item types ("5 arrows", "3/5 arrows")
 
             "allX": "all {0}", // All <plural-thing>
             "here": "here", // an item's immediate location
-            
+
             /*
                 Fragments used in action labels/descriptions
             */
@@ -34,7 +34,7 @@
             /*
                 Used in the slottable tooltips for certain item-actions, since tooltips aren't given context of the specific item being used
             */
-            "thisContainer": "this container",  // transfer from a particular container
+            "thisContainer": "this container", // transfer from a particular container
             "likeContainers": "similar containers", // transfer from all held containers of the same type
 
 
@@ -44,18 +44,40 @@
             "optionTopDown": "Top-down transfer priority",
             "optionKeepContainers": "Never move containers",
             "optionForbidTiles": "No ground-targetting",
-            "optionTopDown_desc": "In transfers that operate across multiple nested source containers (e.g. \"Deposit from full inventory\"), what should be the order of transfers?\nBottom-Up: subcontainer content goes first.\nTop-down: parent-container content goes first.\nThis mainly affects behavior when a subcontainer item itself is a valid match to be transferred...\n  Bottom-up means any valid bag contents will be transferred OUT of the bag before the bag itself is moved.\n  Top-down means the bag itself will be transferred (if possible), in which case its contents are untouched.\nNote that an equipped bag will never be transferred (though its contents might), and no bags will ever be transfered with the \"never move containers\" option set."
+            "optionTopDown_desc": "In transfers that operate across multiple nested source containers (e.g. \"Deposit from full inventory\"), what should be the order of transfers?\nBottom-Up: subcontainer content goes first.\nTop-down: parent-container content goes first.\nThis mainly affects behavior when a subcontainer item itself is a valid match to be transferred...\n  Bottom-up means any valid bag contents will be transferred OUT of the bag before the bag itself is moved.\n  Top-down means the bag itself will be transferred (if possible), in which case its contents are untouched.\nNote that an equipped bag will never be transferred (though its contents might), and no bags will ever be transfered with the \"never move containers\" option set.",
+            "optionMatchSimilar": "Match similar item groups...",
+            "optionMatchSimilar_desc": "For any group selected below, all items within that group will be treated as a single type for stacking.",
+
+            // Custom groupings
+            "Projectile": "Projectiles",
+            "ProjectileWeapon": "Projectile Weapons",
+            "Equipment": "Equipment",
+            "Edible": "Edible",
+            "Raw": "Raw",
+            "Medical": "Medical",
+            "Potable": "Drinkable",
+            "Unpotable": "Unpotable Water",
+            "Rock": "Rock",
+            "Poles": "Poles",
+            "CordageAndString": "Cordage and String",
+            "Needlework": "Needwork",
+            "Gardening": "Gardening",
+            "Paperwork": "Paperwork",
+
+            "MatchGroupIncludes": "Group includes...",
+            "ItemGroupX": "Group: \"{0}\"",
+            "ItemTypeX": " Item: \"{0}\""
         },
         "message": {
             // When first receiving the keybind input.
             "modQuickStackSearch": "{prefix??}Looking through nearby containers...",
-            
+
             // If there are no nearby containers with items matching your inventory. 
             // This should only happen when using a keybind, as none of the actions should be usable from menu/hotbar in this case.
             "modQuickStackNoMatch": "{prefix??}{#--TEXT-SECONDARY:None of the nearby containers are a good match.}",
             // If there are no nearby containers with items matching the selected type.
             //    {0}: Item type name.
-            
+
             "modQuickStackNoTypeMatch": "{prefix??}{#--TEXT-SECONDARY:None of the nearby containers have any }{type??UNDEFINED}.",
 
             // Valid destination was found, and transfer was attempted...
