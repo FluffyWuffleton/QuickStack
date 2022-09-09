@@ -17,11 +17,7 @@ export declare namespace GLOBALCONFIG {
 export declare enum QSTranslation {
     qsPrefix = 0,
     parenthetical = 1,
-<<<<<<< HEAD
     colorMatchGroup = 2,
-=======
-    colorStorm = 2,
->>>>>>> df16ef64951b25b6d04316f3ec1599641c072cec
     toX = 3,
     fromX = 4,
     allX = 5,
