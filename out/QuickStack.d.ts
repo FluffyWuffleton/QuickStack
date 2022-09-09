@@ -8,62 +8,72 @@ import Dictionary from "language/Dictionary";
 import Component from "ui/component/Component";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
+import { ItemType } from "game/item/IItem";
+import { Matchable } from "./ITransferHandler";
 export declare namespace GLOBALCONFIG {
     const pause_length = Delay.ShortPause;
     const pass_turn_success = false;
 }
 export declare enum QSTranslation {
     qsPrefix = 0,
-    toX = 1,
-    fromX = 2,
-    allX = 3,
-    here = 4,
-    yourInventory = 5,
-    toTile = 6,
-    fromTile = 7,
-    toUnknown = 8,
-    fromUnknown = 9,
-    XOutOfY = 10,
-    mainInventory = 11,
-    fullInventory = 12,
-    deposit = 13,
-    withdraw = 14,
-    onlyXType = 15,
-    allTypes = 16,
-    thisContainer = 17,
-    likeContainers = 18,
-    optionTopDown = 19,
-    optionTopDown_desc = 20,
-    optionKeepContainers = 21,
-    optionForbidTiles = 22,
-    optionMatchSimilar = 23,
-    optionMatchSimilar_desc = 24,
-    Projectile = 25,
-    ProjectileWeapon = 26,
-    Equipment = 27,
-    Edible = 28,
-    Raw = 29,
-    Medical = 30,
-    Potable = 31,
-    Unpotable = 32,
-    Rock = 33,
-    Poles = 34,
-    CordageAndString = 35,
-    Needlework = 36,
-    Gardening = 37,
-    Paperwork = 38,
-    MatchGroupIncludes = 39,
-    ItemGroupX = 40,
-    ItemTypeX = 41
+    parenthetical = 1,
+    colorStorm = 2,
+    toX = 3,
+    fromX = 4,
+    allX = 5,
+    here = 6,
+    yourInventory = 7,
+    toTile = 8,
+    fromTile = 9,
+    toUnknown = 10,
+    fromUnknown = 11,
+    XOutOfY = 12,
+    mainInventory = 13,
+    fullInventory = 14,
+    deposit = 15,
+    withdraw = 16,
+    onlyXType = 17,
+    allTypes = 18,
+    thisContainer = 19,
+    likeContainers = 20,
+    optionTopDown = 21,
+    optionTopDown_desc = 22,
+    optionKeepContainers = 23,
+    optionForbidTiles = 24,
+    optionMatchSimilar = 25,
+    optionMatchSimilar_desc = 26,
+    Projectile = 27,
+    ProjectileWeapon = 28,
+    Equipment = 29,
+    Edible = 30,
+    Raw = 31,
+    Medical = 32,
+    Potable = 33,
+    Unpotable = 34,
+    Rock = 35,
+    Poles = 36,
+    CordageAndString = 37,
+    Needlework = 38,
+    Gardening = 39,
+    Paperwork = 40,
+    MatchGroupIncludes = 41,
+    ItemGroupX = 42,
+    ItemTypeX = 43,
+    Item = 44
 }
 declare type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionTopDown" | "optionKeepContainers" | "optionForbidTiles">;
-declare type QSMatchableGroupKey = keyof Pick<typeof QSTranslation, "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable" | "Rock" | "Poles" | "CordageAndString" | "Needlework" | "Gardening" | "Paperwork">;
+export declare type QSMatchableGroupKey = keyof Pick<typeof QSTranslation, "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable" | "Rock" | "Poles" | "CordageAndString" | "Needlework" | "Gardening" | "Paperwork">;
+export declare const QSMatchableGroups: {
+    [k in QSMatchableGroupKey]: readonly Matchable[];
+};
+export declare type QSMatchableGroupsFlatType = {
+    [k in QSMatchableGroupKey]?: ItemType[];
+};
+export declare const activeGroupKeyPrefix: "isActive_";
 export declare type IQSGlobalData = {
     [k in QSToggleOptionKey]: boolean;
 } & {
-    activeMatchGroups: {
-        [k in QSMatchableGroupKey]: boolean;
-    };
+    [k in `${typeof activeGroupKeyPrefix}${QSMatchableGroupKey}`]: boolean;
 };
 export default class QuickStack extends Mod {
     static readonly INSTANCE: QuickStack;
@@ -85,6 +95,14 @@ export default class QuickStack extends Mod {
     SAMNBind(): boolean;
     SASNBind(): boolean;
     globalData: IQSGlobalData;
+    private _activeMatchGroupsArray;
+    get activeMatchGroupsArray(): (readonly (Matchable)[])[];
+    private _activeMatchGroupsKeys;
+    get activeMatchGroupsKeys(): QSMatchableGroupKey[];
+    private _activeMatchGroupsFlattened;
+    get activeMatchGroupsFlattened(): QSMatchableGroupsFlatType;
+    refreshMatchGroupsArray(): void;
+    onInitialize(): any;
     constructOptionsSection(section: Component): void;
 }
 export {};

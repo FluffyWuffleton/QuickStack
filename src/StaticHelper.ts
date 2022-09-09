@@ -3,7 +3,7 @@ import Mod from "mod/Mod";
 import Log from "utilities/Log";
 import QuickStack, {QSTranslation} from "./QuickStack";
 
-export {QSTranslation} from "./QuickStack";
+export {GLOBALCONFIG, QSTranslation, QSMatchableGroupKey, QSMatchableGroups} from "./QuickStack";
 
 export default class StaticHelper {
     @Mod.instance<QuickStack>("Quick Stack")

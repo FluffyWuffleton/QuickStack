@@ -1,4 +1,5 @@
 import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
+import { QSMatchableGroupKey } from "./StaticHelper";
 export declare enum THState {
     idle = 0,
     complete = 1,
@@ -32,11 +33,14 @@ export interface ITHTargetSpecific extends ITHTargetRecursive {
 export declare type THTargettingParam = (ITHTargetSelf) | (ITHTargetTiles) | (ITHTargetDoodads) | (ITHTargetSpecific);
 interface IMatchByType {
     type: ItemType;
+    group?: never;
 }
 interface IMatchByGroup {
-    group: ItemTypeGroup;
+    type?: never;
+    group: QSMatchableGroupKey;
 }
 export declare type IMatchParam = IMatchByType | IMatchByGroup;
+export declare type Matchable = ItemType | ItemTypeGroup;
 export interface ITransferTarget {
     container: IContainer;
     type: ContainerReferenceType;
@@ -44,7 +48,7 @@ export interface ITransferTarget {
     parent?: ITransferTarget;
 }
 export interface ITransferItemMatch {
-    type: ItemType;
+    matched: IMatchParam;
     had: number;
     sent: number;
 }

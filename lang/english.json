@@ -3,6 +3,8 @@
     "dictionaries": {
         "modQuickStackQSDictionary": {
             "qsPrefix": "{#--COLOR-COMMAND:QuickStack:} ", // Prepended to messages.
+            "parenthetical": "({0})",
+            "colorStorm": "{#--COLOR-OVERCAST:{0}}",
 
             /*
                 Fragments used in result messages
@@ -24,7 +26,7 @@
             /*
                 Fragments used in action labels/descriptions
             */
-            "onlyXType": "Only {0??similar}",
+            "onlyXType": "Only {0??similar}{ 1??}",
             "allTypes": "All types",
             "mainInventory": "top-level inventory",
             "fullInventory": "full inventory",
@@ -65,8 +67,10 @@
             "Paperwork": "Paperwork",
 
             "MatchGroupIncludes": "Group includes...",
+            
             "ItemGroupX": "Group: \"{0}\"",
-            "ItemTypeX": " Item: \"{0}\""
+            "ItemTypeX": " Item: \"{0}\"",
+            "Item": "item"
         },
         "message": {
             // When first receiving the keybind input.

@@ -18,9 +18,10 @@ import Translation from "language/Translation";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
 import { ItemType, ItemTypeGroup } from "game/item/IItem";
-import Details from "ui/component/Details"
+import Details from "ui/component/Details";
 import ItemManager from "game/item/ItemManager";
 import Text from "ui/component/Text";
+import { Matchable } from "./ITransferHandler";
 
 
 export namespace GLOBALCONFIG {
@@ -30,6 +31,9 @@ export namespace GLOBALCONFIG {
 
 export enum QSTranslation {
     qsPrefix = 0,
+    parenthetical,
+    colorMatchGroup,
+
     toX,
     fromX,
     allX,
@@ -73,13 +77,14 @@ export enum QSTranslation {
 
     MatchGroupIncludes,
     ItemGroupX,
-    ItemTypeX
+    ItemTypeX,
+    Item
 };
 
 type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionTopDown" | "optionKeepContainers" | "optionForbidTiles">;
 
 // A collection of custom groupings for similar-item match options.
-type QSMatchableGroupKey = keyof Pick<typeof QSTranslation,
+export type QSMatchableGroupKey = keyof Pick<typeof QSTranslation,
     "Projectile"
     | "ProjectileWeapon"
     | "Equipment"
@@ -93,9 +98,9 @@ type QSMatchableGroupKey = keyof Pick<typeof QSTranslation,
     | "CordageAndString"
     | "Needlework"
     | "Gardening"
-    | "Paperwork">
+    | "Paperwork">;
 
-const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly (ItemTypeGroup | ItemType)[] } = {
+export const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly Matchable[] } = {
     Projectile: [
         ItemTypeGroup.Arrow,
         ItemTypeGroup.Bullet],
@@ -141,26 +146,24 @@ const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly (ItemTypeGroup |
         ItemType.TannedLeather,
         ItemType.LeatherHide],
     Gardening: [
+        ItemTypeGroup.Seed,
+        ItemTypeGroup.Spores,
         ItemTypeGroup.Compost,
         ItemType.Fertilizer,
-        ItemType.FertileSoil,
-        ItemTypeGroup.Seed,
-        ItemTypeGroup.Spores],
+        ItemType.FertileSoil],
     Paperwork: [
+        ItemTypeGroup.Pulp,
         ItemType.PaperMold,
         ItemType.PaperSheet,
-        ItemTypeGroup.Pulp,
+        ItemType.Inkstick,
         ItemType.DrawnMap,
-        ItemType.TatteredMap,
-        ItemType.Inkstick]
+        ItemType.TatteredMap]
 } as const;
+export type QSMatchableGroupsFlatType = { [k in QSMatchableGroupKey]?: ItemType[] };
 
 
-export type IQSGlobalData = {
-    [k in QSToggleOptionKey]: boolean
-} & {
-    activeMatchGroups: { [k in QSMatchableGroupKey]: boolean }
-};
+export const activeGroupKeyPrefix = "isActive_" as const;
+export type IQSGlobalData = { [k in QSToggleOptionKey]: boolean } & { [k in `${typeof activeGroupKeyPrefix}${QSMatchableGroupKey}`]: boolean };
 
 export default class QuickStack extends Mod {
     @Mod.instance<QuickStack>()
@@ -177,12 +180,10 @@ export default class QuickStack extends Mod {
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Messages 
     //
+
     //@Register.message("ArgBase") // {0}{ 1??} -- utility and debugging
     //public readonly messageArgBase: Message;
 
-    /*
-        Activation and result messages...
-    */
     @Register.message("Search") // Smart-stack initiated 
     public readonly messageSearch: Message;
     @Register.message("NoMatch") // No items in inventory match available targets.
@@ -232,10 +233,56 @@ export default class QuickStack extends Mod {
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////
-    // Options and global data
+    // Global data, helper data, and refresh methods
+    //
+
     @Mod.globalData<QuickStack>("Quick Stack")
     public globalData: IQSGlobalData;
 
+    /**
+     * An array containing each currently-active match-group as a subarray of itemtypes/itemgroups.
+     * e.g. if the group "Projectiles" is active, _activeMatchGroupsArray[0] = [ItemTypeGroup.arrows, ItemTypeGroup.bullets]
+     * @type {(readonly Matchable[])[]}
+     */
+    private _activeMatchGroupsArray: (readonly (Matchable)[])[] = [];
+    public get activeMatchGroupsArray(): (readonly (Matchable)[])[] { return this._activeMatchGroupsArray; }
+
+    /**
+     * An array of the keys for each each active match group
+     * @type {QSMatchableGroupKey[]}
+     */
+    private _activeMatchGroupsKeys: QSMatchableGroupKey[] = [];
+    public get activeMatchGroupsKeys(): QSMatchableGroupKey[] { return this._activeMatchGroupsKeys; }
+
+    private _activeMatchGroupsFlattened: QSMatchableGroupsFlatType;
+    public get activeMatchGroupsFlattened(): QSMatchableGroupsFlatType { return this._activeMatchGroupsFlattened; }
+
+    public refreshMatchGroupsArray() {
+        this._activeMatchGroupsArray = [];
+        this._activeMatchGroupsKeys = [];
+        this._activeMatchGroupsFlattened = {};
+        (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[]).forEach(KEY => {
+            if(this.globalData[`${activeGroupKeyPrefix}${KEY}`]) {
+                this._activeMatchGroupsArray.push(QSMatchableGroups[KEY]);
+                this._activeMatchGroupsKeys.push(KEY);
+                this._activeMatchGroupsFlattened[KEY] = [...QSMatchableGroups[KEY].flatMap(matchable =>
+                    matchable in ItemTypeGroup
+                        ? [...ItemManager.getGroupItems(matchable as ItemTypeGroup)]
+                        : matchable as ItemType
+                )];
+            }
+        });
+        QuickStack.LOG.info(`Updated match groups.`);
+        console.log(this._activeMatchGroupsArray);
+        console.log(this._activeMatchGroupsKeys);   
+        console.log(this._activeMatchGroupsFlattened)
+    }
+    public override onInitialize(): any {
+        this.refreshMatchGroupsArray();
+    }
+
+
+    // Option section
     @Register.optionsSection
     public constructOptionsSection(section: Component) {
         // Construct buttons for each of the toggleable options
@@ -259,20 +306,26 @@ export default class QuickStack extends Mod {
                 .setTooltip(tt => tt.setText(this.TLget("optionMatchSimilar_desc"))))
             .setBlock(true)
             .append([...
-                (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[]).map(KEY =>
-                    new CheckButton()
+                (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[])
+                    .map(KEY => new CheckButton()
                         .setText(this.TLget(KEY))
-                        .setTooltip(ttip => ttip.addBlock(b => b
+                        .setTooltip(ttip => ttip.addBlock(ttblock => ttblock
                             .setTitle(t => t.setText(this.TLget("MatchGroupIncludes")))
-                            .append([...QSMatchableGroups[KEY].map((matchable, i) =>
-                                new Component<HTMLParagraphElement>().setStyle("padding-left","5ch").setStyle("text-indent", "-5ch").append(
-                                    new Text().setText((matchable in ItemType ? this.TLget("ItemTypeX") : this.TLget("ItemGroupX"))
-                                        .addArgs(ItemManager.getItemTypeGroupName(matchable, false, 1))))
-                            )])
+                            .append([...QSMatchableGroups[KEY]
+                                .map(matchable => new Component<HTMLParagraphElement>()
+                                    .setStyle("padding-left", "5ch")
+                                    .setStyle("text-indent", "-5ch")
+                                    .append(new Text()
+                                        .setText((matchable in ItemType ? this.TLget("ItemTypeX") : this.TLget("ItemGroupX"))
+                                            .addArgs(ItemManager.getItemTypeGroupName(matchable, false, 1)))))
+                            ])
                         ))
-                        .setRefreshMethod(() => !!(this.globalData.activeMatchGroups?.[KEY] ?? false))
-                        .event.subscribe("toggle", (_, checked) => { this.globalData.activeMatchGroups[KEY] = checked; })
-                )])
+                        .setRefreshMethod(() => !!this.globalData[`${activeGroupKeyPrefix}${KEY}`])
+                        .event.subscribe("toggle", (_, checked) => {
+                            this.globalData[`${activeGroupKeyPrefix}${KEY}`] = checked;
+                            this.refreshMatchGroupsArray();
+                        })
+                    )])
             .appendTo(section);
     }
 }

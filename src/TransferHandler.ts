@@ -2,22 +2,28 @@ import Island from "game/island/Island";
 import Item from "game/item/Item";
 import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
 import Player from "game/entity/player/Player";
-import StaticHelper from "./StaticHelper";
+import StaticHelper, { QSMatchableGroupKey, QSMatchableGroups } from "./StaticHelper";
 import Doodad from "game/doodad/Doodad";
-import { ITransferTarget, THState, ITransferPairing, ITransferItemMatch, THTargettingParam } from "./ITransferHandler";
+import { ITransferTarget, THState, ITransferPairing, ITransferItemMatch, THTargettingParam, IMatchParam, Matchable } from "./ITransferHandler";
 import { ITile } from "game/tile/ITerrain";
 import Log from "utilities/Log";
 import Translation from "language/Translation";
 import TranslationImpl from "language/impl/TranslationImpl";
 import Dictionary from "language/Dictionary";
-import { GLOBALCONFIG } from "./QuickStack";
+import { GLOBALCONFIG } from "./StaticHelper";
+import ItemManager from "game/item/ItemManager";
+
+export type ThingWithContents = Pick<IContainer, "containedItems">;
 
 // Utility functions for item and inventory fetching/checking. Pretty self-explanatory.
 export function isHeldContainer(player: Player, item: Item): boolean { return player.island.items.isContainer(item) && player === player.island.items.getPlayerWithItemInInventory(item); }
 export function isContainerType(player: Player, type: ItemType): boolean { return player.island.items.isInGroup(type, ItemTypeGroup.Storage); }
 export function isInHeldContainer(player: Player, item: Item): boolean { return (item?.containedWithin) ? player.island.items.getContainedContainers(player.inventory).includes(item.containedWithin) : false; }
 export function playerHasItem(player: Player, item: Item): boolean { return item.getCurrentOwner() === player; }
-export function playerHasType(player: Player, type: ItemType): boolean { return player.inventory.containedItems.some(i => i.type === type); }
+export function playerHasType(player: Player, type: ItemType): boolean { //return player.inventory.containedItems.some(i => i.type === type); }
+    const g = TransferHandler.getActiveGroup(type);
+    return TransferHandler.canMatch([player.inventory, ...playerHeldContainers(player)], [g !== undefined ? { group: g } : { type: type }]);
+}
 export function playerHeldContainers(player: Player, type?: ItemType[]): IContainer[] {
     return (type === undefined || !type.length)
         ? player.island.items.getContainedContainers(player.inventory)
@@ -46,7 +52,7 @@ export default class TransferHandler {
     readonly sources: ITransferTarget[];
     readonly destinations: ITransferTarget[];
     readonly island: Island;
-    readonly typeFilter: ItemType[];
+    readonly typeFilter: IMatchParam[];
     readonly log: Log | undefined;
 
     readonly bottomUp: boolean;
@@ -66,84 +72,177 @@ export default class TransferHandler {
         Static helper functions
     */
 
+    // Take a list of match parameters. 
+    // If any item parameters can be represented by an enabled match-group, use the group parameter instead.
+    // Returns a set of flattened parameters.
+    private static groupifyParameters(P: IMatchParam[]): Set<(ItemType | QSMatchableGroupKey)> {
+        const pSet = new Set<ItemType | QSMatchableGroupKey>;
+        P.forEach(param => pSet.add(param.group !== undefined ? param.group : (this.getActiveGroup(param.type) ?? param.type)));
+        return pSet;
+    }
+
+    //private static flattenParameters(P: IMatchParam[]): (ItemType | QSMatchableGroupKey)[] { return P.map(p => p.type ?? p.group); }
+
     /**
      * Return set of unique Item types in a given Container or Item array.
      * Mainly for overload handling.
-     * @param {IContainer|Item[]} X 
+     * @param {ThingWithContents[]} X 
      * @returns {Set<ItemType>}
      */
-    private static setOfTypes(X: Pick<IContainer, "containedItems">[]): Set<ItemType> {
+    private static setOfTypes(X: ThingWithContents[]): Set<ItemType> {
         return new Set<ItemType>([...X.flatMap(x => x.containedItems.map(it => it.type))]);
+    }
+    /**
+     * Return set of unique active match-groups in which the given item types can be found. Might be empty.
+     * @param {Set<ItemType>} Types 
+     * @returns {Set<QSMatchableGroupKey>}
+     */
+    private static setOfActiveGroups(Types: Set<ItemType> | ItemType[]): Set<QSMatchableGroupKey> {
+        if(!StaticHelper.QS_INSTANCE.activeMatchGroupsArray.length) return new Set<QSMatchableGroupKey>();
+        const MGKeySet = new Set<QSMatchableGroupKey>(StaticHelper.QS_INSTANCE.activeMatchGroupsKeys);
+        const mset = new Set<Matchable>([...Types, ...[...Types].flatMap(t => ItemManager.getGroups(t))]);
+
+        MGKeySet.retainWhere(KEY => {
+            for(const matchable of QSMatchableGroups[KEY]) if(mset.has(matchable)) return true;
+            return false;
+        });
+        return MGKeySet;
+    }
+    /**
+     * Return set of unique parameters (types and active groups) in then given containers
+     * If a given type belongs to an active group, that specific type's parameter will be omitted in favor of the group parameter.
+     * @param {ThingWithContents[]} X 
+     * @returns {Set<IMatchParam>}
+     */
+    private static setOfParams(X: ThingWithContents[]): Set<IMatchParam> {
+        const types = this.setOfTypes(X);               // Set of all types present in the thing.
+        const groups = this.setOfActiveGroups(types);   // Set of all active groups comprised by those types
+
+        // Remove type params for types encompassed by an active group.
+        groups.forEach(g => types.deleteWhere(t => StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[g]?.includes(t) ?? false));
+
+        return new Set<IMatchParam>([
+            ...[...types].map(t => ({ type: t })),
+            ...[...groups].map(g => ({ group: g }))
+        ]);
+    }
+    /**
+     * Return set of unique parameters (types and active groups) in then given containers, type-union style
+     * If a given type belongs to an active group, that specific type's parameter will be omitted in favor of the group parameter.
+     * @param {ThingWithContents[]} X 
+     * @returns {Set<ItemType|QSMatchableGroupKey>}
+     */
+    private static setOfFlatParams(X: ThingWithContents[]): Set<ItemType | QSMatchableGroupKey> {
+        const types = this.setOfTypes(X);               // Set of all types present in the thing.
+        const groups = this.setOfActiveGroups(types);   // Set of all active groups comprised by those types
+        // Remove type params for types encompassed by an active group.
+        groups.forEach(g =>
+            types.deleteWhere(t =>
+                StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[g]?.includes(t) ?? false));
+
+
+        StaticHelper.QS_LOG.info(`Resolved params: (Flat) [TYPES, GROUPS]`);
+        console.log([[...types], [...groups]]);
+        return new Set<ItemType | QSMatchableGroupKey>([...types, ...groups]);
     }
 
     /** 
-     * Given two IContainer (or anything with the 'containedItems' field) arrays, returns a (unique) list of typeMatches for use in constructing ITransferPairings
+     * Given two IContainer (or anything with the 'containedItems' field) arrays, returns a (unique) list of matches for use in constructing ITransferPairings
      * @param {IContainer|Item[]} A 
      * @param {IContainer|Item[]} B
-     * @param {ItemType[]} [filter = []] Only matches types found in the filter array (if specified).
-     * @returns {ITransferItemMatch[]} List of type matches.
+     * @param {IMatchParam[]} [filter = []] Only matches types/groups found in the filter array (if specified).
+     * @returns {ITransferItemMatch[]} List of matches.
      */
-    public static matchTypes(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter: ItemType[] = []): ITransferItemMatch[] {
-        const ATypes = TransferHandler.setOfTypes(A);
-        const BTypes = TransferHandler.setOfTypes(B);
+    public static getMatches(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): ITransferItemMatch[] {
+        StaticHelper.QS_LOG.info(`GET MATCHES:: ${A}  ${B}`);
 
-        if(filter.length > 0) ATypes.retainWhere(type => filter.includes(type));
-        ATypes.retainWhere(type => BTypes.has(type));
-
-        return [...ATypes].map((t) => { return { type: t, had: -1, sent: -1 } })
+        // setOfParams will favor providing a group over a type if the group exists. If an item is present, it has no active group.
+        const AParams = TransferHandler.setOfFlatParams(A);
+        const BParams = TransferHandler.setOfFlatParams(B);
+        if(filter.length) {
+            const fgrp = this.groupifyParameters(filter);
+            AParams.retainWhere(param => fgrp.has(param));
+        }
+        AParams.retainWhere(param => BParams.has(param));
+        StaticHelper.QS_LOG.info(`GET MATCHES:: REMAINING::`);
+        console.log(AParams);
+        return [...AParams].map((p) => ({
+            matched: (p in ItemType)
+                ? { type: p as ItemType }
+                : { group: p as QSMatchableGroupKey },
+            had: -1,
+            sent: -1
+        }));
     }
 
     /**
-     * Given two IContainer (or anything with the 'containedItems' field) arrays, returns the number of matched types between their content.
-     * @param {IContainer|Item[]} A 
-     * @param {IContainer|Item[]} B
-     * @param {ItemType[]} [filter = []] Only matches types found in the filter array (if specified).
-     * @returns {number} Number of matching ItemTypes
-     */
-    public static countMatchTypes(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter: ItemType[] = []): number {
-        const ATypes = [...TransferHandler.setOfTypes(A)];
-        const BTypes = TransferHandler.setOfTypes(B); // B can stay in set form. The 'has()' method will work just fine in our reduce callback.
-
-        if(filter.length > 0) BTypes.retainWhere(type => filter.includes(type));
-
-        return ATypes.reduce((n, type) => { return BTypes.has(type) ? n + 1 : n }, 0);
-    }
-
-    /**
-     * Returns true if the input container arrays have any shared item type. 
-     * @param {Pick<IContainer, "containedItems">[]} A 
-     * @param {Pick<IContainer, "containedItems">} B
-     * @param {ItemType[]} [filter = []] Only matches types found in the filter array (if specified).
+     * Returns true if the input container arrays have any matches.
+     * @param {ThingWithContents[]} A 
+     * @param {ThingWithContents[]} B
+     * @param {IMatchParam[]} [filter = []] Only match according to types/groups found in the filter array (if specified).
      * @returns {boolean}
      */
-    public static hasMatchType(A: Pick<IContainer, "containedItems">[], B: Pick<IContainer, "containedItems">[], filter: ItemType[] = []): boolean {
-        const ATypes = [...TransferHandler.setOfTypes(A)];
-        const BTypes = TransferHandler.setOfTypes(B);
+    public static hasMatch(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): boolean {
+        StaticHelper.QS_LOG.info(`HAS MATCH:: ${A}  ${B}`);
 
-        if(filter.length > 0) BTypes.retainWhere(type => filter.includes(type));
-
-        return ATypes.some(type => BTypes.has(type));
+        const AParams = TransferHandler.setOfFlatParams(A);
+        const BParams = TransferHandler.setOfFlatParams(B);
+        const fgrouped = this.groupifyParameters(filter);
+        return [...AParams].some(param => fgrouped.has(param) && BParams.has(param));
     }
 
     /**
-     * Returns true if the input containers have a given item type
-     * @param {Pick<IContainer, "containedItems">[]} A 
-     * @param {ItemType} type
+     * Returns true if the input containers have a given item type/activegroup
+     * @param {ThingWithContents[]} X
+     * @param {IMatchParam[]} params
      * @returns {boolean}
      */
-    public static hasType(X: Pick<IContainer, "containedItems">[], type: ItemType): boolean {
-        return TransferHandler.setOfTypes(X).has(type);
+    public static canMatch(X: ThingWithContents[], params: IMatchParam[]): boolean {
+        const xFlat = this.setOfFlatParams(X);
+        return [...this.groupifyParameters(params)].some(p => xFlat.has(p));
     }
 
-    public static canFitAny(src: Pick<IContainer, "containedItems">[], dest: IContainer[], player: Player, filter: ItemType[] = []) {
-        const srcItems = src.flatMap(s => s.containedItems).filter(i=>!i.isProtected() && !i.isEquipped());
-        const srcTypes = filter.length > 0 ? new Set<ItemType>(filter) : TransferHandler.setOfTypes([{containedItems: srcItems}]);
-        if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers) srcTypes.retainWhere(t => !player.island.items.isInGroup(t, ItemTypeGroup.Storage));
-        for(let d of dest) {
-            const matchTypes = [...new Set<ItemType>(d.containedItems.map(i => i.type))].filter(t => srcTypes.has(t));
-            const remaining = (player.island.items.getWeightCapacity(d, undefined) ?? (player.island.isTileFull(d as ITile) ? 0 : Infinity)) - player.island.items.computeContainerWeight(d);
-            if(matchTypes.some(t => remaining >= srcItems.reduce((w,i) => (i.type === t && i.weight<w ? i.weight : w), Infinity))) return true;
-        };
+    /**
+     * Returns the matchable group key in which the provided ItemType or ItemTypeGroup can be found, if any such group is active. 
+     * There are no types or groups belonging to multiple matchable groups.
+     * @param {(ItemType|ItemTypeGroup)} type
+     * @returns {QSMatchableGroupKey|undefined}
+     */
+    public static getActiveGroup(type: ItemType | ItemTypeGroup): QSMatchableGroupKey | undefined {
+        if(type in ItemTypeGroup) return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys.find(KEY => QSMatchableGroups[KEY].includes(type));
+        else return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys.find(KEY => {
+            if(QSMatchableGroups[KEY].includes(type)) return true;
+            return ItemManager.getGroups(type as ItemType).some(g => QSMatchableGroups[KEY].includes(g));
+        });
+    }
+
+    public static canFitAny(src: ThingWithContents[], dest: IContainer[], player: Player, filter: IMatchParam[] = []) {
+        const srcItems = src.flatMap(s => s.containedItems).filter(i => !i.isProtected() && !i.isEquipped());
+        const srcParams = TransferHandler.setOfParams([{ containedItems: srcItems }]);
+
+        if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers) // None of the activegroups includes storage items. It's fine to remove by 'type' param only.
+            srcParams.retainWhere(t => t.type === undefined ? true : !player.island.items.isInGroup(t.type, ItemTypeGroup.Storage));
+        if(filter.length) {
+            const fgrp = this.groupifyParameters(filter);
+            srcParams.retainWhere(p => fgrp.has(p.type ?? p.group));
+        }
+        const srcParamsFlat = [...srcParams].map(p => p.group ?? p.type);
+
+        // for each destination
+        for(const d of dest) {
+            const remaining = ( // remaining weight capacity of this destination.
+                player.island.items.getWeightCapacity(d, undefined) ?? (player.island.isTileFull(d as ITile) ? 0 : Infinity)
+            ) - player.island.items.computeContainerWeight(d);
+            const matchParams = TransferHandler.setOfParams([d]);
+            matchParams.retainWhere(p => srcParamsFlat.includes(p.group ?? p.type));
+            if([...matchParams].some(param =>
+                remaining >= srcItems.reduce((w, it) => // reduce => LightestMatchedItemWeight | Infinity
+                    (param.type !== undefined
+                        ? it.type === param.type
+                        : this.getActiveGroup(it.type) === param.group
+                    ) && it.weight < w ? it.weight : w, Infinity)
+            )) return true;
+        }
         return false;
     }
 
@@ -192,7 +291,7 @@ export default class TransferHandler {
                 else adding = (Array.isArray(p.container) ? p.container : [p.container]).map(c => ({ container: c, type: this.island.items.getContainerReference(c, undefined).crt }));
 
                 // Filter existing targets
-                adding = adding.filter(t => !targetSet.has(t))
+                adding = adding.filter(t => !targetSet.has(t));
 
                 // If we're recurring on these...
                 if('recursive' in p) adding.forEach(a => // For each of the targets to be added...
@@ -200,7 +299,7 @@ export default class TransferHandler {
                         resolveParam({ container: subCon, recursive: true }))); // Wrap it in a recursive container param and resolve.
 
                 targetSet.add(...adding);
-            }
+            };
 
             // Resolve each parameter through our callback, which will populate targetSet.
             target.forEach(t => resolveParam(t as THTargettingParam));
@@ -249,47 +348,58 @@ export default class TransferHandler {
             // For each destination...
             this.destinations.forEach((dest, j) => {
 
-                // Define the pairing and find type-matches
+                // Define the pairing and find matches
                 const thisPairing: ITransferPairing = {
                     source: src,
                     destination: dest,
-                    matches: TransferHandler.matchTypes([src.container], [dest.container], this.typeFilter)
+                    matches: TransferHandler.getMatches([src.container], [dest.container], this.typeFilter)
                 };
 
                 // Remove any forbidden types
                 if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers)
-                    thisPairing.matches = thisPairing.matches.filter(m => !itemMgr.isInGroup(m.type, ItemTypeGroup.Storage));
+                    thisPairing.matches = thisPairing.matches.filter(m => m.matched.type === undefined ? true : !itemMgr.isInGroup(m.matched.type, ItemTypeGroup.Storage));
 
-                // We'll want to keep track of any type-matches caused exclusively by protected/equipped items when drawing from player inventory,
+                // If any matches are group-based, remove any type-based matches of the group's itemtypes to avoid redundancy.
+                for(const m of [...thisPairing.matches])
+                    if(m.matched.group !== undefined)
+                        thisPairing.matches = thisPairing.matches.filter(oldm => {
+                            if(oldm.matched.type === undefined) return true;
+                            return TransferHandler.getActiveGroup(oldm.matched.type) === m.matched.group;
+                        });
+
+                // We'll want to keep track of any matches caused exclusively by protected/equipped items when drawing from player inventory,
                 // No action will be taken for these matches, and we'll want to remove the pairing from executionResults before returning.
                 let badMatches: number[] = [];
 
-                // For each type-match
-                log?.info(`executeTransfer: PAIRING:\n Length ${thisPairing.matches.length} \n ${itemMgr.resolveContainer(thisPairing.destination.container)} from ${itemMgr.resolveContainer(thisPairing.source.container)}`);
+                log?.info(`executeTransfer: PAIRING:`
+                    + `\n ${itemMgr.resolveContainer(thisPairing.destination.container)} from ${itemMgr.resolveContainer(thisPairing.source.container)}`
+                    + `\n Found ${thisPairing.matches.length} matches.`);
+
+                // For each matched parameter
                 thisPairing.matches.forEach((match, k) => {
+                    const isGroupMatch = match.matched.group !== undefined;
+                    const doesThisMatch = isGroupMatch
+                        ? (it: Item) => (StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[match.matched.group!]!.includes(it.type))
+                        : (it: Item) => (it.type === match.matched.type);
 
-                    // Original number of this item in source
-                    match.had = src.container.containedItems.reduce((n, item) => { return (item.type === match.type) ? n + 1 : n }, 0);
+                    // List of items that we should try to send.
+                    const validItems = src.container.containedItems.filter((it) => doesThisMatch(it) && !it.isProtected() && !it.isEquipped());
 
-                    log?.info(`executeTransfer: Match ${k} :: (${Translation.nameOf(Dictionary.Item, match.type, false).toString()}) :: Had ${match.had}`);
+                    // Original number of these items in source
+                    match.had = validItems.length;
 
-                    // Make a fixed copy of our matched items first, otherwise NIGHTMARE BUGS as containedItems reference changes while we deposit.
-                    const itHad = src.container.containedItems.filter(it => {
-                        if(it.type !== match.type) return false; // Filter for matching type
-                        if(it.isProtected() || it.isEquipped()) { // Exclude protected/equipped, and remove their count from match.had
-                            match.had--;
-                            return false;
-                        }
-                        return true;
-                    });
+                    log?.info(`executeTransfer: Match #${k} (${!isGroupMatch
+                        ? `TYPE: '${Translation.nameOf(Dictionary.Item, match.matched.type!, false).toString()}'`
+                        : `GROUP: '${StaticHelper.TLget(match.matched.group!).toString()}'`
+                        }) :: Had ${match.had}`);
 
-                    // Transfer as many as possible, but ignore protected/equipped
+                    // Track weight capacity as we go.
                     const weightCap = itemMgr.getWeightCapacity(dest.container, true) ?? Infinity;
                     let update = true; // has destination capacity changed?
                     let remaining: number; // Remaining weight capacity if destination is a doodad, (!isFull ? infinity : -Infinity) if destination is a tile.
 
                     // itMoved will contain the list of items that were successfully transferred.
-                    const itMoved: Item[] = itHad.filter(it => {
+                    const itMoved: Item[] = validItems.filter(it => {
                         // Attempt to deposit. Check weights as we go to avoid 'no room in container' spam.
                         if(update) remaining = dest.type === ContainerReferenceType.Tile
                             ? (this.island.isTileFull(dest.container as ITile) ? -Infinity : Infinity)
@@ -298,16 +408,13 @@ export default class TransferHandler {
 
                         if(remaining >= it.weight) update = itemMgr.moveToContainer(this.player, it, dest.container);
                         return update;
-
                     }, this);
 
                     // Number transferred.
                     match.sent = itMoved.length;
-
-                    log?.info(`executeTransfer: Sent :: ${match.sent} ${Translation.nameOf(Dictionary.Item, match.type, false).toString()} :: Had ${match.had}`);
-
                     allItemsMoved.push(...itMoved);
 
+                    log?.info(`executeTransfer: Sent ${match.sent} :: Had ${match.had}`);
 
                     if(match.had > 0) {
                         if(match.sent === match.had) this._anySuccess = true;
@@ -332,7 +439,7 @@ export default class TransferHandler {
             }, this); // foreach destination
             this._executionResults.push(thesePairings);
             return allItemsMoved;
-        }
+        };
 
         // Helper function handleSource. Called once for each top-level source container, then recursively for any child containers. 
         // Handles calls to doTransfer() for each source according to topDown/bottomUp recursion order.
@@ -381,7 +488,7 @@ export default class TransferHandler {
                     log?.info(`ReportMessage:\nPAIRING: Length ${pair.matches.length} :: ${itemMgr.resolveContainer(pair.destination.container)}(${pair.destination.type}) from ${itemMgr.resolveContainer(pair.source.container)}`);
 
                     type sdKey = keyof Pick<typeof pair, "source" | "destination">;
-                    const str: { [key in sdKey]: TranslationImpl | "UNDEFINED"; } & { items: { [key in 'all' | 'some' | 'none']: TranslationImpl[]; } } = {
+                    const str: { [key in sdKey]: TranslationImpl | "UNDEFINED"; } & { items: { [key in 'all' | 'some' | 'none']: TranslationImpl[]; }; } = {
                         source: "UNDEFINED", //  will hold TranslationImpl for the source string segment.
                         destination: "UNDEFINED", //  will hold TranslationImpl for the destination string segment.
                         items: {
@@ -419,18 +526,25 @@ export default class TransferHandler {
                             resultFlags.all = true;
                             str.items.all.push(StaticHelper.TLget("XOutOfY").addArgs({
                                 X: match.sent,
-                                name: Translation.nameOf(Dictionary.Item, match.type, match.sent, match.sent > 1 ? "indefinite" : false, true)
+                                name: match.matched.type !== undefined
+                                    ? Translation.nameOf(Dictionary.Item, match.matched.type, match.sent, match.sent > 1 ? "indefinite" : false, true)
+                                    : StaticHelper.TLget(match.matched.group).passTo(StaticHelper.TLget("colorMatchGroup")).passTo(Translation.reformatSingularNoun(match.sent, false))
                             }));
                         } else if(match.sent > 0) { // Partial transfer
                             resultFlags.some = true;
                             str.items.all.push(StaticHelper.TLget("XOutOfY").addArgs({
                                 X: match.sent,
                                 Y: match.had,
-                                name: Translation.nameOf(Dictionary.Item, match.type, match.had, false, true)
+                                name: match.matched.type !== undefined
+                                    ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, false, true)
+                                    : StaticHelper.TLget(match.matched.group).passTo(StaticHelper.TLget("colorMatchGroup")).passTo(Translation.reformatSingularNoun(match.had, false))
+
                             }));
                         } else { // Failed transfer
                             resultFlags.none = true;
-                            str.items.none.push(Translation.nameOf(Dictionary.Item, match.type, match.had, match.had > 1 ? "indefinite" : false, true));
+                            str.items.none.push(match.matched.type !== undefined
+                                ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, match.had > 1 ? "indefinite" : false, true)
+                                : StaticHelper.TLget(match.matched.group).passTo(StaticHelper.TLget("colorMatchGroup")).passTo(Translation.reformatSingularNoun(match.had, false)));
                         }
                     });
 
@@ -464,7 +578,7 @@ export default class TransferHandler {
         }, this); // foreach pairlist in executionResults
 
 
-        if(!(this._anySuccess || this._anyPartial || this._anyFailed)) player.messages.send(StaticHelper.QS_INSTANCE.messageNoMatch, { prefix: StaticHelper.TLget("qsPrefix") })
+        if(!(this._anySuccess || this._anyPartial || this._anyFailed)) player.messages.send(StaticHelper.QS_INSTANCE.messageNoMatch, { prefix: StaticHelper.TLget("qsPrefix") });
 
         return true;
     }
@@ -483,8 +597,8 @@ export default class TransferHandler {
         source: THTargettingParam[] | IContainer[] = [{ self: true }],
         dest: THTargettingParam[] | IContainer[] = [{ doodads: true }, { tiles: true }],
         params: {
-            filter?: ItemType[],
-            bottomUp?: boolean
+            filter?: IMatchParam[],
+            bottomUp?: boolean;
         }
     ) {
         this._state = THState.idle;
@@ -513,14 +627,14 @@ export default class TransferHandler {
         player: Player,
         source: THTargettingParam[] | IContainer[],
         dest: THTargettingParam[] | IContainer[],
-        filterTypes?: ItemType[] | undefined,
+        filterTypes?: IMatchParam[] | undefined,
         log?: Log,
-        successFlag?: { failed: boolean },
-        suppress?: { report?: true, delay: true }
+        successFlag?: { failed: boolean; },
+        suppress?: { report?: true, delay: true; }
     ): void {
         const thisfcn = `${TransferHandler.MakeAndRun.name} :: `;
         const t0 = performance.now();
-        log?.info(`${thisfcn}Constructing TransferHandler. Timestamp ${t0}`);
+        log?.info(`${thisfcn}Constructing TransferHandler.Timestamp ${t0} `);
 
         const handler = new TransferHandler(player, source, dest, {
             bottomUp: !StaticHelper.QS_INSTANCE.globalData.optionTopDown,
@@ -528,7 +642,7 @@ export default class TransferHandler {
         });
 
         if(handler.state & THState.error) { // Initialization error
-            log?.error(`${thisfcn}Error flag in handler after construction. Code ${handler.state.toString(2)}`);
+            log?.error(`${thisfcn}Error flag in handler after construction.Code ${handler.state.toString(2)} `);
             if(successFlag) successFlag.failed = true;
             return;
         }
@@ -538,31 +652,31 @@ export default class TransferHandler {
             let str = `Handler initialized\n    Identified sources`;
 
             const wrapChildren = (c: ITransferTarget): string => {
-                if(c.children) return `${crtKey(c.type)}[ ${c.children.map(cc => wrapChildren(cc)).join(', ')} ]`
-                return `${crtKey(c.type)}`;
-            }
+                if(c.children) return `${crtKey(c.type)} [${c.children.map(cc => wrapChildren(cc)).join(', ')}]`;
+                return `${crtKey(c.type)} `;
+            };
 
-            handler.sources.forEach(s => { str = str + `\n        ${wrapChildren(s)}`; });
+            handler.sources.forEach(s => { str = str + `\n        ${wrapChildren(s)} `; });
 
             let destStr: string[] = [];
             Object.values(ContainerReferenceType).forEach(v => {
-                const destCount = handler.destinations.reduce((n, itt) => { return itt.type === v ? n + 1 : n }, 0);
-                if(destCount) destStr.push(`${destCount} ${crtKey(v as ContainerReferenceType)}`);
+                const destCount = handler.destinations.reduce((n, itt) => { return itt.type === v ? n + 1 : n; }, 0);
+                if(destCount) destStr.push(`${destCount} ${crtKey(v as ContainerReferenceType)} `);
             });
 
-            log.info(`${thisfcn}${str}\n    Identified destinations:\n        ${destStr.join(',  ')}`);
+            log.info(`${thisfcn}${str} \n    Identified destinations: \n        ${destStr.join(',  ')} `);
         }
 
         // Transfer error?
         if(handler.executeTransfer(log) & THState.error) {
-            log?.error(`${thisfcn}Error flag in handler during execution. Code ${handler.state.toString(2)}`);
+            log?.error(`${thisfcn}Error flag in handler during execution.Code ${handler.state.toString(2)} `);
             if(successFlag) successFlag.failed = true;
             return;
         }
 
         // Transfer complete. Send messages. Unless we're not.
         if(suppress?.report) log?.info(`${thisfcn}Message reporting suppressed`);
-        else if(!handler.reportMessages(player, log)) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
+        else if(!handler.reportMessages(player, /* log */)) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
 
         if(handler.anySuccess || handler.anyPartial) {
             if(!suppress?.delay) player.addDelay(GLOBALCONFIG.pause_length);
@@ -572,7 +686,6 @@ export default class TransferHandler {
         }
 
         const t1 = performance.now();
-        log?.info(`${thisfcn}Complete. Timestamp ${t1}. Elapsed ${t1 - t0}`);
+        log?.info(`${thisfcn} Complete.Timestamp ${t1}. Elapsed ${t1 - t0} `);
     }
-
-};
+}

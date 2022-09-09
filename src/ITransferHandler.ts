@@ -1,4 +1,5 @@
 import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
+import { QSMatchableGroupKey } from "./StaticHelper";
 
 /* export enum TransferCompleteness {
     none = 0,
@@ -36,9 +37,11 @@ export interface ITHTargetSpecific extends ITHTargetRecursive { container: ICont
 
 export type THTargettingParam = (ITHTargetSelf) | (ITHTargetTiles) | (ITHTargetDoodads) | (ITHTargetSpecific);
 
-interface IMatchByType {type: ItemType};
-interface IMatchByGroup {group: ItemTypeGroup };
+
+interface IMatchByType { type: ItemType, group?: never };
+interface IMatchByGroup { type?: never, group: QSMatchableGroupKey };
 export type IMatchParam = IMatchByType | IMatchByGroup;
+export type Matchable = ItemType | ItemTypeGroup;
 
 //export type MatchableGroups<K extends MatchableFields> = (K extends "group" ? ItemTypeGroup : never);
 //export type Matchable<K extends MatchableFields, G extends MatchableGroups<K> = MatchableGroups<K>> = ((K extends "type" ? ItemType : never) | (K extends "group" ? G : never));
@@ -58,9 +61,9 @@ export interface ITransferTarget {
  * Describes the transfer of a single ItemType or ItemTypeGroup.
  */
 export interface ITransferItemMatch {
-    type: ItemType;//IMatchParam;  // The type or group
-    had: number;    // How many of this item were originally present in the source container.
-    sent: number;   // How many of this item were transferred to the destination container.
+    matched: IMatchParam;  // The type or group
+    had: number;        // How many of this item were originally present in the source container.
+    sent: number;       // How many of this item were transferred to the destination container.
 }
 
 /**
@@ -69,5 +72,5 @@ export interface ITransferItemMatch {
 export interface ITransferPairing {
     source: ITransferTarget;        // The source container for this event.
     destination: ITransferTarget;   // The destination container for this event.
-    matches: ITransferItemMatch[];         // List of type/group-matches present in this event.
+    matches: ITransferItemMatch[];  // List of type/group-matches present in this event.
 }

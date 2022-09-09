@@ -6,7 +6,7 @@ import { ActionDisplayLevel, ActionType } from "game/entity/action/IAction";
 import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
 import Translation from "language/Translation";
 import TransferHandler, { playerHeldContainers, isHeldContainer, playerHasItem, isContainerType, playerHasType, validNearby } from "../TransferHandler";
-import { IContainer, ItemType } from "game/item/IItem";
+import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
 import Dictionary from "language/Dictionary";
 import { TextContext } from "language/ITranslation";
 import { ItemDetailIconLocation } from "ui/screen/screens/game/component/Item";
@@ -61,15 +61,6 @@ export const UsableActionsQuickStack = new UsableActionGenerator(reg => {
 });
 
 
-// The definitions for each UsableAction are created here outside of the generators.
-// This way I can easily do things like have a submenu's isUsable() function check the isUsable() of the actions it contains.
-
-// module DEFS {
-//     const UADef = <R extends IUsableActionRequirements = IUsableActionRequirements>(req: R, def: IUsableActionDefinition<typeof req>) => ({ req: req, def: def });
-// }
-
-
-
 export namespace QSSubmenu {
     // Top-level submenu.
     export const Deposit = new UsableActionGenerator(reg => reg.add("QuickStackMainSubmenu", UsableAction
@@ -116,9 +107,21 @@ export namespace QSSubmenu {
         .requiring({ item: true })
         .create({
             displayLevel: ActionDisplayLevel.Always,
-            translate: (translator) => translator.name(({ item, itemType }) => StaticHelper.TLget("onlyXType")
-                .addArgs(item?.getName(false, 999, false, false, false, false)
-                    ?? (itemType ? Translation.nameOf(Dictionary.Item, itemType) : undefined))),
+            translate: (translator) => translator.name(({ item, itemType }) => {
+                const grp = TransferHandler.getActiveGroup(item?.type ?? itemType ?? ItemTypeGroup.Invalid);
+                return StaticHelper.TLget("onlyXType").addArgs(...
+                    (grp !== undefined
+                        ? [
+                            StaticHelper.TLget(grp).passTo(StaticHelper.TLget("colorMatchGroup")),
+                            StaticHelper.TLget("Item").passTo(Translation.reformatSingularNoun(999, false))
+                        ] : [
+                            item?.getName(false, 999, false, false, false, false)
+                            ?? (itemType
+                                ? Translation.nameOf(Dictionary.Item, itemType, false)
+                                : undefined)
+                        ])
+                );
+            }),
             isApplicable: (player, using) => {
                 const type = using.item?.type ?? using.itemType;
                 return !type ? false : playerHasType(player, type);
@@ -164,7 +167,7 @@ export const StackAllSelfNearby = new UsableActionGenerator<[boolean]>((reg, inS
                     StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
                     fromSegment);
         }),
-        isApplicable: (player) => inSubmenu ? TransferHandler.hasMatchType(validNearby(player), [player.inventory, ...playerHeldContainers(player)]) : true,
+        isApplicable: (player) => inSubmenu ? TransferHandler.hasMatch(validNearby(player), [player.inventory, ...playerHeldContainers(player)]) : true,
         isUsable: (player) => TransferHandler.canFitAny([player.inventory, ...playerHeldContainers(player)], validNearby(player), player),
         execute: execSASeN
     })
@@ -195,7 +198,7 @@ export const StackAllMainNearby = new UsableActionGenerator<[boolean]>((reg, inS
                     StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
                     fromSegment);
         }),
-        isApplicable: (player) => inSubmenu ? TransferHandler.hasMatchType([player.inventory], validNearby(player)) : true,
+        isApplicable: (player) => inSubmenu ? TransferHandler.hasMatch([player.inventory], validNearby(player)) : true,
         isUsable: (player) => TransferHandler.canFitAny([player.inventory], validNearby(player), player),
         execute: execSAMN
     })
@@ -290,7 +293,7 @@ export const StackAllAlikeSubNearby = new UsableActionGenerator<[boolean]>((reg,
                 if(!playerHasType(player, itemType)) return false;
                 conType = itemType;
             } else return false;
-            return inSubmenu ? true : TransferHandler.hasMatchType(playerHeldContainers(player, [conType]), validNearby(player));
+            return inSubmenu ? true : TransferHandler.hasMatch(playerHeldContainers(player, [conType]), validNearby(player));
         },
         isUsable: (player, { item, itemType }) => TransferHandler.canFitAny(
             playerHeldContainers(player, item ? [item.type] : itemType ? [itemType] : []),
@@ -342,7 +345,7 @@ export const StackTypeSelfNearby = new UsableActionGenerator<[boolean]>((reg, in
         },
         isUsable: (player, { item, itemType }) => {
             const type = (item?.type ?? itemType);
-            return type ? TransferHandler.canFitAny([player.inventory], validNearby(player), player, [type]) : false;
+            return type ? TransferHandler.canFitAny([player.inventory], validNearby(player), player, [{ type: type }]) : false;
         },
         execute: (player, using, _context) => executeStackAction(player,
             [{ self: true, recursive: true }],
@@ -370,7 +373,7 @@ export const StackTypeHereNearby = new UsableActionGenerator(reg => reg.add("Sta
         displayLevel: ActionDisplayLevel.Always,
         translate: (translator) => translator.name(StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("here"))),
         isApplicable: (player, { item }) => item ? playerHasItem(player, item) : false,
-        isUsable: (player, { item }) => TransferHandler.canFitAny([item.containedWithin!], validNearby(player), player, [item.type]),
+        isUsable: (player, { item }) => TransferHandler.canFitAny([item.containedWithin!], validNearby(player), player, [{ type: item.type }]),
         execute: (player, { item }, _context) => executeStackAction(player,
             [{ container: item.containedWithin! }],
             [{ tiles: true }, { doodads: true }],
