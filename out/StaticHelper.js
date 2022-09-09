@@ -7,8 +7,10 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 define(["require", "exports", "language/Translation", "mod/Mod", "./QuickStack", "./QuickStack"], function (require, exports, Translation_1, Mod_1, QuickStack_1, QuickStack_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.QSTranslation = void 0;
+    exports.QSMatchableGroups = exports.QSTranslation = exports.GLOBALCONFIG = void 0;
+    Object.defineProperty(exports, "GLOBALCONFIG", { enumerable: true, get: function () { return QuickStack_2.GLOBALCONFIG; } });
     Object.defineProperty(exports, "QSTranslation", { enumerable: true, get: function () { return QuickStack_2.QSTranslation; } });
+    Object.defineProperty(exports, "QSMatchableGroups", { enumerable: true, get: function () { return QuickStack_2.QSMatchableGroups; } });
     class StaticHelper {
         static QSdict() { return QuickStack_1.default.INSTANCE.dictionary; }
         static TLget(id) { return Translation_1.default.get(QuickStack_1.default.INSTANCE.dictionary, QuickStack_1.QSTranslation[id]); }
@@ -21,4 +23,4 @@ define(["require", "exports", "language/Translation", "mod/Mod", "./QuickStack",
     ], StaticHelper, "QS_LOG", void 0);
     exports.default = StaticHelper;
 });
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiU3RhdGljSGVscGVyLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vc3JjL1N0YXRpY0hlbHBlci50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7O0lBS1EsMkdBQUEsYUFBYSxPQUFBO0lBRXJCLE1BQXFCLFlBQVk7UUFNdEIsTUFBTSxDQUFDLE1BQU0sS0FBSyxPQUFPLG9CQUFVLENBQUMsUUFBUSxDQUFDLFVBQVUsQ0FBQyxDQUFDLENBQUM7UUFDMUQsTUFBTSxDQUFDLEtBQUssQ0FBQyxFQUE4QixJQUFnQixPQUFPLHFCQUFXLENBQUMsR0FBRyxDQUFDLG9CQUFVLENBQUMsUUFBUSxDQUFDLFVBQVUsRUFBRSwwQkFBYSxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDO0tBQ2pKO0lBTkc7UUFEQyxhQUFHLENBQUMsUUFBUSxDQUFhLGFBQWEsQ0FBQzsyQ0FDTztJQUUvQztRQURDLGFBQUcsQ0FBQyxHQUFHLENBQUMsYUFBYSxDQUFDO3NDQUNZO0lBSnZDLCtCQVFDIn0=
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiU3RhdGljSGVscGVyLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vc3JjL1N0YXRpY0hlbHBlci50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7O0lBS1EsMEdBQUEsWUFBWSxPQUFBO0lBQUUsMkdBQUEsYUFBYSxPQUFBO0lBQXVCLCtHQUFBLGlCQUFpQixPQUFBO0lBRTNFLE1BQXFCLFlBQVk7UUFNdEIsTUFBTSxDQUFDLE1BQU0sS0FBSyxPQUFPLG9CQUFVLENBQUMsUUFBUSxDQUFDLFVBQVUsQ0FBQyxDQUFDLENBQUM7UUFDMUQsTUFBTSxDQUFDLEtBQUssQ0FBQyxFQUE4QixJQUFnQixPQUFPLHFCQUFXLENBQUMsR0FBRyxDQUFDLG9CQUFVLENBQUMsUUFBUSxDQUFDLFVBQVUsRUFBRSwwQkFBYSxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDO0tBQ2pKO0lBTkc7UUFEQyxhQUFHLENBQUMsUUFBUSxDQUFhLGFBQWEsQ0FBQzsyQ0FDTztJQUUvQztRQURDLGFBQUcsQ0FBQyxHQUFHLENBQUMsYUFBYSxDQUFDO3NDQUNZO0lBSnZDLCtCQVFDIn0=
