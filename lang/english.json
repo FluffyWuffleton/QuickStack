@@ -4,7 +4,7 @@
         "modQuickStackQSDictionary": {
             "qsPrefix": "{#--COLOR-COMMAND:QuickStack:} ", // Prepended to messages.
             "parenthetical": "({0})",
-            "colorStorm": "{#--COLOR-OVERCAST:{0}}",
+            "colorMatchGroup": "{#--COLOR-OVERCAST:{0}}",
 
             /*
                 Fragments used in result messages
