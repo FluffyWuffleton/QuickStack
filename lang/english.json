@@ -3,8 +3,10 @@
     "dictionaries": {
         "modQuickStackQSDictionary": {
             "qsPrefix": "{#--COLOR-COMMAND:QuickStack:} ", // Prepended to messages.
+            "qsPrefixShort": "{#--COLOR-COMMAND:>} ",
             "parenthetical": "({0})",
-            "colorMatchGroup": "{#--COLOR-OVERCAST:{0}}",
+            "colorMatchGroup": "{#--COLOR-METALLIC:{0}}",
+            "concat": "{0}{ 1??}",
 
             /*
                 Fragments used in result messages
@@ -18,7 +20,7 @@
             "toUnknown": "to somewhere",
             "fromUnknown": "from somewhere",
 
-            "XOutOfY": "{X}{Y?/}{Y??}{ name??}", // Used in constructing a list of fully or partly moved item types ("5 arrows", "3/5 arrows")
+            "XOutOfY": "{X}{Y?/}{Y??}{ name??}{ suffix??}", // Used in constructing a list of fully or partly moved item types ("5 arrows", "3/5 arrows")
 
             "allX": "all {0}", // All <plural-thing>
             "here": "here", // an item's immediate location
@@ -51,8 +53,8 @@
             "optionMatchSimilar_desc": "For any group selected below, all items within that group will be treated as a single type for stacking.",
 
             // Custom groupings
-            "Projectile": "Projectiles",
-            "ProjectileWeapon": "Projectile Weapons",
+            "Projectile": "Projectile",
+            "ProjectileWeapon": "Projectile Weapon",
             "Equipment": "Equipment",
             "Edible": "Edible",
             "Raw": "Raw",
@@ -60,9 +62,9 @@
             "Potable": "Drinkable",
             "Unpotable": "Unpotable Water",
             "Rock": "Rock",
-            "Poles": "Poles",
+            "Poles": "Pole",
             "CordageAndString": "Cordage and String",
-            "Needlework": "Needwork",
+            "Needlework": "Needlework",
             "Gardening": "Gardening",
             "Paperwork": "Paperwork",
 
@@ -74,7 +76,7 @@
         },
         "message": {
             // When first receiving the keybind input.
-            "modQuickStackSearch": "{prefix??}Looking through nearby containers...",
+            "modQuickStackSearch": "{#--TEXT-UNDERLINE:{prefix??}Looking through nearby containers...}",
 
             // If there are no nearby containers with items matching your inventory. 
             // This should only happen when using a keybind, as none of the actions should be usable from menu/hotbar in this case.

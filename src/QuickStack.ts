@@ -31,8 +31,10 @@ export namespace GLOBALCONFIG {
 
 export enum QSTranslation {
     qsPrefix = 0,
+    qsPrefixShort,
     parenthetical,
     colorMatchGroup,
+    concat,
 
     toX,
     fromX,

@@ -12,6 +12,7 @@ import TranslationImpl from "language/impl/TranslationImpl";
 import Dictionary from "language/Dictionary";
 import { GLOBALCONFIG } from "./StaticHelper";
 import ItemManager from "game/item/ItemManager";
+import { TextContext } from "language/ITranslation";
 
 export type ThingWithContents = Pick<IContainer, "containedItems">;
 
@@ -528,7 +529,12 @@ export default class TransferHandler {
                                 X: match.sent,
                                 name: match.matched.type !== undefined
                                     ? Translation.nameOf(Dictionary.Item, match.matched.type, match.sent, match.sent > 1 ? "indefinite" : false, true)
-                                    : StaticHelper.TLget(match.matched.group).passTo(StaticHelper.TLget("colorMatchGroup")).passTo(Translation.reformatSingularNoun(match.sent, false))
+                                    : StaticHelper.TLget("concat").addArgs(
+                                        StaticHelper.TLget(match.matched.group)
+                                            .inContext(TextContext.None)
+                                            .passTo(StaticHelper.TLget("colorMatchGroup")),
+                                        StaticHelper.TLget("Item")
+                                            .passTo(Translation.reformatSingularNoun(match.sent, false)))
                             }));
                         } else if(match.sent > 0) { // Partial transfer
                             resultFlags.some = true;
@@ -537,14 +543,24 @@ export default class TransferHandler {
                                 Y: match.had,
                                 name: match.matched.type !== undefined
                                     ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, false, true)
-                                    : StaticHelper.TLget(match.matched.group).passTo(StaticHelper.TLget("colorMatchGroup")).passTo(Translation.reformatSingularNoun(match.had, false))
-
+                                    : StaticHelper.TLget("concat").addArgs(
+                                        StaticHelper.TLget(match.matched.group)
+                                            .inContext(TextContext.None)
+                                            .passTo(StaticHelper.TLget("colorMatchGroup")),
+                                        StaticHelper.TLget("Item")
+                                            .passTo(Translation.reformatSingularNoun(match.had, false)))
                             }));
                         } else { // Failed transfer
                             resultFlags.none = true;
                             str.items.none.push(match.matched.type !== undefined
                                 ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, match.had > 1 ? "indefinite" : false, true)
-                                : StaticHelper.TLget(match.matched.group).passTo(StaticHelper.TLget("colorMatchGroup")).passTo(Translation.reformatSingularNoun(match.had, false)));
+                                : StaticHelper.TLget("concat").addArgs(
+                                    StaticHelper.TLget(match.matched.group)
+                                        .inContext(TextContext.None)
+                                        .passTo(StaticHelper.TLget("colorMatchGroup")),
+                                    StaticHelper.TLget("Item")
+                                        .passTo(Translation.reformatSingularNoun(match.had, match.had === 1 ? "indefinite" : false)))
+                            );
                         }
                     });
 
@@ -563,7 +579,7 @@ export default class TransferHandler {
                         }
                     */
                     player.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageStackResult, {
-                        prefix: StaticHelper.TLget("qsPrefix"),
+                        prefix: StaticHelper.TLget("qsPrefixShort"),
                         items: [...str.items.all, ...str.items.some, ...(resultFlags.some || resultFlags.all ? [] : str.items.none)],
                         source: str.source,
                         destination: str.destination,
