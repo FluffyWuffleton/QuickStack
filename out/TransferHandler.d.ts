@@ -7,7 +7,7 @@ import { ITransferTarget, THState, ITransferPairing, ITransferItemMatch, THTarge
 import Log from "utilities/Log";
 export declare type ThingWithContents = Pick<IContainer, "containedItems">;
 export declare function isHeldContainer(player: Player, item: Item): boolean;
-export declare function isContainerType(player: Player, type: ItemType): boolean;
+export declare function isStorageType(type: ItemType): boolean;
 export declare function isInHeldContainer(player: Player, item: Item): boolean;
 export declare function playerHasItem(player: Player, item: Item): boolean;
 export declare function playerHasType(player: Player, type: ItemType): boolean;

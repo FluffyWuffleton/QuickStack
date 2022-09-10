@@ -18,7 +18,7 @@ export type ThingWithContents = Pick<IContainer, "containedItems">;
 
 // Utility functions for item and inventory fetching/checking. Pretty self-explanatory.
 export function isHeldContainer(player: Player, item: Item): boolean { return player.island.items.isContainer(item) && player === player.island.items.getPlayerWithItemInInventory(item); }
-export function isContainerType(player: Player, type: ItemType): boolean { return player.island.items.isInGroup(type, ItemTypeGroup.Storage); }
+export function isStorageType(type: ItemType): boolean { return ItemManager.isInGroup(type, ItemTypeGroup.Storage); }
 export function isInHeldContainer(player: Player, item: Item): boolean { return (item?.containedWithin) ? player.island.items.getContainedContainers(player.inventory).includes(item.containedWithin) : false; }
 export function playerHasItem(player: Player, item: Item): boolean { return item.getCurrentOwner() === player; }
 export function playerHasType(player: Player, type: ItemType): boolean { //return player.inventory.containedItems.some(i => i.type === type); }
@@ -142,8 +142,10 @@ export default class TransferHandler {
                 StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[g]?.includes(t) ?? false));
 
 
-        StaticHelper.QS_LOG.info(`Resolved params: (Flat) [TYPES, GROUPS]`);
-        console.log([[...types], [...groups]]);
+        if(GLOBALCONFIG.log_info) {
+            StaticHelper.QS_LOG.info(`Resolved params: (Flat) [TYPES, GROUPS]`);
+            console.log([[...types], [...groups]]);
+        }
         return new Set<ItemType | QSMatchableGroupKey>([...types, ...groups]);
     }
 
@@ -155,7 +157,7 @@ export default class TransferHandler {
      * @returns {ITransferItemMatch[]} List of matches.
      */
     public static getMatches(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): ITransferItemMatch[] {
-        StaticHelper.QS_LOG.info(`GET MATCHES:: ${A}  ${B}`);
+        if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`GET MATCHES:: ${A}  ${B}`);
 
         // setOfParams will favor providing a group over a type if the group exists. If an item is present, it has no active group.
         const AParams = TransferHandler.setOfFlatParams(A);
@@ -165,8 +167,10 @@ export default class TransferHandler {
             AParams.retainWhere(param => fgrp.has(param));
         }
         AParams.retainWhere(param => BParams.has(param));
-        StaticHelper.QS_LOG.info(`GET MATCHES:: REMAINING::`);
-        console.log(AParams);
+        if(GLOBALCONFIG.log_info) {
+            StaticHelper.QS_LOG.info(`GET MATCHES:: REMAINING::`);
+            console.log(AParams);
+        }
         return [...AParams].map((p) => ({
             matched: (p in ItemType)
                 ? { type: p as ItemType }
@@ -184,7 +188,7 @@ export default class TransferHandler {
      * @returns {boolean}
      */
     public static hasMatch(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): boolean {
-        StaticHelper.QS_LOG.info(`HAS MATCH:: ${A}  ${B}`);
+        if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`HAS MATCH:: ${A}  ${B}`);
 
         const AParams = TransferHandler.setOfFlatParams(A);
         const BParams = TransferHandler.setOfFlatParams(B);
@@ -218,11 +222,15 @@ export default class TransferHandler {
     }
 
     public static canFitAny(src: ThingWithContents[], dest: IContainer[], player: Player, filter: IMatchParam[] = []) {
+        if(!this.hasMatch(src,dest,filter)) return false;
         const srcItems = src.flatMap(s => s.containedItems).filter(i => !i.isProtected() && !i.isEquipped());
         const srcParams = TransferHandler.setOfParams([{ containedItems: srcItems }]);
 
-        if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers) // None of the activegroups includes storage items. It's fine to remove by 'type' param only.
-            srcParams.retainWhere(t => t.type === undefined ? true : !player.island.items.isInGroup(t.type, ItemTypeGroup.Storage));
+        // If keeping containers, remove storage-group itemtypes from source params. 
+        // Group-based matches ('equipment') will still need to be checked for.
+        if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers)
+            srcParams.retainWhere(t => t.type === undefined ? true : !ItemManager.isInGroup(t.type, ItemTypeGroup.Storage));
+
         if(filter.length) {
             const fgrp = this.groupifyParameters(filter);
             srcParams.retainWhere(p => fgrp.has(p.type ?? p.group));
@@ -241,9 +249,13 @@ export default class TransferHandler {
                     (param.type !== undefined
                         ? it.type === param.type
                         : this.getActiveGroup(it.type) === param.group
+                        && (StaticHelper.QS_INSTANCE.globalData.optionKeepContainers
+                            ? !ItemManager.isInGroup(it.type, ItemTypeGroup.Storage)
+                            : true)
                     ) && it.weight < w ? it.weight : w, Infinity)
             )) return true;
         }
+        StaticHelper.QS_LOG.info(`CANFITANY FROM ${this.caller}: FALSE`)
         return false;
     }
 
@@ -330,7 +342,7 @@ export default class TransferHandler {
     * Returns immediately if state has any error flag set, or if the 'complete' flag is already set. 
     * @returns {THState} The handler state. 
     */
-    private executeTransfer(log: Log = StaticHelper.QS_LOG): THState {
+    private executeTransfer(log: Log | undefined = (GLOBALCONFIG.log_info ? StaticHelper.QS_LOG : undefined)): THState {
         // Active error or already complete
         if(this._state & (THState.error | THState.complete)) return this._state;
 
@@ -341,14 +353,12 @@ export default class TransferHandler {
 
         // Helper function doTransfer. To be called once on each source.
         const doTransfer = (src: ITransferTarget): Item[] => {
-
             // Pairings for this source, to be added as a row in executionResults.
             const thesePairings: ITransferPairing[] = [];
             const allItemsMoved: Item[] = [];
 
             // For each destination...
             this.destinations.forEach((dest, j) => {
-
                 // Define the pairing and find matches
                 const thisPairing: ITransferPairing = {
                     source: src,
@@ -356,7 +366,8 @@ export default class TransferHandler {
                     matches: TransferHandler.getMatches([src.container], [dest.container], this.typeFilter)
                 };
 
-                // Remove any forbidden types
+                // Remove any forbidden types.
+                // Group-matches will still need to be checked or storage items may be transferred as 'equipment'
                 if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers)
                     thisPairing.matches = thisPairing.matches.filter(m => m.matched.type === undefined ? true : !itemMgr.isInGroup(m.matched.type, ItemTypeGroup.Storage));
 
@@ -381,7 +392,7 @@ export default class TransferHandler {
                     const isGroupMatch = match.matched.group !== undefined;
                     const doesThisMatch = isGroupMatch
                         ? (it: Item) => (StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[match.matched.group!]!.includes(it.type))
-                        : (it: Item) => (it.type === match.matched.type);
+                        : (it: Item) => (it.type === match.matched.type && (StaticHelper.QS_INSTANCE.globalData.optionKeepContainers ? !ItemManager.isInGroup(it.type, ItemTypeGroup.Storage) : true));
 
                     // List of items that we should try to send.
                     const validItems = src.container.containedItems.filter((it) => doesThisMatch(it) && !it.isProtected() && !it.isEquipped());
@@ -471,12 +482,12 @@ export default class TransferHandler {
     }
 
     /**
-     * Send post-transfer messages to the player.
+     * Send post-transfer messages to the player. Also updates weights and stuff if a turn hasn't passed yet.
      * If any error flag is set, or the 'complete' flag is *not* set, this will do nothing and return false.
      * @param player 
      * @returns {boolean} Successfully sent messages?
      */
-    private reportMessages(player: Player = this.player, log: Log = StaticHelper.QS_LOG): boolean {
+    private reportMessages(player: Player = this.player, log: Log | undefined = GLOBALCONFIG.log_info ? StaticHelper.QS_LOG : undefined): boolean {
         // Active error or not yet complete
         if((this._state & THState.error) || !(this._state & THState.complete)) return false;
 
@@ -533,8 +544,7 @@ export default class TransferHandler {
                                         StaticHelper.TLget(match.matched.group)
                                             .inContext(TextContext.None)
                                             .passTo(StaticHelper.TLget("colorMatchGroup")),
-                                        StaticHelper.TLget("Item")
-                                            .passTo(Translation.reformatSingularNoun(match.sent, false)))
+                                        StaticHelper.TLget("Item").passTo(Translation.reformatSingularNoun(match.sent, false)))
                             }));
                         } else if(match.sent > 0) { // Partial transfer
                             resultFlags.some = true;
@@ -547,8 +557,7 @@ export default class TransferHandler {
                                         StaticHelper.TLget(match.matched.group)
                                             .inContext(TextContext.None)
                                             .passTo(StaticHelper.TLget("colorMatchGroup")),
-                                        StaticHelper.TLget("Item")
-                                            .passTo(Translation.reformatSingularNoun(match.had, false)))
+                                        StaticHelper.TLget("Item").passTo(Translation.reformatSingularNoun(match.had, false)))
                             }));
                         } else { // Failed transfer
                             resultFlags.none = true;
@@ -558,8 +567,7 @@ export default class TransferHandler {
                                     StaticHelper.TLget(match.matched.group)
                                         .inContext(TextContext.None)
                                         .passTo(StaticHelper.TLget("colorMatchGroup")),
-                                    StaticHelper.TLget("Item")
-                                        .passTo(Translation.reformatSingularNoun(match.had, match.had === 1 ? "indefinite" : false)))
+                                    StaticHelper.TLget("Item").passTo(Translation.reformatSingularNoun(999, false)))
                             );
                         }
                     });
@@ -579,14 +587,14 @@ export default class TransferHandler {
                         }
                     */
                     player.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageStackResult, {
-                        prefix: StaticHelper.TLget("qsPrefixShort"),
                         items: [...str.items.all, ...str.items.some, ...(resultFlags.some || resultFlags.all ? [] : str.items.none)],
                         source: str.source,
                         destination: str.destination,
                         failed: {
                             some: resultFlags.some || (resultFlags.all && resultFlags.none) ? true : undefined,
                             all: resultFlags.none && !resultFlags.all && !resultFlags.some ? true : undefined
-                        }
+                        },
+                        prefix: StaticHelper.TLget("qsPrefixShort")//.passTo(StaticHelper.TLget("colorPrefix")),
                     });
 
                 } // if pair.matches.length
@@ -594,7 +602,8 @@ export default class TransferHandler {
         }, this); // foreach pairlist in executionResults
 
 
-        if(!(this._anySuccess || this._anyPartial || this._anyFailed)) player.messages.send(StaticHelper.QS_INSTANCE.messageNoMatch, { prefix: StaticHelper.TLget("qsPrefix") });
+        if(!(this._anySuccess || this._anyPartial || this._anyFailed))
+            player.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageNoMatch, { prefix: StaticHelper.TLget("qsPrefixShort").passTo(Translation.colorizeImportance("secondary")) });
 
         return true;
     }
@@ -697,7 +706,10 @@ export default class TransferHandler {
         if(handler.anySuccess || handler.anyPartial) {
             if(!suppress?.delay) player.addDelay(GLOBALCONFIG.pause_length);
             if(GLOBALCONFIG.pass_turn_success) game.passTurn(player);
-            else player.update();
+            else {
+                player.updateTablesAndWeight("Quick Stack");
+
+            }
             if(successFlag) successFlag.failed = false;
         }
 

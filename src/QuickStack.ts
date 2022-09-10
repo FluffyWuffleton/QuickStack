@@ -9,7 +9,7 @@ import { UsableActionGenerator } from "game/entity/action/usable/UsableActionReg
 import Log from "utilities/Log";
 
 import { StackAction } from "./actions/Actions";
-import { execSAMN, execSASeN, UsableActionsQuickStack } from "./actions/UsableActionsQuickStack";
+import { execSAMN, execSANM, execSANSe, execSASeN, UsableActionsQuickStack } from "./actions/UsableActionsQuickStack";
 import Bind from "ui/input/Bind";
 import Dictionary from "language/Dictionary";
 import Component from "ui/component/Component";
@@ -25,21 +25,26 @@ import { Matchable } from "./ITransferHandler";
 
 
 export namespace GLOBALCONFIG {
-    export const pause_length = Delay.ShortPause;
-    export const pass_turn_success = false;
+    export const log_info = false as const;
+    export const pause_length = Delay.ShortPause as const;
+    export const pass_turn_success = false as const;
+    export const force_isusable = false as const;
 }
 
 export enum QSTranslation {
     qsPrefix = 0,
     qsPrefixShort,
     parenthetical,
+    colorPrefix,
     colorMatchGroup,
+    underline,
     concat,
 
     toX,
     fromX,
     allX,
     here,
+    nearby,
     yourInventory,
     toTile,
     fromTile,
@@ -49,7 +54,7 @@ export enum QSTranslation {
     mainInventory,
     fullInventory,
     deposit,
-    withdraw,
+    collect,
     onlyXType,
     allTypes,
     thisContainer,
@@ -76,6 +81,7 @@ export enum QSTranslation {
     Needlework,
     Gardening,
     Paperwork,
+    Woodwork,
 
     MatchGroupIncludes,
     ItemGroupX,
@@ -100,7 +106,8 @@ export type QSMatchableGroupKey = keyof Pick<typeof QSTranslation,
     | "CordageAndString"
     | "Needlework"
     | "Gardening"
-    | "Paperwork">;
+    | "Paperwork"
+    | "Woodwork">;
 
 export const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly Matchable[] } = {
     Projectile: [
@@ -159,7 +166,13 @@ export const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly Matchable
         ItemType.PaperSheet,
         ItemType.Inkstick,
         ItemType.DrawnMap,
-        ItemType.TatteredMap]
+        ItemType.TatteredMap],
+    Woodwork: [
+        ItemType.Log,
+        ItemType.WoodenPlank,
+        ItemType.WoodenDowels,
+        ItemType.TreeBark
+    ]
 } as const;
 export type QSMatchableGroupsFlatType = { [k in QSMatchableGroupKey]?: ItemType[] };
 
@@ -196,43 +209,103 @@ export default class QuickStack extends Mod {
     public readonly messageStackResult: Message;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
-    // Binds
-    @Register.bindable("StackAllSelfNearby", IInput.key("slash", "Shift"))
-    public readonly bindableSASN: Bindable;
-    @Register.bindable("StackAllMainNearby")
-    public readonly bindableSAMN: Bindable;
-
-    @Register.bindable("StackAllSelfNearby_submenu", IInput.key("slash", "Shift"))
-    public readonly bindableSASN_submenu: Bindable;
-    @Register.bindable("StackAllMainNearby_submenu")
-    public readonly bindableSAMN_submenu: Bindable;
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////
     // Actions
     @Register.action("StackAction", StackAction)
     public readonly actionStackAction: ActionType;
 
-    // Icon placeholder types
-    @Register.usableActionType("AllMainNearby")
-    public readonly UAPlaceholderAllMainNearby: UsableActionType;
-
-    @Register.usableActionType("AllSelfNearby")
-    public readonly UAPlaceholderAllSelfNearby: UsableActionType;
-
+    // Icon placeholders for icon overrides in the submenu
+    @Register.usableActionTypePlaceholder("Self")
+    public readonly UAPSelf: UsableActionType;
+    @Register.usableActionTypePlaceholder("Main")
+    public readonly UAPMain: UsableActionType;
+    @Register.usableActionTypePlaceholder("Sub")
+    public readonly UAPSub: UsableActionType;
+    @Register.usableActionTypePlaceholder("Here")
+    public readonly UAPHere: UsableActionType;
+    @Register.usableActionTypePlaceholder("Alike")
+    public readonly UAPAlike: UsableActionType;
+    @Register.usableActionTypePlaceholder("Nearby")
+    public readonly UAPNearby: UsableActionType;
+    
+    
+    // UA Types for all actions that have an associated slottable icon.
+    @Register.usableActionType("QuickStackDepositMenu")
+    public readonly UAPDepositMenu: UsableActionType;
+    @Register.usableActionType("StackAllSelfNearby")
+    public readonly UAPAllSelfNearby: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllMainNearby")
+    public readonly UAPAllMainNearby: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllSubNearby")
+    public readonly UAPAllSubNearby: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllAlikeSubNearby")
+    public readonly UAPAllAlikeSubNearby: UsableActionType;
+    @Register.usableActionType("StackTypeSelfNearby")
+    public readonly UAPTypeSelfNearby: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackTypeMainNearby")
+    public readonly UAPTypeMainNearby: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackTypeHereNearby")
+    public readonly UAPTypeHereNearby: UsableActionType;
+    @Register.usableActionType("StackAllNearbySelf")           
+    public readonly UAPAllNearbySelf: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllNearbyMain")
+    public readonly UAPAllNearbyMain: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllMainSub") 
+    public readonly UAPAllMainSub: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllNearbySub")
+    public readonly UAPAllNearbySub: UsableActionType;
+    @Register.usableActionType("StackTypeToHere")
+    public readonly UAPTypeToHere: UsableActionType;
+    @Register.usableActionType("StackAllToHere")
+    public readonly UAPAllToHere: UsableActionType;
 
     // Register the top-level QuickStack submenu.
     // The rest of the actions and menus are registered to this menu when its submenu function is called.
     @Register.usableActions("QSUsableActions", UsableActionSet.ItemMoveMenus, reg => UsableActionsQuickStack.register(reg))
     public readonly QSUsableActions: UsableActionGenerator;
 
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    // Binds
+    @Register.bindable("StackAllSelfNearby", IInput.key("slash", "Shift"))
+    public readonly bindableSASeN: Bindable;
+    @Register.bindable("StackAllMainNearby")
+    public readonly bindableSAMN: Bindable;
+    
+    @Register.bindable("StackAllNearbySelf", IInput.key("slash", "Shift", "Ctrl"))
+    public readonly bindableSANSe: Bindable;
+    @Register.bindable("StackAllNearbyMain")
+    public readonly bindableSANM: Bindable;
+
+    @Register.bindable("All", IInput.key("a")) // for actions on all types
+    public readonly bindableAll: Bindable;
+    @Register.bindable("Type", IInput.key("t")) // for actions on specific type
+    public readonly bindableType: Bindable;
+
+    @Register.bindable("Self", IInput.key("f")) // for actions to/from full inventory
+    public readonly bindableSelf: Bindable;
+    @Register.bindable("Main", IInput.key("t")) // for actions to/from top-level inventory
+    public readonly bindableMain: Bindable;
+    @Register.bindable("Sub", IInput.key("c")) // for actions to/from subcontainer
+    public readonly bindableSub: Bindable;
+    @Register.bindable("Alike", IInput.key("c", "Shift")) // for actions to/from similar subcontainer
+    public readonly bindableAlike: Bindable;
+    @Register.bindable("Here", IInput.key("h")) // for actions to/from selected item's location
+    public readonly bindableHere: Bindable;
+    @Register.bindable("Nearby", IInput.key("n")) // for actions to/from nearby
+    public readonly bindableNearby: Bindable;
+    
+
+    @Bind.onDown(Registry<QuickStack>().get("bindableSASeN"))
+    public SASeNBind(): boolean { return !execSASeN(localPlayer); }
 
     @Bind.onDown(Registry<QuickStack>().get("bindableSAMN"))
     public SAMNBind(): boolean { return !execSAMN(localPlayer); }
 
-    @Bind.onDown(Registry<QuickStack>().get("bindableSASN"))
-    public SASNBind(): boolean { return !execSASeN(localPlayer); }
+    @Bind.onDown(Registry<QuickStack>().get("bindableSANSe"))
+    public SANSeBind(): boolean { return !execSANSe(localPlayer); }
 
+    @Bind.onDown(Registry<QuickStack>().get("bindableSANM"))
+    public SANMBind(): boolean { return !execSANM(localPlayer); }
+    
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Global data, helper data, and refresh methods
@@ -276,7 +349,7 @@ export default class QuickStack extends Mod {
         });
         QuickStack.LOG.info(`Updated match groups.`);
         console.log(this._activeMatchGroupsArray);
-        console.log(this._activeMatchGroupsKeys);   
+        console.log(this._activeMatchGroupsKeys);
         console.log(this._activeMatchGroupsFlattened)
     }
     public override onInitialize(): any {

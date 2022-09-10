@@ -2,11 +2,13 @@
     "extends": "English",
     "dictionaries": {
         "modQuickStackQSDictionary": {
-            "qsPrefix": "{#--COLOR-COMMAND:QuickStack:} ", // Prepended to messages.
-            "qsPrefixShort": "{#--COLOR-COMMAND:>} ",
+            "qsPrefix": "QuickStack:", // Prepended to initial search message.
+            "qsPrefixShort": ">", // Prepended to results messages.
             "parenthetical": "({0})",
+            "underline": "{_{0}_}",
             "colorMatchGroup": "{#--COLOR-METALLIC:{0}}",
-            "concat": "{0}{ 1??}",
+            "colorPrefix": "{#--COLOR-COMMAND:{0}}",
+            "concat": "{0}{ 1??}{ 2??}{ 3??}{ 4??}{ 5??}{ 6??}{ 7??}{ 8??}{ 9??}",
 
             /*
                 Fragments used in result messages
@@ -24,16 +26,17 @@
 
             "allX": "all {0}", // All <plural-thing>
             "here": "here", // an item's immediate location
-
+            "nearby": "nearby",
+            
             /*
                 Fragments used in action labels/descriptions
             */
-            "onlyXType": "Only {0??similar}{ 1??}",
+            "onlyXType": "Only {0??similar items}{ 1??}",
             "allTypes": "All types",
             "mainInventory": "top-level inventory",
             "fullInventory": "full inventory",
-            "deposit": "Deposit{ 0??} nearby{ 1??}", // "Deposit [optional: ITEM TYPE fragment] [optional: TO/FROM LOCATION fragment]
-            "withdraw": "Withdraw{ 0??}{ 1??}", // "Withdraw [optional: ITEM TYPE fragment] [optional: TO/FROM LOCATION fragment]
+            "deposit": "Deposit{ 0??} nearby{ 1??}", // "Deposit [optional: ITEM TYPE fragment] nearby [optional: TO/FROM LOCATION fragment]
+            "collect": "Collect{ 0??}{ 1??}", // "Collect [optional: ITEM TYPE fragment] [optional: TO LOCATION fragment]
 
             /*
                 Used in the slottable tooltips for certain item-actions, since tooltips aren't given context of the specific item being used
@@ -67,24 +70,25 @@
             "Needlework": "Needlework",
             "Gardening": "Gardening",
             "Paperwork": "Paperwork",
+            "Woodwork": "Woodwork",
 
             "MatchGroupIncludes": "Group includes...",
-            
+
             "ItemGroupX": "Group: \"{0}\"",
             "ItemTypeX": " Item: \"{0}\"",
             "Item": "item"
         },
         "message": {
             // When first receiving the keybind input.
-            "modQuickStackSearch": "{#--TEXT-UNDERLINE:{prefix??}Looking through nearby containers...}",
+            "modQuickStackSearch": "{prefix ??}Looking through containers...",
 
             // If there are no nearby containers with items matching your inventory. 
             // This should only happen when using a keybind, as none of the actions should be usable from menu/hotbar in this case.
-            "modQuickStackNoMatch": "{prefix??}{#--TEXT-SECONDARY:None of the nearby containers are a good match.}",
+            "modQuickStackNoMatch": "{#--TEXT-SECONDARY:{prefix??}{prefix? }None of {searchtarget??the nearby containers} are a good match.}",
+            
             // If there are no nearby containers with items matching the selected type.
-            //    {0}: Item type name.
-
-            "modQuickStackNoTypeMatch": "{prefix??}{#--TEXT-SECONDARY:None of the nearby containers have any }{type??UNDEFINED}.",
+            //    {type}: Item type name.
+            "modQuickStackNoTypeMatch": "{#--TEXT-SECONDARY:{prefix??}{prefix? }None of {searchtarget??the nearby containers} have any }{type??UNDEFINED}.",
 
             // Valid destination was found, and transfer was attempted...
             /*  Argument structure:
@@ -98,7 +102,8 @@
                     } 
                }
             */
-            "modQuickStackStackResult": "{prefix??}{#--COLOR-BAD:{failed.all?Tried}}{failed.all? moving:Moved} {items...} {source} {destination}{failed.some? before {#--COLOR-WARNING:it filled up}}{#--COLOR-BAD:{failed.all? but it was too full}}.",
+            // 
+            "modQuickStackStackResult": "{#--COLOR-{failed.all?BAD:{failed.some?WARNING:COMMAND}}:{prefix??}}{prefix? }{#--COLOR-BAD:{failed.all?Tried}}{failed.all? moving:Moved} {items...} {source} {destination}{failed.some? before {#--COLOR-WARNING:it filled up}}{#--COLOR-BAD:{failed.all? but it was too full}}.",
 
 
             /************************************************************
@@ -156,10 +161,18 @@
             ]
         },
         "bindable": {
-            "modQuickStackStackAllMainNearby": "Quick-deposit nearby from main inventory",
-            "modQuickStackStackAllSelfNearby": "Quick-deposit nearby from inventory and bags",
-            "modQuickStackStackAllMainNearby_submenu": "Quick-deposit nearby from main inventory (from quickmenu)",
-            "modQuickStackStackAllSelfNearby_submenu": "Quick-deposit nearby from inventory and bags (from quickmenu)"
+            "modQuickStackStackAllMainNearby": "Deposit nearby from main inventory",
+            "modQuickStackStackAllSelfNearby": "Deposit nearby from inventory and bags",
+            "modQuickStackStackAllNearbyMain": "Restock main inventory from nearby",
+            "modQuickStackStackAllNearbySelf": "Restock main inventory and bags from nearby",
+            "modQuickStackAll": "Move all item types",
+            "modQuickStackType": "Move only selected type",
+            "modQuickStackSelf": "Target full inventory",
+            "modQuickStackMain": "Target top-level inventory",
+            "modQuickStackSub": "Target a held container",
+            "modQuickStackAlike": "Target all similar containers",
+            "modQuickStackHere": "Target selected item's location",
+            "modQuickStackNearby": "Target nearby storage"
         }
     }
 }

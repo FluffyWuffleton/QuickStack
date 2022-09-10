@@ -11,60 +11,66 @@ import { Delay } from "game/entity/IHuman";
 import { ItemType } from "game/item/IItem";
 import { Matchable } from "./ITransferHandler";
 export declare namespace GLOBALCONFIG {
-    const pause_length = Delay.ShortPause;
-    const pass_turn_success = false;
+    const log_info: false;
+    const pause_length: Delay.ShortPause;
+    const pass_turn_success: false;
+    const force_isusable: false;
 }
 export declare enum QSTranslation {
     qsPrefix = 0,
     qsPrefixShort = 1,
     parenthetical = 2,
-    colorMatchGroup = 3,
-    concat = 4,
-    toX = 5,
-    fromX = 6,
-    allX = 7,
-    here = 8,
-    yourInventory = 9,
-    toTile = 10,
-    fromTile = 11,
-    toUnknown = 12,
-    fromUnknown = 13,
-    XOutOfY = 14,
-    mainInventory = 15,
-    fullInventory = 16,
-    deposit = 17,
-    withdraw = 18,
-    onlyXType = 19,
-    allTypes = 20,
-    thisContainer = 21,
-    likeContainers = 22,
-    optionTopDown = 23,
-    optionTopDown_desc = 24,
-    optionKeepContainers = 25,
-    optionForbidTiles = 26,
-    optionMatchSimilar = 27,
-    optionMatchSimilar_desc = 28,
-    Projectile = 29,
-    ProjectileWeapon = 30,
-    Equipment = 31,
-    Edible = 32,
-    Raw = 33,
-    Medical = 34,
-    Potable = 35,
-    Unpotable = 36,
-    Rock = 37,
-    Poles = 38,
-    CordageAndString = 39,
-    Needlework = 40,
-    Gardening = 41,
-    Paperwork = 42,
-    MatchGroupIncludes = 43,
-    ItemGroupX = 44,
-    ItemTypeX = 45,
-    Item = 46
+    colorPrefix = 3,
+    colorMatchGroup = 4,
+    underline = 5,
+    concat = 6,
+    toX = 7,
+    fromX = 8,
+    allX = 9,
+    here = 10,
+    nearby = 11,
+    yourInventory = 12,
+    toTile = 13,
+    fromTile = 14,
+    toUnknown = 15,
+    fromUnknown = 16,
+    XOutOfY = 17,
+    mainInventory = 18,
+    fullInventory = 19,
+    deposit = 20,
+    collect = 21,
+    onlyXType = 22,
+    allTypes = 23,
+    thisContainer = 24,
+    likeContainers = 25,
+    optionTopDown = 26,
+    optionTopDown_desc = 27,
+    optionKeepContainers = 28,
+    optionForbidTiles = 29,
+    optionMatchSimilar = 30,
+    optionMatchSimilar_desc = 31,
+    Projectile = 32,
+    ProjectileWeapon = 33,
+    Equipment = 34,
+    Edible = 35,
+    Raw = 36,
+    Medical = 37,
+    Potable = 38,
+    Unpotable = 39,
+    Rock = 40,
+    Poles = 41,
+    CordageAndString = 42,
+    Needlework = 43,
+    Gardening = 44,
+    Paperwork = 45,
+    Woodwork = 46,
+    MatchGroupIncludes = 47,
+    ItemGroupX = 48,
+    ItemTypeX = 49,
+    Item = 50
 }
 declare type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionTopDown" | "optionKeepContainers" | "optionForbidTiles">;
-export declare type QSMatchableGroupKey = keyof Pick<typeof QSTranslation, "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable" | "Rock" | "Poles" | "CordageAndString" | "Needlework" | "Gardening" | "Paperwork">;
+export declare type QSMatchableGroupKey = keyof Pick<typeof QSTranslation, "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable" | "Rock" | "Poles" | "CordageAndString" | "Needlework" | "Gardening" | "Paperwork" | "Woodwork">;
 export declare const QSMatchableGroups: {
     [k in QSMatchableGroupKey]: readonly Matchable[];
 };
@@ -86,16 +92,44 @@ export default class QuickStack extends Mod {
     readonly messageNoMatch: Message;
     readonly messageNoTypeMatch: Message;
     readonly messageStackResult: Message;
-    readonly bindableSASN: Bindable;
-    readonly bindableSAMN: Bindable;
-    readonly bindableSASN_submenu: Bindable;
-    readonly bindableSAMN_submenu: Bindable;
     readonly actionStackAction: ActionType;
-    readonly UAPlaceholderAllMainNearby: UsableActionType;
-    readonly UAPlaceholderAllSelfNearby: UsableActionType;
+    readonly UAPSelf: UsableActionType;
+    readonly UAPMain: UsableActionType;
+    readonly UAPSub: UsableActionType;
+    readonly UAPHere: UsableActionType;
+    readonly UAPAlike: UsableActionType;
+    readonly UAPNearby: UsableActionType;
+    readonly UAPDepositMenu: UsableActionType;
+    readonly UAPAllSelfNearby: UsableActionType;
+    readonly UAPAllMainNearby: UsableActionType;
+    readonly UAPAllSubNearby: UsableActionType;
+    readonly UAPAllAlikeSubNearby: UsableActionType;
+    readonly UAPTypeSelfNearby: UsableActionType;
+    readonly UAPTypeMainNearby: UsableActionType;
+    readonly UAPTypeHereNearby: UsableActionType;
+    readonly UAPAllNearbySelf: UsableActionType;
+    readonly UAPAllNearbyMain: UsableActionType;
+    readonly UAPAllMainSub: UsableActionType;
+    readonly UAPAllNearbySub: UsableActionType;
+    readonly UAPTypeToHere: UsableActionType;
+    readonly UAPAllToHere: UsableActionType;
     readonly QSUsableActions: UsableActionGenerator;
+    readonly bindableSASeN: Bindable;
+    readonly bindableSAMN: Bindable;
+    readonly bindableSANSe: Bindable;
+    readonly bindableSANM: Bindable;
+    readonly bindableAll: Bindable;
+    readonly bindableType: Bindable;
+    readonly bindableSelf: Bindable;
+    readonly bindableMain: Bindable;
+    readonly bindableSub: Bindable;
+    readonly bindableAlike: Bindable;
+    readonly bindableHere: Bindable;
+    readonly bindableNearby: Bindable;
+    SASeNBind(): boolean;
     SAMNBind(): boolean;
-    SASNBind(): boolean;
+    SANSeBind(): boolean;
+    SANMBind(): boolean;
     globalData: IQSGlobalData;
     private _activeMatchGroupsArray;
     get activeMatchGroupsArray(): (readonly (Matchable)[])[];
