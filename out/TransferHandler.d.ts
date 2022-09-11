@@ -12,7 +12,7 @@ export declare function isInHeldContainer(player: Player, item: Item): boolean;
 export declare function playerHasItem(player: Player, item: Item): boolean;
 export declare function playerHasType(player: Player, type: ItemType): boolean;
 export declare function playerHeldContainers(player: Player, type?: ItemType[]): IContainer[];
-export declare function validNearby(player: Player): IContainer[];
+export declare function validNearby(player: Player, overrideForbidTiles?: boolean): IContainer[];
 export default class TransferHandler {
     readonly player: Player;
     readonly sources: ITransferTarget[];

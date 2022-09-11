@@ -34,13 +34,12 @@ export function playerHeldContainers(player: Player, type?: ItemType[]): IContai
 }
 
 // getAdjacentContainers with respect for forbidTiles option.
-export function validNearby(player: Player): IContainer[] {
+export function validNearby(player: Player, overrideForbidTiles: boolean = false): IContainer[] {
     const adj = player.island.items.getAdjacentContainers(player, false);
-    if(StaticHelper.QS_INSTANCE.globalData.optionForbidTiles)
+    if(StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !overrideForbidTiles)
         return adj.filter(c => player.island.items.getContainerReference(c, undefined).crt !== ContainerReferenceType.Tile);
     return adj;
 }
-
 
 /**
  * The catch-all class for constructing, executing, and reporting on type-match transfers to/from one or more source and destination containers.
@@ -192,8 +191,11 @@ export default class TransferHandler {
 
         const AParams = TransferHandler.setOfFlatParams(A);
         const BParams = TransferHandler.setOfFlatParams(B);
-        const fgrouped = this.groupifyParameters(filter);
-        return [...AParams].some(param => fgrouped.has(param) && BParams.has(param));
+        if(filter.length) {
+            const fgrouped = this.groupifyParameters(filter);
+            return [...AParams].some(param => fgrouped.has(param) && BParams.has(param));
+        }
+        return [...AParams].some(param => BParams.has(param));
     }
 
     /**
@@ -222,7 +224,7 @@ export default class TransferHandler {
     }
 
     public static canFitAny(src: ThingWithContents[], dest: IContainer[], player: Player, filter: IMatchParam[] = []) {
-        if(!this.hasMatch(src,dest,filter)) return false;
+        if(!this.hasMatch(src, dest, filter)) return false;
         const srcItems = src.flatMap(s => s.containedItems).filter(i => !i.isProtected() && !i.isEquipped());
         const srcParams = TransferHandler.setOfParams([{ containedItems: srcItems }]);
 
@@ -245,17 +247,16 @@ export default class TransferHandler {
             const matchParams = TransferHandler.setOfParams([d]);
             matchParams.retainWhere(p => srcParamsFlat.includes(p.group ?? p.type));
             if([...matchParams].some(param =>
-                remaining >= srcItems.reduce((w, it) => // reduce => LightestMatchedItemWeight | Infinity
+                remaining > srcItems.reduce((w, it) => // reduce => LightestMatchedItemWeight | Infinity
                     (param.type !== undefined
                         ? it.type === param.type
-                        : this.getActiveGroup(it.type) === param.group
-                        && (StaticHelper.QS_INSTANCE.globalData.optionKeepContainers
-                            ? !ItemManager.isInGroup(it.type, ItemTypeGroup.Storage)
-                            : true)
-                    ) && it.weight < w ? it.weight : w, Infinity)
-            )) return true;
+                        : (this.getActiveGroup(it.type) === param.group
+                            && (StaticHelper.QS_INSTANCE.globalData.optionKeepContainers
+                                ? !ItemManager.isInGroup(it.type, ItemTypeGroup.Storage)
+                                : true))
+                    ) && it.weight < w ? it.weight : w, Infinity))
+            ) return true;
         }
-        StaticHelper.QS_LOG.info(`CANFITANY FROM ${this.caller}: FALSE`)
         return false;
     }
 
@@ -272,7 +273,7 @@ export default class TransferHandler {
      * @param {boolean}[nested = false]
      * @returns {ITransferTarget[]}
      */
-    private resolveTargetting(target: THTargettingParam[] | IContainer[], nested: boolean = false): ITransferTarget[] {
+    private resolveTargetting(target: THTargettingParam[] | IContainer[], nested: boolean = false, overrideForbidTiles: boolean = false): ITransferTarget[] {
         // Empty input
         if(!target.length) { this._state |= THState.noTargetFlag; return []; }
 
@@ -299,7 +300,7 @@ export default class TransferHandler {
 
                 // Identify target containers
                 if('self' in p) adding = [{ container: this.player.inventory, type: ContainerReferenceType.PlayerInventory }];
-                else if('tiles' in p) adding = StaticHelper.QS_INSTANCE.globalData.optionForbidTiles ? [] : adding = nearby.filter(near => near.type === ContainerReferenceType.Tile);
+                else if('tiles' in p) adding = (StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !overrideForbidTiles) ? [] : adding = nearby.filter(near => near.type === ContainerReferenceType.Tile);
                 else if('doodads' in p) adding = nearby.filter(near => near.type === ContainerReferenceType.Doodad);
                 else adding = (Array.isArray(p.container) ? p.container : [p.container]).map(c => ({ container: c, type: this.island.items.getContainerReference(c, undefined).crt }));
 
@@ -395,8 +396,7 @@ export default class TransferHandler {
                         : (it: Item) => (it.type === match.matched.type && (StaticHelper.QS_INSTANCE.globalData.optionKeepContainers ? !ItemManager.isInGroup(it.type, ItemTypeGroup.Storage) : true));
 
                     // List of items that we should try to send.
-                    const validItems = src.container.containedItems.filter((it) => doesThisMatch(it) && !it.isProtected() && !it.isEquipped());
-
+                    const validItems = src.container.containedItems.filter((it) => doesThisMatch(it) && !it.isProtected() && !it.isEquipped()).sort((a, b) => a.weight - b.weight);
                     // Original number of these items in source
                     match.had = validItems.length;
 
@@ -418,7 +418,7 @@ export default class TransferHandler {
                             : (weightCap - itemMgr.computeContainerWeight(dest.container));
                         update = false;
 
-                        if(remaining >= it.weight) update = itemMgr.moveToContainer(this.player, it, dest.container);
+                        if(remaining > it.weight) update = itemMgr.moveToContainer(this.player, it, dest.container);
                         return update;
                     }, this);
 
@@ -635,7 +635,7 @@ export default class TransferHandler {
         this.bottomUp = (!!params.bottomUp);
 
         // Resolve target containers.
-        this.sources = this.resolveTargetting(source, true);
+        this.sources = this.resolveTargetting(source, true, true);
         this.destinations = this.resolveTargetting(dest);
 
         // Check collision

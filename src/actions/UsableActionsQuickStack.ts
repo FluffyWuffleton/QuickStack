@@ -10,7 +10,6 @@ import Dictionary from "language/Dictionary";
 import { TextContext } from "language/ITranslation";
 import { ItemDetailIconLocation } from "ui/screen/screens/game/component/Item";
 import Player from "game/entity/player/Player";
-import Item from "game/item/Item";
 import { GLOBALCONFIG } from "../StaticHelper";
 import ItemManager from "game/item/ItemManager";
 
@@ -65,7 +64,6 @@ export const UsableActionsQuickStack = new UsableActionGenerator(reg => {
 
 });
 
-
 export namespace QSSubmenu {
     // Top-level submenu for depositing.
     // Nonspecific (Q) 
@@ -82,14 +80,17 @@ export namespace QSSubmenu {
         .create({
             displayLevel: ActionDisplayLevel.Always,
             translate: (translator) => translator.name(StaticHelper.TLget("deposit")),
-            isApplicable: () => true,
-            isUsable: (player, using) => {
+            isUsable: (player, using): boolean => {
                 if(GLOBALCONFIG.force_isusable) return true;
-                return using.item
-                    ? (QSSubmenu.DepositType.get().actions[0][1] as unknown as UsableAction<{ item: true }>)
-                        .isUsable(player, { creature: using.creature, doodad: using.doodad, npc: using.npc, item: using.item, itemType: using.itemType ?? using.item.type })
-                    : (QSSubmenu.DepositAll.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>)
-                        .isUsable(player, { creature: using.creature, doodad: using.doodad, npc: using.npc, item: using.item, itemType: using.itemType })
+                return (
+                    (
+                        using.item
+                        && (QSSubmenu.DepositType.get().actions[0][1] as unknown as UsableAction<{ item: true }>)
+                            .isUsable(player, { creature: using.creature, doodad: using.doodad, npc: using.npc, item: using.item, itemType: using.itemType ?? using.item.type }).usable
+                    ) || (
+                        (QSSubmenu.DepositAll.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>)
+                            .isUsable(player, { creature: using.creature, doodad: using.doodad, npc: using.npc, item: using.item, itemType: using.itemType }).usable
+                    ));
             },
             submenu: (subreg) => {
                 // Add subsubmenu for actions that function regardless of item selection.
@@ -109,14 +110,18 @@ export namespace QSSubmenu {
             translate: (translator) => translator.name(StaticHelper.TLget("allTypes")),
             isUsable: (player, using) => {
                 if(GLOBALCONFIG.force_isusable) return true;
-                return using.item
-                    ? (StackAllSubNearby.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
-                        .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType })
-                    : using.itemType
-                        ? (StackAllAlikeSubNearby.get().actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
-                            .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType })
-                        : (StackAllSelfNearby.get().actions[0][1] as UsableAction<{}>)
-                            .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: undefined, itemType: undefined });
+                return (
+                    (using.item
+                        && (StackAllSubNearby.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
+                            .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
+                    ) || (using.itemType
+                        && (StackAllAlikeSubNearby.get().actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
+                            .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
+                    ) || (!using.item
+                        && !using.itemType
+                        && (StackAllSelfNearby.get().actions[0][1] as UsableAction<{}>)
+                            .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: undefined, itemType: undefined }).usable
+                    ));
             },
             submenu: (subreg) => {
                 StackAllSelfNearby.register(subreg);
@@ -151,7 +156,7 @@ export namespace QSSubmenu {
             isUsable: (player, using) => {
                 if(GLOBALCONFIG.force_isusable) return true;
                 return (StackTypeSelfNearby.get(true).actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
-                    .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType ?? using.item.type });
+                    .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType ?? using.item.type }).usable
             },
             submenu: (subreg) => {
                 StackTypeSelfNearby.register(subreg);
@@ -181,9 +186,8 @@ export namespace QSSubmenu {
             isApplicable: () => true,
             isUsable: (player, using) => {
                 if(GLOBALCONFIG.force_isusable) return true;
-                // The all-types submenu is the most widely applicable. If its actions aren't usable, none of the rest will be either.
-                return (QSSubmenu.CollectAll.get().actions[0][1] as UsableAction<{ item: { allowNone: true } }>).isUsable(player, using)
-                    || (QSSubmenu.CollectType.get().actions[0][1] as UsableAction<{ item: { allowNone: true } }>).isUsable(player, using);
+                return (QSSubmenu.CollectAll.get().actions[0][1] as UsableAction<{ item: { allowNone: true } }>).isUsable(player, using).usable
+                    || (QSSubmenu.CollectType.get().actions[0][1] as UsableAction<{ item: { allowNone: true } }>).isUsable(player, using).usable;
             },
             submenu: (subreg) => {
                 // Add subsubmenu for actions that function regardless of item selection.
@@ -203,7 +207,7 @@ export namespace QSSubmenu {
             translate: (translator) => translator.name(StaticHelper.TLget("allTypes")),
             isUsable: (player, using) => {
                 if(GLOBALCONFIG.force_isusable) return true;
-                return (StackAllNearbySelf.get(true).actions[0][1] as UsableAction<{ item: { allowNone: true } }>).isUsable(player, using);
+                return (StackAllNearbySelf.get().actions[0][1] as UsableAction<{ item: { allowNone: true } }>).isUsable(player, using).usable;
             },
             submenu: (subreg) => {
                 StackAllNearbySelf.register(subreg);
@@ -237,11 +241,12 @@ export namespace QSSubmenu {
                         ])
                 );
             }),
-            isApplicable: (player, using) => true,
             isUsable: (player, using) => {
                 if(GLOBALCONFIG.force_isusable) return true;
-                return (StackTypeNearbyHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: (p: Player, v: Item) => boolean } }>)
-                    .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: (p: Player, v: Item) => boolean } }>);
+                return (StackTypeNearbyHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
+                    .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: () => boolean } }>).usable
+                    || (StackTypeSelfHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
+                        .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: () => boolean } }>).usable;
             },
             submenu: (subreg) => {
                 StackTypeNearbyHere.register(subreg);
@@ -441,7 +446,7 @@ export const StackTypeSelfNearby = new UsableActionGenerator((reg, isMainReg: bo
         execute: (player, { itemType }) => executeStackAction(player,
             [{ self: true, recursive: true }],
             [{ tiles: true }, { doodads: true }],
-            [itemType])
+            [{ type: itemType }])
     })
 ));
 
@@ -474,14 +479,13 @@ export const StackTypeHereNearby = new UsableActionGenerator((reg, isMainReg: bo
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(isMainReg) return false;
             return playerHasItem(player, item)
                 && TransferHandler.canFitAny([item.containedWithin!], validNearby(player), player, [{ type: item.type }]);
         },
         execute: (player, { item }, _context) => executeStackAction(player,
             [{ container: item.containedWithin! }],
             [{ tiles: true }, { doodads: true }],
-            [item.type])
+            [{type:item.type}])
 
     })
 ));
@@ -512,8 +516,7 @@ export const StackAllNearbySelf = new UsableActionGenerator((reg, isMainReg: boo
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(isMainReg) return false;
-            return TransferHandler.hasMatch(validNearby(player), [player.inventory, ...playerHeldContainers(player)]);
+            return TransferHandler.hasMatch(validNearby(player,true), [player.inventory, ...playerHeldContainers(player)]);
         },
         execute: execSANSe
     })
@@ -546,8 +549,7 @@ export const StackAllNearbyMain = new UsableActionGenerator((reg, isMainReg: boo
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(isMainReg) return false;
-            return TransferHandler.hasMatch(validNearby(player), [player.inventory]);
+            return TransferHandler.hasMatch(validNearby(player,true), [player.inventory]);
         },
         execute: execSANM
     })
@@ -578,7 +580,6 @@ export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolea
         // },
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(isMainReg) return false;
             return TransferHandler.hasMatch([item as IContainer], [player.inventory]);
         },
         execute: (p, u) => executeStackAction(p, [{ self: true }], [{ container: u.item as IContainer }], [])
@@ -603,9 +604,8 @@ export const StackAllNearbySub = new UsableActionGenerator((reg, isMainReg: bool
         }),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(isMainReg) return false;
             return isHeldContainer(player, item)
-                && TransferHandler.canFitAny(validNearby(player), [item as IContainer], player);
+                && TransferHandler.canFitAny(validNearby(player,true), [item as IContainer], player);
         },
         execute: (p, u) => executeStackAction(p, [{ tiles: true }, { doodads: true }], [{ container: u.item as IContainer }], [])
     })
@@ -653,9 +653,8 @@ export const StackAllNearbyHere = new UsableActionGenerator((reg, isMainReg: boo
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(isMainReg) return false;
             return player.island.items.getContainerReference(item?.containedWithin, undefined).crt === ContainerReferenceType.Doodad
-                && TransferHandler.canFitAny([item.containedWithin!], validNearby(player).filter(c => c !== item.containedWithin!), player, []);
+                && TransferHandler.canFitAny([item.containedWithin!], validNearby(player,true).filter(c => c !== item.containedWithin!), player, []);
         },
         execute: (player, { item }, _context) => executeStackAction(player,
             [{ container: validNearby(player).filter(c => c !== item.containedWithin!) }],
@@ -683,7 +682,6 @@ export const StackTypeSelfHere = new UsableActionGenerator((reg, isMainReg: bool
         //isApplicable: () => true,
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(isMainReg) return false;
             if(player.island.items.getContainerReference(item.containedWithin!, undefined).crt === ContainerReferenceType.PlayerInventory)
                 return TransferHandler.hasMatch(playerHeldContainers(player), [item.containedWithin!], [{ type: item.type }]);
             else
@@ -696,7 +694,7 @@ export const StackTypeSelfHere = new UsableActionGenerator((reg, isMainReg: bool
                 ? [{ container: [player.inventory, ...playerHeldContainers(player)].filter(c => c !== item.containedWithin!) }]
                 : [{ self: true, recursive: true }],
             [{ container: item.containedWithin! }],
-            [item.type])
+            [{type:item.type}])
     })
 ));
 
@@ -718,9 +716,8 @@ export const StackTypeNearbyHere = new UsableActionGenerator((reg, isMainReg: bo
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(isMainReg) return false;
             if(player.island.items.getContainerReference(item.containedWithin!, undefined).crt === ContainerReferenceType.PlayerInventory)
-                return TransferHandler.hasMatch(validNearby(player), [item.containedWithin!], [{ type: item.type }]);
+                return TransferHandler.hasMatch(validNearby(player,true), [item.containedWithin!], [{ type: item.type }]);
             else
                 return TransferHandler.canFitAny(
                     validNearby(player).filter(c => c !== item.containedWithin!),
@@ -731,7 +728,7 @@ export const StackTypeNearbyHere = new UsableActionGenerator((reg, isMainReg: bo
                 ? [{ doodads: true }, { tiles: true }]
                 : [{ container: validNearby(player).filter(c => c !== item.containedWithin!) }],
             [{ container: item.containedWithin! }],
-            [item.type])
+            [{type:item.type}])
     })
 ));
 

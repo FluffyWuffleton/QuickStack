@@ -226,8 +226,8 @@ export default class QuickStack extends Mod {
     public readonly UAPAlike: UsableActionType;
     @Register.usableActionTypePlaceholder("Nearby")
     public readonly UAPNearby: UsableActionType;
-    
-    
+
+
     // UA Types for all actions that have an associated slottable icon.
     @Register.usableActionType("QuickStackDepositMenu")
     public readonly UAPDepositMenu: UsableActionType;
@@ -245,11 +245,11 @@ export default class QuickStack extends Mod {
     public readonly UAPTypeMainNearby: UsableActionType;
     @Register.usableActionTypePlaceholder("StackTypeHereNearby")
     public readonly UAPTypeHereNearby: UsableActionType;
-    @Register.usableActionType("StackAllNearbySelf")           
+    @Register.usableActionType("StackAllNearbySelf")
     public readonly UAPAllNearbySelf: UsableActionType;
     @Register.usableActionTypePlaceholder("StackAllNearbyMain")
     public readonly UAPAllNearbyMain: UsableActionType;
-    @Register.usableActionTypePlaceholder("StackAllMainSub") 
+    @Register.usableActionTypePlaceholder("StackAllMainSub")
     public readonly UAPAllMainSub: UsableActionType;
     @Register.usableActionTypePlaceholder("StackAllNearbySub")
     public readonly UAPAllNearbySub: UsableActionType;
@@ -269,7 +269,7 @@ export default class QuickStack extends Mod {
     public readonly bindableSASeN: Bindable;
     @Register.bindable("StackAllMainNearby")
     public readonly bindableSAMN: Bindable;
-    
+
     @Register.bindable("StackAllNearbySelf", IInput.key("slash", "Shift", "Ctrl"))
     public readonly bindableSANSe: Bindable;
     @Register.bindable("StackAllNearbyMain")
@@ -292,7 +292,7 @@ export default class QuickStack extends Mod {
     public readonly bindableHere: Bindable;
     @Register.bindable("Nearby", IInput.key("n")) // for actions to/from nearby
     public readonly bindableNearby: Bindable;
-    
+
 
     @Bind.onDown(Registry<QuickStack>().get("bindableSASeN"))
     public SASeNBind(): boolean { return !execSASeN(localPlayer); }
@@ -305,7 +305,7 @@ export default class QuickStack extends Mod {
 
     @Bind.onDown(Registry<QuickStack>().get("bindableSANM"))
     public SANMBind(): boolean { return !execSANM(localPlayer); }
-    
+
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Global data, helper data, and refresh methods
@@ -347,10 +347,12 @@ export default class QuickStack extends Mod {
                 )];
             }
         });
-        QuickStack.LOG.info(`Updated match groups.`);
-        console.log(this._activeMatchGroupsArray);
-        console.log(this._activeMatchGroupsKeys);
-        console.log(this._activeMatchGroupsFlattened)
+        if(GLOBALCONFIG.log_info) {
+            QuickStack.LOG.info(`Updated match groups.`);
+            console.log(this._activeMatchGroupsArray);
+            console.log(this._activeMatchGroupsKeys);
+            console.log(this._activeMatchGroupsFlattened);
+        }
     }
     public override onInitialize(): any {
         this.refreshMatchGroupsArray();
