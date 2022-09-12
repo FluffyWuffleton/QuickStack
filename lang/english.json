@@ -51,7 +51,7 @@
             "optionTopDown": "Top-down transfer priority",
             "optionKeepContainers": "Never move containers",
             "optionForbidTiles": "No ground-targetting",
-            "optionTopDown_desc": "In transfers that operate across multiple nested source containers (e.g. \"Deposit from full inventory\"), what should be the order of transfers?\nBottom-Up: subcontainer content goes first.\nTop-down: parent-container content goes first.\nThis mainly affects behavior when a subcontainer item itself is a valid match to be transferred...\n  Bottom-up means any valid bag contents will be transferred OUT of the bag before the bag itself is moved.\n  Top-down means the bag itself will be transferred (if possible), in which case its contents are untouched.\nNote that an equipped bag will never be transferred (though its contents might), and no bags will ever be transfered with the \"never move containers\" option set.",
+            "optionTopDown_desc": "In transfers that operate across multiple nested source containers (e.g. \"Deposit from full inventory\"), what should be the order of transfers?\n- Bottom-Up: subcontainer content goes first.\n- Top-down: parent-container content goes first.\n\nThis mainly affects behavior when a subcontainer item itself is a valid match to be transferred...\n- Bottom-up means any valid bag contents will be transferred OUT of the bag before the bag itself is moved.\n- Top-down means the bag itself will be transferred (if possible), in which case its contents are untouched.\n\nNote that an equipped bag will never be transferred (though its contents might), and no bags will ever be transfered with the \"never move containers\" option set.",
             "optionMatchSimilar": "Match similar item groups...",
             "optionMatchSimilar_desc": "For any group selected below, all items within that group will be treated as a single type for stacking.",
 
@@ -66,7 +66,7 @@
             "Unpotable": "Unpotable Water",
             "Rock": "Rock",
             "Poles": "Pole",
-            "CordageAndString": "Cordage and String",
+            "Fastening": "Fastening",
             "Needlework": "Needlework",
             "Gardening": "Gardening",
             "Paperwork": "Paperwork",

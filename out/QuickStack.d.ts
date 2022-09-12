@@ -11,7 +11,7 @@ import { Delay } from "game/entity/IHuman";
 import { ItemType } from "game/item/IItem";
 import { Matchable } from "./ITransferHandler";
 export declare namespace GLOBALCONFIG {
-    const log_info: false;
+    const log_info: true;
     const pause_length: Delay.ShortPause;
     const pass_turn_success: false;
     const force_isusable: false;
@@ -59,7 +59,7 @@ export declare enum QSTranslation {
     Unpotable = 39,
     Rock = 40,
     Poles = 41,
-    CordageAndString = 42,
+    Fastening = 42,
     Needlework = 43,
     Gardening = 44,
     Paperwork = 45,
@@ -69,8 +69,9 @@ export declare enum QSTranslation {
     ItemTypeX = 49,
     Item = 50
 }
-declare type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionTopDown" | "optionKeepContainers" | "optionForbidTiles">;
-export declare type QSMatchableGroupKey = keyof Pick<typeof QSTranslation, "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable" | "Rock" | "Poles" | "CordageAndString" | "Needlework" | "Gardening" | "Paperwork" | "Woodwork">;
+export declare type QSTranslationKey = keyof typeof QSTranslation;
+declare type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionForbidTiles" | "optionKeepContainers" | "optionTopDown">;
+export declare type QSMatchableGroupKey = keyof Pick<typeof QSTranslation, "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable" | "Rock" | "Poles" | "Fastening" | "Needlework" | "Gardening" | "Paperwork" | "Woodwork">;
 export declare const QSMatchableGroups: {
     [k in QSMatchableGroupKey]: readonly Matchable[];
 };
@@ -81,7 +82,9 @@ export declare const activeGroupKeyPrefix: "isActive_";
 export declare type IQSGlobalData = {
     [k in QSToggleOptionKey]: boolean;
 } & {
-    [k in `${typeof activeGroupKeyPrefix}${QSMatchableGroupKey}`]: boolean;
+    activeMatchGroups: {
+        [k in QSMatchableGroupKey]: boolean;
+    };
 };
 export default class QuickStack extends Mod {
     static readonly INSTANCE: QuickStack;
@@ -118,6 +121,10 @@ export default class QuickStack extends Mod {
     readonly bindableSAMN: Bindable;
     readonly bindableSANSe: Bindable;
     readonly bindableSANM: Bindable;
+    SASeNBind(): boolean;
+    SAMNBind(): boolean;
+    SANSeBind(): boolean;
+    SANMBind(): boolean;
     readonly bindableAll: Bindable;
     readonly bindableType: Bindable;
     readonly bindableSelf: Bindable;
@@ -126,19 +133,17 @@ export default class QuickStack extends Mod {
     readonly bindableAlike: Bindable;
     readonly bindableHere: Bindable;
     readonly bindableNearby: Bindable;
-    SASeNBind(): boolean;
-    SAMNBind(): boolean;
-    SANSeBind(): boolean;
-    SANMBind(): boolean;
     globalData: IQSGlobalData;
-    private _activeMatchGroupsArray;
-    get activeMatchGroupsArray(): (readonly (Matchable)[])[];
-    private _activeMatchGroupsKeys;
-    get activeMatchGroupsKeys(): QSMatchableGroupKey[];
+    initializeGlobalData(data?: IQSGlobalData): IQSGlobalData;
+    freshGlobalData(): IQSGlobalData;
+    onInitialize(): void;
     private _activeMatchGroupsFlattened;
     get activeMatchGroupsFlattened(): QSMatchableGroupsFlatType;
+    private _activeMatchGroupsKeys;
+    get activeMatchGroupsKeys(): QSMatchableGroupKey[];
+    private _anyMatchgroupsActive;
+    get anyMatchgroupsActive(): boolean;
     refreshMatchGroupsArray(): void;
-    onInitialize(): any;
     constructOptionsSection(section: Component): void;
 }
 export {};

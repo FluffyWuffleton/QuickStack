@@ -12,6 +12,7 @@ export default class StaticHelper {
     @Mod.log("Quick Stack")
     public static readonly QS_LOG: Log;
 
+
     public static QSdict() { return QuickStack.INSTANCE.dictionary; }
     public static TLget(id: keyof typeof QSTranslation): Translation { return Translation.get(QuickStack.INSTANCE.dictionary, QSTranslation[id]); }
     public static TLFromTo(

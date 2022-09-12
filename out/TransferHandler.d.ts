@@ -49,6 +49,6 @@ export default class TransferHandler {
         failed: boolean;
     }, suppress?: {
         report?: true;
-        delay: true;
-    }): void;
+        delay?: true;
+    }): boolean;
 }

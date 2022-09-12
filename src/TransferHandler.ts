@@ -98,10 +98,9 @@ export default class TransferHandler {
      * @returns {Set<QSMatchableGroupKey>}
      */
     private static setOfActiveGroups(Types: Set<ItemType> | ItemType[]): Set<QSMatchableGroupKey> {
-        if(!StaticHelper.QS_INSTANCE.activeMatchGroupsArray.length) return new Set<QSMatchableGroupKey>();
+        if(!StaticHelper.QS_INSTANCE.anyMatchgroupsActive) return new Set<QSMatchableGroupKey>();
         const MGKeySet = new Set<QSMatchableGroupKey>(StaticHelper.QS_INSTANCE.activeMatchGroupsKeys);
         const mset = new Set<Matchable>([...Types, ...[...Types].flatMap(t => ItemManager.getGroups(t))]);
-
         MGKeySet.retainWhere(KEY => {
             for(const matchable of QSMatchableGroups[KEY]) if(mset.has(matchable)) return true;
             return false;
@@ -372,13 +371,11 @@ export default class TransferHandler {
                 if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers)
                     thisPairing.matches = thisPairing.matches.filter(m => m.matched.type === undefined ? true : !itemMgr.isInGroup(m.matched.type, ItemTypeGroup.Storage));
 
-                // If any matches are group-based, remove any type-based matches of the group's itemtypes to avoid redundancy.
-                for(const m of [...thisPairing.matches])
-                    if(m.matched.group !== undefined)
-                        thisPairing.matches = thisPairing.matches.filter(oldm => {
-                            if(oldm.matched.type === undefined) return true;
-                            return TransferHandler.getActiveGroup(oldm.matched.type) === m.matched.group;
-                        });
+                // If any matches are group-based, remove type-based matches that overlap with that group to avoid redundancy.
+                for(const origMatch of [...thisPairing.matches.filter(m => m.matched.group !== undefined)])
+                    thisPairing.matches = thisPairing.matches.filter(m =>
+                        (m.matched.type === undefined) || TransferHandler.getActiveGroup(m.matched.type) !== origMatch.matched.group)
+
 
                 // We'll want to keep track of any matches caused exclusively by protected/equipped items when drawing from player inventory,
                 // No action will be taken for these matches, and we'll want to remove the pairing from executionResults before returning.
@@ -392,8 +389,9 @@ export default class TransferHandler {
                 thisPairing.matches.forEach((match, k) => {
                     const isGroupMatch = match.matched.group !== undefined;
                     const doesThisMatch = isGroupMatch
-                        ? (it: Item) => (StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[match.matched.group!]!.includes(it.type))
-                        : (it: Item) => (it.type === match.matched.type && (StaticHelper.QS_INSTANCE.globalData.optionKeepContainers ? !ItemManager.isInGroup(it.type, ItemTypeGroup.Storage) : true));
+                        ? (it: Item) => StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[match.matched.group!]!.includes(it.type)
+                            && (!StaticHelper.QS_INSTANCE.globalData.optionKeepContainers || !ItemManager.isInGroup(it.type, ItemTypeGroup.Storage))
+                        : (it: Item) => (it.type === match.matched.type);
 
                     // List of items that we should try to send.
                     const validItems = src.container.containedItems.filter((it) => doesThisMatch(it) && !it.isProtected() && !it.isEquipped()).sort((a, b) => a.weight - b.weight);
@@ -476,6 +474,8 @@ export default class TransferHandler {
 
         // Handle each top-level source.
         this.sources.forEach(s => handleSource(s), this);
+
+        this.player.updateTablesAndWeight("Quick Stack");
 
         this._state = THState.complete;
         return this._state;
@@ -655,8 +655,8 @@ export default class TransferHandler {
         filterTypes?: IMatchParam[] | undefined,
         log?: Log,
         successFlag?: { failed: boolean; },
-        suppress?: { report?: true, delay: true; }
-    ): void {
+        suppress?: { report?: true, delay?: true; }
+    ): boolean {
         const thisfcn = `${TransferHandler.MakeAndRun.name} :: `;
         const t0 = performance.now();
         log?.info(`${thisfcn}Constructing TransferHandler.Timestamp ${t0} `);
@@ -669,7 +669,7 @@ export default class TransferHandler {
         if(handler.state & THState.error) { // Initialization error
             log?.error(`${thisfcn}Error flag in handler after construction.Code ${handler.state.toString(2)} `);
             if(successFlag) successFlag.failed = true;
-            return;
+            return false;
         }
 
         if(log) {
@@ -696,24 +696,20 @@ export default class TransferHandler {
         if(handler.executeTransfer(log) & THState.error) {
             log?.error(`${thisfcn}Error flag in handler during execution.Code ${handler.state.toString(2)} `);
             if(successFlag) successFlag.failed = true;
-            return;
+            return false;
         }
 
         // Transfer complete. Send messages. Unless we're not.
         if(suppress?.report) log?.info(`${thisfcn}Message reporting suppressed`);
         else if(!handler.reportMessages(player, /* log */)) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
 
-        if(handler.anySuccess || handler.anyPartial) {
-            if(!suppress?.delay) player.addDelay(GLOBALCONFIG.pause_length);
-            if(GLOBALCONFIG.pass_turn_success) game.passTurn(player);
-            else {
-                player.updateTablesAndWeight("Quick Stack");
-
-            }
-            if(successFlag) successFlag.failed = false;
-        }
-
         const t1 = performance.now();
         log?.info(`${thisfcn} Complete.Timestamp ${t1}. Elapsed ${t1 - t0} `);
+
+        if(handler.anySuccess || handler.anyPartial) {
+            if(successFlag) successFlag.failed = false;
+            return true;
+        }
+        return false;
     }
 }
