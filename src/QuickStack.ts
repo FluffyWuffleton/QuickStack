@@ -81,7 +81,8 @@ export enum QSTranslation {
     Poles,
     Fastening,
     Needlework,
-    Gardening,
+    Seeds,
+    Fertilizer,
     Paperwork,
     Woodwork,
 
@@ -98,7 +99,7 @@ type QSToggleOptionKey = keyof Pick<typeof QSTranslation,
 // A collection of custom groupings for similar-item match options.
 export type QSMatchableGroupKey = keyof Pick<typeof QSTranslation,
     "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable"
-    | "Rock" | "Poles" | "Fastening" | "Needlework" | "Gardening" | "Paperwork" | "Woodwork">;
+    | "Rock" | "Poles" | "Fastening" | "Needlework" | "Seeds" | "Fertilizer" | "Paperwork" | "Woodwork">;
 
 export const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly Matchable[] } = {
     Projectile: [
@@ -148,14 +149,19 @@ export const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly Matchable
         ItemType.LeatherHide,
         ItemType.TannedLeather,
         ItemType.Scales],
-    Gardening: [
+    Seeds: [
         ItemTypeGroup.Seed,
-        ItemTypeGroup.Spores,
-        ItemTypeGroup.Compost,
+        ItemTypeGroup.Spores],
+    Fertilizer: [
+        ItemType.AnimalDung,
+        ItemType.AnimalDroppings,
+        ItemType.BirdDroppings,
+        ItemType.Guano,
         ItemType.PileOfCompost,
         ItemType.BoneMeal,
         ItemType.PileOfAsh,
         ItemType.Fertilizer,
+        ItemType.Soil,
         ItemType.FertileSoil],
     Paperwork: [
         ItemTypeGroup.Pulp,
@@ -329,7 +335,7 @@ export default class QuickStack extends Mod {
         });
         return retData;
     }
-    
+
     public freshGlobalData(): IQSGlobalData {
         return {
             optionTopDown: false,

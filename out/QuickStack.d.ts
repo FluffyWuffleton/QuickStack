@@ -61,17 +61,18 @@ export declare enum QSTranslation {
     Poles = 41,
     Fastening = 42,
     Needlework = 43,
-    Gardening = 44,
-    Paperwork = 45,
-    Woodwork = 46,
-    MatchGroupIncludes = 47,
-    ItemGroupX = 48,
-    ItemTypeX = 49,
-    Item = 50
+    Seeds = 44,
+    Fertilizer = 45,
+    Paperwork = 46,
+    Woodwork = 47,
+    MatchGroupIncludes = 48,
+    ItemGroupX = 49,
+    ItemTypeX = 50,
+    Item = 51
 }
 export declare type QSTranslationKey = keyof typeof QSTranslation;
 declare type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionForbidTiles" | "optionKeepContainers" | "optionTopDown">;
-export declare type QSMatchableGroupKey = keyof Pick<typeof QSTranslation, "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable" | "Rock" | "Poles" | "Fastening" | "Needlework" | "Gardening" | "Paperwork" | "Woodwork">;
+export declare type QSMatchableGroupKey = keyof Pick<typeof QSTranslation, "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable" | "Rock" | "Poles" | "Fastening" | "Needlework" | "Seeds" | "Fertilizer" | "Paperwork" | "Woodwork">;
 export declare const QSMatchableGroups: {
     [k in QSMatchableGroupKey]: readonly Matchable[];
 };
