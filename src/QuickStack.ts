@@ -82,7 +82,7 @@ export enum QSTranslation {
     Fastening,
     Needlework,
     Seeds,
-    Fertilizer,
+    Fertilizing,
     Paperwork,
     Woodwork,
 
@@ -99,7 +99,7 @@ type QSToggleOptionKey = keyof Pick<typeof QSTranslation,
 // A collection of custom groupings for similar-item match options.
 export type QSMatchableGroupKey = keyof Pick<typeof QSTranslation,
     "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable"
-    | "Rock" | "Poles" | "Fastening" | "Needlework" | "Seeds" | "Fertilizer" | "Paperwork" | "Woodwork">;
+    | "Rock" | "Poles" | "Fastening" | "Needlework" | "Seeds" | "Fertilizing" | "Paperwork" | "Woodwork">;
 
 export const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly Matchable[] } = {
     Projectile: [
@@ -152,7 +152,7 @@ export const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly Matchable
     Seeds: [
         ItemTypeGroup.Seed,
         ItemTypeGroup.Spores],
-    Fertilizer: [
+    Fertilizing: [
         ItemType.AnimalDung,
         ItemType.AnimalDroppings,
         ItemType.BirdDroppings,
