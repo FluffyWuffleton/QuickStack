@@ -592,7 +592,7 @@ export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolea
         // },
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            return TransferHandler.hasMatch([item as IContainer], [player.inventory]);
+            return TransferHandler.canFitAny([player.inventory], [item as IContainer], player);
         },
         execute: (p, u) => executeStackAction(p, [{ self: true }], [{ container: u.item as IContainer }], [])
     })
