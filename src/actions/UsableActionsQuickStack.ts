@@ -219,6 +219,9 @@ export namespace QSSubmenu {
                         ||
                         (StackAllSelfHere.get().actions[0][1] as UsableAction<{ item: true }>)
                             .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
+                        ||
+                        (StackAllMainSub.get().actions[0][1] as UsableAction<{ item: true }>)
+                            .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
                     )
                 ),
             submenu: (subreg) => {
@@ -592,7 +595,8 @@ export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolea
         // },
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            return TransferHandler.canFitAny([player.inventory], [item as IContainer], player);
+            if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info("StackAllMainSub::isUsable");
+            return playerHasItem(player, item) && TransferHandler.canFitAny([player.inventory], [item as IContainer], player);
         },
         execute: (p, u) => executeStackAction(p, [{ self: true }], [{ container: u.item as IContainer }], [])
     })
