@@ -10,12 +10,34 @@ import { IVector3 } from "utilities/math/IVector";
 
 import { IMatchParamSet } from "./QSMatchGroups";
 
-export type ILocalStorageCache =
-    {
-        localPlayer: StorageCachePlayer
-    } & {
-        nearby: (StorageCacheTile | StorageCacheDoodad)[];
-    };
+export class ILocalStorageCache {
+    private _localPlayer: StorageCachePlayer;
+    private _nearby: (StorageCacheTile | StorageCacheDoodad)[];
+    private _nearbyFlat: IMatchParamSet;
+    private _upToDate: boolean = false;
+
+    public get localPlayer(): StorageCachePlayer { return this._localPlayer; }
+    public get nearby(): (StorageCacheTile | StorageCacheDoodad)[] { return this._nearby; }
+    public get nearbyFlat(): IMatchParamSet {
+        if(!this._upToDate) {
+            this._nearbyFlat = this._nearby.reduce((out, n) => {
+                out.types.addFrom(n.unrolled.types);
+                out.groups.addFrom(n.unrolled.groups);
+                return out;
+            }, {
+                types: new Set<ItemType>,
+                groups: new Set<ItemTypeGroup>
+            });
+        }
+        return this._nearbyFlat;
+    }
+
+    public set localPlayer(val: StorageCachePlayer) { this._localPlayer = val; this._upToDate = false; }
+    public set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]) { this._nearby = value; this._upToDate = false; }
+
+
+
+};
 
 type StorageCacheEntityType = Item | Player | Doodad | ITile;
 
@@ -51,14 +73,14 @@ export abstract class StorageCache<T extends StorageCacheEntityType> {
 
     public abstract refresh(): void;
 
-    protected constructor(e: T) {
+    constructor(e: T) {
         this.entity = e;
         this.refresh();
     }
 };
 
 export module StorageCache {
-    declare function is<WHAT extends StorageCacheEntityType>(val: unknown): val is
+    export declare function is<WHAT extends StorageCacheEntityType>(val: unknown): val is
         WHAT extends Item ? StorageCacheItem
         : WHAT extends Player ? StorageCachePlayer
         : WHAT extends ITile ? StorageCacheTile
@@ -101,7 +123,7 @@ abstract class StorageCacheNearby<T extends ITile | Doodad> extends StorageCache
     }
 }
 
-class StorageCacheItem extends StorageCache<Item> { public refresh() { this.refreshFromArray(this.entity.containedItems ?? []); } }
-class StorageCachePlayer extends StorageCache<Player> { public refresh() { this.refreshFromArray(this.entity.inventory.containedItems); } }
-class StorageCacheTile extends StorageCacheNearby<ITile> { public refreshRelation(): boolean { return super.refreshRelationFromPos(((a: number[]) => ({ x: a[0], y: a[1], z: a[2] })).call(this, getTilePosition(this.entity.data))); } }
-class StorageCacheDoodad extends StorageCacheNearby<Doodad> { public refreshRelation(): boolean { return super.refreshRelationFromPos({ x: this.entity.x, y: this.entity.y, z: this.entity.z }); } }
+export class StorageCacheItem extends StorageCache<Item> { public refresh() { this.refreshFromArray(this.entity.containedItems ?? []); } }
+export class StorageCachePlayer extends StorageCache<Player> { public refresh() { this.refreshFromArray(this.entity.inventory.containedItems); } }
+export class StorageCacheTile extends StorageCacheNearby<ITile> { public refreshRelation(): boolean { return super.refreshRelationFromPos(((a: number[]) => ({ x: a[0], y: a[1], z: a[2] })).call(this, getTilePosition(this.entity.data))); } }
+export class StorageCacheDoodad extends StorageCacheNearby<Doodad> { public refreshRelation(): boolean { return super.refreshRelationFromPos({ x: this.entity.x, y: this.entity.y, z: this.entity.z }); } }
