@@ -17,7 +17,7 @@ import { CheckButton } from "ui/component/CheckButton";
 import Translation from "language/Translation";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
-import { ItemType, ItemTypeGroup } from "game/item/IItem";
+import { ContainerReferenceType, ItemType, ItemTypeGroup, SYMBOL_CONTAINER_CACHED_REFERENCE } from "game/item/IItem";
 import Details from "ui/component/Details";
 import ItemManager from "game/item/ItemManager";
 import Text from "ui/component/Text";
@@ -34,10 +34,9 @@ import Island from "game/island/Island";
 import { TileUpdateType } from "game/IGame"
 import Multiplayer from "multiplayer/Multiplayer";
 
-declare function is<T>(val: unknown): val is T;
 
 export namespace GLOBALCONFIG {
-    export const log_info = false as const;
+    export const log_info = true as const;
     export const pause_length = Delay.ShortPause as const;
     export const pass_turn_success = false as const;
     export const force_isusable = false as const;
@@ -94,6 +93,32 @@ export default class QuickStack extends Mod {
     public static readonly INSTANCE: QuickStack;
     @Mod.log()
     public static readonly LOG: Log;
+
+    private _localPlayerCache: ILocalStorageCache;
+    public get localPlayerCache() { return this._localPlayerCache; }
+
+    
+    @EventHandler(EventBus.LocalPlayer, "moveComplete")
+    protected moveComplete() { this.updateLPCNearby(); }
+
+    private updateLPCNearby() {
+        this._localPlayerCache.nearby.map((n,i) => n.refreshRelation() ? undefined : i).filterNullish().reverse().forEach(removeIdx => {
+            const removed = this._localPlayerCache.nearby.splice(removeIdx,1)[0];
+
+    })
+
+        const nearEntities = this._localPlayerCache.nearby.map(n => n.entity);
+        localPlayer.island.items.getAdjacentContainers(localPlayer, false).forEach(c => {
+            const resolved = localPlayer.island.items.resolveContainer(c);
+            const isTile = is<ITile>(resolved);
+            if(!isTile && !is<Doodad>(resolved)) return;
+            if(nearEntities.includes(resolved)) return;
+            this._localPlayerCache.nearby.push(isTile ? new StorageCacheTile(resolved) : new StorageCacheDoodad(resolved));
+            if(isTile) 
+                EventManager.subscribe(localPlayer.island.items.getContainer(...getTilePosition(resolved.data), resolved), ""
+
+        });
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Dictionary
