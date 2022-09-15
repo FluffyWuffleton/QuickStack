@@ -17,14 +17,22 @@ import { CheckButton } from "ui/component/CheckButton";
 import Translation from "language/Translation";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
-import { ItemType, ItemTypeGroup } from "game/item/IItem";
+import { ContainerReferenceType, ItemType, ItemTypeGroup, SYMBOL_CONTAINER_CACHED_REFERENCE } from "game/item/IItem";
 import Details from "ui/component/Details";
 import ItemManager from "game/item/ItemManager";
 import Text from "ui/component/Text";
 import { TooltipLocation } from "ui/component/IComponent";
 import listSegment from "language/segment/ListSegment";
 import { QSMatchableGroupKey, QSMatchableGroups, QSGroupsTranslation, QSMatchableGroupsFlatType, QSGroupsTranslationKey } from "./QSMatchGroups";
+import { ILocalStorageCache, StorageCache, StorageCacheDoodad, StorageCacheTile } from "./IStorageCache";
+import EventManager, { EventHandler } from "event/EventManager";
+import { EventBus } from "event/EventBuses";
+import { ITile } from "game/tile/ITerrain";
+import Doodad from "game/doodad/Doodad";
+import ModManager from "mod/ModManager";
+import { getTilePosition } from "utilities/game/TilePosition";
 
+declare function is<T>(val: unknown): val is T;
 
 export namespace GLOBALCONFIG {
     export const log_info = false as const;
@@ -86,21 +94,39 @@ export default class QuickStack extends Mod {
     public static readonly INSTANCE: QuickStack;
     @Mod.log()
     public static readonly LOG: Log;
+
+    private _localPlayerCache: ILocalStorageCache;
+    public get localPlayerCache() { return this._localPlayerCache; }
+
     
-    // private _localPlayerCache
+    @EventHandler(EventBus.LocalPlayer, "moveComplete")
+    protected moveComplete() { this.updateLPCNearby(); }
 
-    // @EventHandler(EventBus.LocalPlayer, "moveComplete")
-    // private moveComplete() { }
-    // public function playerJoin
+    private updateLPCNearby() {
+        this._localPlayerCache.nearby.map((n,i) => n.refreshRelation() ? undefined : i).filterNullish().reverse().forEach(removeIdx => {
+            const removed = this._localPlayerCache.nearby.splice(removeIdx,1)[0];
 
-    //@
+    })
+
+        const nearEntities = this._localPlayerCache.nearby.map(n => n.entity);
+        localPlayer.island.items.getAdjacentContainers(localPlayer, false).forEach(c => {
+            const resolved = localPlayer.island.items.resolveContainer(c);
+            const isTile = is<ITile>(resolved);
+            if(!isTile && !is<Doodad>(resolved)) return;
+            if(nearEntities.includes(resolved)) return;
+            this._localPlayerCache.nearby.push(isTile ? new StorageCacheTile(resolved) : new StorageCacheDoodad(resolved));
+            if(isTile) 
+                EventManager.subscribe(localPlayer.island.items.getContainer(...getTilePosition(resolved.data), resolved), ""
+
+        });
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Dictionary
     @Register.dictionary("MainDictionary", QSTranslation)
     public readonly dictMain: Dictionary;
     private readonly TLGetMain = (id: QSTranslationKey) => Translation.get(this.dictMain, QSTranslation[id]);
-    
+
     @Register.dictionary("GroupsDictionary", QSGroupsTranslation)
     public readonly dictGroups: Dictionary
     private readonly TLGetGroup = (id: QSGroupsTranslationKey) => Translation.get(this.dictGroups, QSGroupsTranslation[id]);
