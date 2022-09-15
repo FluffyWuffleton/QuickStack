@@ -12,7 +12,6 @@ export default class StaticHelper {
     public static readonly QS_INSTANCE: QuickStack;
     @Mod.log("Quick Stack")
     public static readonly QS_LOG: Log;
-
     
     //public static get QSDict() { return QuickStack.INSTANCE.dictMain; }
     //public static get QSGroupsDict() { return QuickStack.INSTANCE.}
