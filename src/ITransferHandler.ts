@@ -1,12 +1,6 @@
-import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
-import { QSMatchableGroupKey } from "./StaticHelper";
+import { ContainerReferenceType, IContainer } from "game/item/IItem";
+import { IMatchParam } from "./QSMatchGroups";
 
-/* export enum TransferCompleteness {
-    none = 0,
-    some = 1,
-    all = 2
-}
- */
 
 // Bitmap flags indicating the state of a TransferHandler object.
 export enum THState {
@@ -36,15 +30,6 @@ export interface ITHTargetDoodads extends ITHTargetRecursive { doodads: true; };
 export interface ITHTargetSpecific extends ITHTargetRecursive { container: IContainer | IContainer[] };
 
 export type THTargettingParam = (ITHTargetSelf) | (ITHTargetTiles) | (ITHTargetDoodads) | (ITHTargetSpecific);
-
-
-interface IMatchByType { type: ItemType, group?: never };
-interface IMatchByGroup { type?: never, group: QSMatchableGroupKey };
-export type IMatchParam = IMatchByType | IMatchByGroup;
-export type Matchable = ItemType | ItemTypeGroup;
-
-//export type MatchableGroups<K extends MatchableFields> = (K extends "group" ? ItemTypeGroup : never);
-//export type Matchable<K extends MatchableFields, G extends MatchableGroups<K> = MatchableGroups<K>> = ((K extends "type" ? ItemType : never) | (K extends "group" ? G : never));
 
 
 /**

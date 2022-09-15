@@ -8,8 +8,7 @@ import Dictionary from "language/Dictionary";
 import Component from "ui/component/Component";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
-import { ItemType } from "game/item/IItem";
-import { Matchable } from "./ITransferHandler";
+import { QSMatchableGroupKey, QSMatchableGroupsFlatType } from "./QSMatchGroups";
 export declare namespace GLOBALCONFIG {
     const log_info: true;
     const pause_length: Delay.ShortPause;
@@ -48,37 +47,10 @@ export declare enum QSTranslation {
     optionKeepContainers = 28,
     optionForbidTiles = 29,
     optionMatchSimilar = 30,
-    optionMatchSimilar_desc = 31,
-    Projectile = 32,
-    ProjectileWeapon = 33,
-    Equipment = 34,
-    Edible = 35,
-    Raw = 36,
-    Medical = 37,
-    Potable = 38,
-    Unpotable = 39,
-    Rock = 40,
-    Poles = 41,
-    Fastening = 42,
-    Needlework = 43,
-    Seeds = 44,
-    Fertilizing = 45,
-    Paperwork = 46,
-    Woodwork = 47,
-    MatchGroupIncludes = 48,
-    ItemGroupX = 49,
-    ItemTypeX = 50,
-    Item = 51
+    optionMatchSimilar_desc = 31
 }
 export declare type QSTranslationKey = keyof typeof QSTranslation;
 declare type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionForbidTiles" | "optionKeepContainers" | "optionTopDown">;
-export declare type QSMatchableGroupKey = keyof Pick<typeof QSTranslation, "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable" | "Rock" | "Poles" | "Fastening" | "Needlework" | "Seeds" | "Fertilizing" | "Paperwork" | "Woodwork">;
-export declare const QSMatchableGroups: {
-    [k in QSMatchableGroupKey]: readonly Matchable[];
-};
-export declare type QSMatchableGroupsFlatType = {
-    [k in QSMatchableGroupKey]?: ItemType[];
-};
 export declare const activeGroupKeyPrefix: "isActive_";
 export declare type IQSGlobalData = {
     [k in QSToggleOptionKey]: boolean;
@@ -90,8 +62,10 @@ export declare type IQSGlobalData = {
 export default class QuickStack extends Mod {
     static readonly INSTANCE: QuickStack;
     static readonly LOG: Log;
-    readonly dictionary: Dictionary;
-    private readonly TLget;
+    readonly dictMain: Dictionary;
+    private readonly TLGetMain;
+    readonly dictGroups: Dictionary;
+    private readonly TLGetGroup;
     readonly messageSearch: Message;
     readonly messageNoMatch: Message;
     readonly messageNoTypeMatch: Message;

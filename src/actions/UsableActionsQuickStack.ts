@@ -1,17 +1,17 @@
-import UsableAction, { IUsableActionUsing } from "game/entity/action/usable/UsableAction";
-import StaticHelper from "../StaticHelper";
-import { executeStackAction, executeStackAction_notify } from "./Actions";
 import { ActionDisplayLevel } from "game/entity/action/IAction";
+import UsableAction, { IUsableActionUsing } from "game/entity/action/usable/UsableAction";
 import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
-import Translation from "language/Translation";
-import TransferHandler, { playerHeldContainers, isHeldContainer, playerHasItem, playerHasType, validNearby, isStorageType } from "../TransferHandler";
+import Player from "game/entity/player/Player";
 import { ContainerReferenceType, IContainer, ItemTypeGroup } from "game/item/IItem";
+import ItemManager from "game/item/ItemManager";
 import Dictionary from "language/Dictionary";
 import { TextContext } from "language/ITranslation";
+import Translation from "language/Translation";
 import { ItemDetailIconLocation } from "ui/screen/screens/game/component/Item";
-import Player from "game/entity/player/Player";
-import { GLOBALCONFIG } from "../StaticHelper";
-import ItemManager from "game/item/ItemManager";
+
+import StaticHelper, { GLOBALCONFIG } from "../StaticHelper";
+import TransferHandler, { isHeldContainer, isStorageType, playerHasItem, playerHasType, playerHeldContainers, validNearby } from "../TransferHandler";
+import { executeStackAction, executeStackAction_notify } from "./Actions";
 
 // isApplicable should return true if the action can accept that type of item
 // and isUsable should return true if it can actually be performed right now
@@ -61,7 +61,6 @@ export const UsableActionsQuickStack = new UsableActionGenerator(reg => {
     StackAllNearbyHere.register(reg, true);
     StackTypeNearbyHere.register(reg, true);
     StackTypeSelfHere.register(reg, true);
-
 });
 
 export namespace QSSubmenu {
@@ -79,7 +78,7 @@ export namespace QSSubmenu {
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
             displayLevel: ActionDisplayLevel.Always,
-            translate: (translator) => translator.name(StaticHelper.TLget("deposit")),
+            translate: (translator) => translator.name(StaticHelper.TLMain("deposit")),
             isUsable: (player, using): boolean => {
                 if(GLOBALCONFIG.force_isusable) return true;
                 return (
@@ -107,7 +106,7 @@ export namespace QSSubmenu {
         .create({
             displayLevel: ActionDisplayLevel.Always,
             bindable: StaticHelper.QS_INSTANCE.bindableAll,
-            translate: (translator) => translator.name(StaticHelper.TLget("allTypes")),
+            translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
             isUsable: (player, using) => {
                 if(GLOBALCONFIG.force_isusable) return true;
                 return (
@@ -140,11 +139,11 @@ export namespace QSSubmenu {
             bindable: StaticHelper.QS_INSTANCE.bindableType,
             translate: (translator) => translator.name(({ item, itemType }) => {
                 const grp = TransferHandler.getActiveGroup(item?.type ?? itemType ?? ItemTypeGroup.Invalid);
-                return StaticHelper.TLget("onlyXType").addArgs(...
+                return StaticHelper.TLMain("onlyXType").addArgs(...
                     (grp !== undefined
                         ? [
-                            StaticHelper.TLget(grp).passTo(StaticHelper.TLget("colorMatchGroup")),
-                            StaticHelper.TLget("Item").passTo(Translation.reformatSingularNoun(999, false))
+                            StaticHelper.TLGroup(grp).passTo(StaticHelper.TLMain("colorMatchGroup")),
+                            StaticHelper.TLGroup("Item").passTo(Translation.reformatSingularNoun(999, false))
                         ] : [
                             item?.getName(false, 999, false, false, false, false)
                             ?? (itemType
@@ -182,7 +181,7 @@ export namespace QSSubmenu {
         .requiring({ item: { allowNone: true } })
         .create({
             displayLevel: ActionDisplayLevel.Always,
-            translate: (translator) => translator.name(StaticHelper.TLget("collect")),
+            translate: (translator) => translator.name(StaticHelper.TLMain("collect")),
             isApplicable: () => true,
             isUsable: (player, using) => {
                 if(GLOBALCONFIG.force_isusable) return true;
@@ -204,7 +203,7 @@ export namespace QSSubmenu {
         .create({
             displayLevel: ActionDisplayLevel.Always,
             bindable: StaticHelper.QS_INSTANCE.bindableAll,
-            translate: (translator) => translator.name(StaticHelper.TLget("allTypes")),
+            translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
             isUsable: (player, { item }) =>
                 GLOBALCONFIG.force_isusable
                 || (
@@ -243,11 +242,11 @@ export namespace QSSubmenu {
             bindable: StaticHelper.QS_INSTANCE.bindableType,
             translate: (translator) => translator.name(({ item, itemType }) => {
                 const grp = TransferHandler.getActiveGroup(item?.type ?? itemType ?? ItemTypeGroup.Invalid);
-                return StaticHelper.TLget("onlyXType").addArgs(...
+                return StaticHelper.TLMain("onlyXType").addArgs(...
                     (grp !== undefined
                         ? [
-                            StaticHelper.TLget(grp).passTo(StaticHelper.TLget("colorMatchGroup")),
-                            StaticHelper.TLget("Item").passTo(Translation.reformatSingularNoun(999, false))
+                            StaticHelper.TLGroup(grp).passTo(StaticHelper.TLMain("colorMatchGroup")),
+                            StaticHelper.TLGroup("Item").passTo(Translation.reformatSingularNoun(999, false))
                         ] : [
                             item?.getName(false, 999, false, false, false, false)
                             ?? (itemType
@@ -290,10 +289,10 @@ export const StackAllSelfNearby = new UsableActionGenerator((reg, isMainReg: boo
         iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing. In this case
         translate: (translator) => translator.name(() =>
             isMainReg
-                ? StaticHelper.TLget("deposit").addArgs(
-                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
-                    StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("fullInventory")))
-                : StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("fullInventory"))
+                ? StaticHelper.TLMain("deposit").addArgs(
+                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
+                    StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("fullInventory")))
+                : StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("fullInventory"))
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -322,10 +321,10 @@ export const StackAllMainNearby = new UsableActionGenerator((reg, isMainReg: boo
         iconLocationOnItem: ItemDetailIconLocation.BottomRight,
         translate: (translator) => translator.name(() =>
             isMainReg
-                ? StaticHelper.TLget("deposit").addArgs(
-                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
-                    StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("mainInventory")))
-                : StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("mainInventory"))
+                ? StaticHelper.TLMain("deposit").addArgs(
+                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
+                    StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("mainInventory")))
+                : StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("mainInventory"))
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -359,12 +358,12 @@ export const StackAllSubNearby = new UsableActionGenerator((reg, isMainReg: bool
         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPSub,
         iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing.
         translate: (translator) => translator.name(({ item, itemType }) => {
-            const itemStr = !!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : StaticHelper.TLget("thisContainer");
+            const itemStr = !!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : StaticHelper.TLMain("thisContainer");
             return isMainReg
-                ? StaticHelper.TLget("deposit").addArgs(
-                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
-                    StaticHelper.TLget("fromX").addArgs(itemStr))
-                : StaticHelper.TLget("fromX").addArgs(itemStr);
+                ? StaticHelper.TLMain("deposit").addArgs(
+                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
+                    StaticHelper.TLMain("fromX").addArgs(itemStr))
+                : StaticHelper.TLMain("fromX").addArgs(itemStr);
         }),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -403,12 +402,12 @@ export const StackAllAlikeSubNearby = new UsableActionGenerator((reg, isMainReg:
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableAlike,
         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPAlike,
         translate: (translator) => translator.name(({ item, itemType }) => {
-            const itemStr = !!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : StaticHelper.TLget("likeContainers");
+            const itemStr = !!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : StaticHelper.TLMain("likeContainers");
             return isMainReg
-                ? StaticHelper.TLget("deposit").addArgs(
-                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
-                    StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("allX").addArgs(itemStr)))
-                : StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("allX").addArgs(itemStr));
+                ? StaticHelper.TLMain("deposit").addArgs(
+                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
+                    StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("allX").addArgs(itemStr)))
+                : StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("allX").addArgs(itemStr));
         }),
         isUsable: (player, { item, itemType }) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -446,12 +445,12 @@ export const StackTypeSelfNearby = new UsableActionGenerator((reg, isMainReg: bo
         iconLocationOnItem: ItemDetailIconLocation.TopLeft, // TL: Thing done to item. BR: Item does thing.
         translate: (translator) => translator.name(({ item, itemType }) =>
             isMainReg
-                ? StaticHelper.TLget("deposit").addArgs(
-                    StaticHelper.TLget("onlyXType")
+                ? StaticHelper.TLMain("deposit").addArgs(
+                    StaticHelper.TLMain("onlyXType")
                         .inContext(TextContext.Lowercase)
                         .addArgs(!!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : undefined),
-                    StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("fullInventory")))
-                : StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("fullInventory"))
+                    StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("fullInventory")))
+                : StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("fullInventory"))
         ),
         isUsable: (player, { itemType }) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -485,12 +484,12 @@ export const StackTypeHereNearby = new UsableActionGenerator((reg, isMainReg: bo
         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPHere,
         translate: (translator) => translator.name(({ item, itemType }) =>
             isMainReg
-                ? StaticHelper.TLget("deposit").addArgs(
-                    StaticHelper.TLget("onlyXType")
+                ? StaticHelper.TLMain("deposit").addArgs(
+                    StaticHelper.TLMain("onlyXType")
                         .inContext(TextContext.Lowercase)
                         .addArgs(!!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : undefined),
-                    StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("here")))
-                : StaticHelper.TLget("fromX").addArgs(StaticHelper.TLget("here"))
+                    StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("here")))
+                : StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("here"))
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -524,8 +523,8 @@ export const StackAllNearbySelf = new UsableActionGenerator((reg, isMainReg: boo
         iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing. In this case
         translate: (translator) => translator.name(() =>
             isMainReg
-                ? StaticHelper.TLget("collect").addArgs(
-                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
+                ? StaticHelper.TLMain("collect").addArgs(
+                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
                     StaticHelper.TLFromTo("fullInventory", "nearby"))
                 : StaticHelper.TLFromTo("fullInventory", "nearby")
         ),
@@ -557,8 +556,8 @@ export const StackAllNearbyMain = new UsableActionGenerator((reg, isMainReg: boo
         iconLocationOnItem: ItemDetailIconLocation.TopLeft, // TL: Thing done to item. BR: Item does thing. In this case
         translate: (translator) => translator.name(() =>
             isMainReg
-                ? StaticHelper.TLget("collect").addArgs(
-                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
+                ? StaticHelper.TLMain("collect").addArgs(
+                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
                     StaticHelper.TLFromTo("mainInventory", "nearby"))
                 : StaticHelper.TLFromTo("mainInventory", "nearby")
         ),
@@ -582,10 +581,10 @@ export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolea
         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPMain,
         iconLocationOnItem: ItemDetailIconLocation.TopLeft, // TL: Thing done to item. BR: Item does thing.
         translate: (translator) => translator.name(({ item, itemType }) => {
-            const itemStr = item ? item.getName(false) : itemType ? Translation.nameOf(Dictionary.Item, itemType, 999, false) : StaticHelper.TLget("thisContainer");
+            const itemStr = item ? item.getName(false) : itemType ? Translation.nameOf(Dictionary.Item, itemType, 999, false) : StaticHelper.TLMain("thisContainer");
             return isMainReg
-                ? StaticHelper.TLget("collect").addArgs(
-                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
+                ? StaticHelper.TLMain("collect").addArgs(
+                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
                     StaticHelper.TLFromTo(itemStr, "mainInventory"))
                 : StaticHelper.TLFromTo(itemStr, "mainInventory");
         }),
@@ -611,10 +610,10 @@ export const StackAllNearbySub = new UsableActionGenerator((reg, isMainReg: bool
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableNearby,
         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPNearby,
         translate: (translator) => translator.name(({ item, itemType }) => {
-            const itemStr = item ? item.getName(false) : itemType ? Translation.nameOf(Dictionary.Item, itemType, 999, false) : StaticHelper.TLget("thisContainer");
+            const itemStr = item ? item.getName(false) : itemType ? Translation.nameOf(Dictionary.Item, itemType, 999, false) : StaticHelper.TLMain("thisContainer");
             return isMainReg
-                ? StaticHelper.TLget("collect").addArgs(
-                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
+                ? StaticHelper.TLMain("collect").addArgs(
+                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
                     StaticHelper.TLFromTo(itemStr, "nearby"))
                 : StaticHelper.TLFromTo(itemStr, "nearby");
         }),
@@ -636,8 +635,8 @@ export const StackAllSelfHere = new UsableActionGenerator((reg, isMainReg: boole
         icon: StaticHelper.QS_INSTANCE.UAPSelf,
         translate: (translator) => translator.name(() =>
             isMainReg
-                ? StaticHelper.TLget("collect").addArgs(
-                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
+                ? StaticHelper.TLMain("collect").addArgs(
+                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
                     StaticHelper.TLFromTo("here", "fullInventory"))
                 : StaticHelper.TLFromTo("here", "fullInventory")
         ),
@@ -663,8 +662,8 @@ export const StackAllNearbyHere = new UsableActionGenerator((reg, isMainReg: boo
         icon: StaticHelper.QS_INSTANCE.UAPHere,
         translate: (translator) => translator.name(() =>
             isMainReg
-                ? StaticHelper.TLget("collect").addArgs(
-                    StaticHelper.TLget("allTypes").inContext(TextContext.Lowercase),
+                ? StaticHelper.TLMain("collect").addArgs(
+                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
                     StaticHelper.TLFromTo("here", "nearby"))
                 : StaticHelper.TLFromTo("here", "nearby")
         ),
@@ -693,8 +692,8 @@ export const StackTypeSelfHere = new UsableActionGenerator((reg, isMainReg: bool
         icon: StaticHelper.QS_INSTANCE.UAPSelf,
         translate: (translator) => translator.name(({ item, itemType }) =>
             isMainReg
-                ? StaticHelper.TLget("collect").addArgs(
-                    StaticHelper.TLget("onlyXType")
+                ? StaticHelper.TLMain("collect").addArgs(
+                    StaticHelper.TLMain("onlyXType")
                         .inContext(TextContext.Lowercase)
                         .addArgs(!!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : undefined),
                     StaticHelper.TLFromTo("here", "fullInventory"))
@@ -728,8 +727,8 @@ export const StackTypeNearbyHere = new UsableActionGenerator((reg, isMainReg: bo
         icon: StaticHelper.QS_INSTANCE.UAPNearby,
         translate: (translator) => translator.name(({ item, itemType }) =>
             isMainReg
-                ? StaticHelper.TLget("collect").addArgs(
-                    StaticHelper.TLget("onlyXType")
+                ? StaticHelper.TLMain("collect").addArgs(
+                    StaticHelper.TLMain("onlyXType")
                         .inContext(TextContext.Lowercase)
                         .addArgs(!!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : undefined),
                     StaticHelper.TLFromTo("here", "nearby"))
@@ -752,4 +751,3 @@ export const StackTypeNearbyHere = new UsableActionGenerator((reg, isMainReg: bo
             [{ type: item.type }])
     })
 ));
-

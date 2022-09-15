@@ -1,7 +1,8 @@
 import { Action } from "game/entity/action/Action";
-import { IMatchParam, THTargettingParam } from "../ITransferHandler";
 import { ActionArgument } from "game/entity/action/IAction";
 import Player from "game/entity/player/Player";
+import { THTargettingParam } from "../ITransferHandler";
+import { IMatchParam } from "../QSMatchGroups";
 export declare function executeStackAction_notify(executor: Player, src: THTargettingParam[], dest: THTargettingParam[], filter: IMatchParam[]): boolean;
 export declare function executeStackAction(executor: Player, src: THTargettingParam[], dest: THTargettingParam[], filter: IMatchParam[], successFlag?: {
     failed: boolean;

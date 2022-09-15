@@ -1,18 +1,19 @@
-import Island from "game/island/Island";
-import Item from "game/item/Item";
-import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
-import Player from "game/entity/player/Player";
-import StaticHelper, { QSMatchableGroupKey, QSMatchableGroups } from "./StaticHelper";
 import Doodad from "game/doodad/Doodad";
-import { ITransferTarget, THState, ITransferPairing, ITransferItemMatch, THTargettingParam, IMatchParam, Matchable } from "./ITransferHandler";
-import { ITile } from "game/tile/ITerrain";
-import Log from "utilities/Log";
-import Translation from "language/Translation";
-import TranslationImpl from "language/impl/TranslationImpl";
-import Dictionary from "language/Dictionary";
-import { GLOBALCONFIG } from "./StaticHelper";
+import Player from "game/entity/player/Player";
+import Island from "game/island/Island";
+import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
+import Item from "game/item/Item";
 import ItemManager from "game/item/ItemManager";
+import { ITile } from "game/tile/ITerrain";
+import Dictionary from "language/Dictionary";
+import TranslationImpl from "language/impl/TranslationImpl";
 import { TextContext } from "language/ITranslation";
+import Translation from "language/Translation";
+import Log from "utilities/Log";
+
+import { ITransferItemMatch, ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
+import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups } from "./QSMatchGroups";
+import StaticHelper, { GLOBALCONFIG } from "./StaticHelper";
 
 export type ThingWithContents = Pick<IContainer, "containedItems">;
 
@@ -400,7 +401,7 @@ export default class TransferHandler {
 
                     log?.info(`executeTransfer: Match #${k} (${!isGroupMatch
                         ? `TYPE: '${Translation.nameOf(Dictionary.Item, match.matched.type!, false).toString()}'`
-                        : `GROUP: '${StaticHelper.TLget(match.matched.group!).toString()}'`
+                        : `GROUP: '${StaticHelper.TLGroup(match.matched.group!).toString()}'`
                         }) :: Had ${match.had}`);
 
                     // Track weight capacity as we go.
@@ -514,19 +515,19 @@ export default class TransferHandler {
                     (["source", "destination"] as sdKey[]).forEach(k => {
                         switch(pair[k].type) {
                             case ContainerReferenceType.PlayerInventory:
-                                str[k] = StaticHelper.TLget(k === "source" ? "fromX" : "toX").addArgs(StaticHelper.TLget("yourInventory"));
+                                str[k] = StaticHelper.TLMain(k === "source" ? "fromX" : "toX").addArgs(StaticHelper.TLMain("yourInventory"));
                                 break;
                             case ContainerReferenceType.Doodad:
-                                str[k] = StaticHelper.TLget(k === "source" ? "fromX" : "toX").addArgs((pair[k].container as Doodad).getName("indefinite", 1));
+                                str[k] = StaticHelper.TLMain(k === "source" ? "fromX" : "toX").addArgs((pair[k].container as Doodad).getName("indefinite", 1));
                                 break;
                             case ContainerReferenceType.Item:
-                                str[k] = StaticHelper.TLget(k === "source" ? "fromX" : "toX").addArgs((pair[k].container as Item).getName("indefinite", 1, false, false, true, false));
+                                str[k] = StaticHelper.TLMain(k === "source" ? "fromX" : "toX").addArgs((pair[k].container as Item).getName("indefinite", 1, false, false, true, false));
                                 break;
                             case ContainerReferenceType.Tile:
-                                str[k] = StaticHelper.TLget(k === "source" ? "fromTile" : "toTile");
+                                str[k] = StaticHelper.TLMain(k === "source" ? "fromTile" : "toTile");
                                 break;
                             default:
-                                str[k] = StaticHelper.TLget(k === "source" ? "fromUnknown" : "toUnknown");
+                                str[k] = StaticHelper.TLMain(k === "source" ? "fromUnknown" : "toUnknown");
                         }
                     });
 
@@ -536,38 +537,38 @@ export default class TransferHandler {
                     pair.matches.forEach(match => {
                         if(match.sent === match.had) { // Complete transfer
                             resultFlags.all = true;
-                            str.items.all.push(StaticHelper.TLget("XOutOfY").addArgs({
+                            str.items.all.push(StaticHelper.TLMain("XOutOfY").addArgs({
                                 X: match.sent,
                                 name: match.matched.type !== undefined
                                     ? Translation.nameOf(Dictionary.Item, match.matched.type, match.sent, match.sent > 1 ? "indefinite" : false, true)
-                                    : StaticHelper.TLget("concat").addArgs(
-                                        StaticHelper.TLget(match.matched.group)
+                                    : StaticHelper.TLMain("concat").addArgs(
+                                        StaticHelper.TLGroup(match.matched.group)
                                             .inContext(TextContext.None)
-                                            .passTo(StaticHelper.TLget("colorMatchGroup")),
-                                        StaticHelper.TLget("Item").passTo(Translation.reformatSingularNoun(match.sent, false)))
+                                            .passTo(StaticHelper.TLMain("colorMatchGroup")),
+                                        StaticHelper.TLGroup("Item").passTo(Translation.reformatSingularNoun(match.sent, false)))
                             }));
                         } else if(match.sent > 0) { // Partial transfer
                             resultFlags.some = true;
-                            str.items.all.push(StaticHelper.TLget("XOutOfY").addArgs({
+                            str.items.all.push(StaticHelper.TLMain("XOutOfY").addArgs({
                                 X: match.sent,
                                 Y: match.had,
                                 name: match.matched.type !== undefined
                                     ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, false, true)
-                                    : StaticHelper.TLget("concat").addArgs(
-                                        StaticHelper.TLget(match.matched.group)
+                                    : StaticHelper.TLMain("concat").addArgs(
+                                        StaticHelper.TLGroup(match.matched.group)
                                             .inContext(TextContext.None)
-                                            .passTo(StaticHelper.TLget("colorMatchGroup")),
-                                        StaticHelper.TLget("Item").passTo(Translation.reformatSingularNoun(match.had, false)))
+                                            .passTo(StaticHelper.TLMain("colorMatchGroup")),
+                                        StaticHelper.TLGroup("Item").passTo(Translation.reformatSingularNoun(match.had, false)))
                             }));
                         } else { // Failed transfer
                             resultFlags.none = true;
                             str.items.none.push(match.matched.type !== undefined
                                 ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, match.had > 1 ? "indefinite" : false, true)
-                                : StaticHelper.TLget("concat").addArgs(
-                                    StaticHelper.TLget(match.matched.group)
+                                : StaticHelper.TLMain("concat").addArgs(
+                                    StaticHelper.TLGroup(match.matched.group)
                                         .inContext(TextContext.None)
-                                        .passTo(StaticHelper.TLget("colorMatchGroup")),
-                                    StaticHelper.TLget("Item").passTo(Translation.reformatSingularNoun(999, false)))
+                                        .passTo(StaticHelper.TLMain("colorMatchGroup")),
+                                    StaticHelper.TLGroup("Item").passTo(Translation.reformatSingularNoun(999, false)))
                             );
                         }
                     });
@@ -594,7 +595,7 @@ export default class TransferHandler {
                             some: resultFlags.some || (resultFlags.all && resultFlags.none) ? true : undefined,
                             all: resultFlags.none && !resultFlags.all && !resultFlags.some ? true : undefined
                         },
-                        prefix: StaticHelper.TLget("qsPrefixShort")//.passTo(StaticHelper.TLget("colorPrefix")),
+                        prefix: StaticHelper.TLMain("qsPrefixShort")//.passTo(StaticHelper.TLget("colorPrefix")),
                     });
 
                 } // if pair.matches.length
@@ -603,7 +604,7 @@ export default class TransferHandler {
 
 
         if(!(this._anySuccess || this._anyPartial || this._anyFailed))
-            player.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageNoMatch, { prefix: StaticHelper.TLget("qsPrefixShort").passTo(Translation.colorizeImportance("secondary")) });
+            player.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageNoMatch, { prefix: StaticHelper.TLMain("qsPrefixShort").passTo(Translation.colorizeImportance("secondary")) });
 
         return true;
     }
@@ -657,7 +658,7 @@ export default class TransferHandler {
         successFlag?: { failed: boolean; },
         suppress?: { report?: true, delay?: true; }
     ): boolean {
-        const thisfcn = `${TransferHandler.MakeAndRun.name} :: `;
+        const thisfcn = `MakeAndRun: ` as const;
         const t0 = performance.now();
         log?.info(`${thisfcn}Constructing TransferHandler.Timestamp ${t0} `);
 
@@ -701,7 +702,7 @@ export default class TransferHandler {
 
         // Transfer complete. Send messages. Unless we're not.
         if(suppress?.report) log?.info(`${thisfcn}Message reporting suppressed`);
-        else if(!handler.reportMessages(player, /* log */)) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
+        else if(!handler.reportMessages(player, log)) log?.warn(`TransferHandler.reportMessages() failed for some reason.`);
 
         const t1 = performance.now();
         log?.info(`${thisfcn} Complete.Timestamp ${t1}. Elapsed ${t1 - t0} `);

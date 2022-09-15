@@ -4,18 +4,17 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-define(["require", "exports", "language/Translation", "mod/Mod", "./QuickStack", "./QuickStack"], function (require, exports, Translation_1, Mod_1, QuickStack_1, QuickStack_2) {
+define(["require", "exports", "language/Translation", "mod/Mod", "./QSMatchGroups", "./QuickStack", "./QuickStack"], function (require, exports, Translation_1, Mod_1, QSMatchGroups_1, QuickStack_1, QuickStack_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.QSMatchableGroups = exports.QSTranslation = exports.GLOBALCONFIG = void 0;
+    exports.QSTranslation = exports.GLOBALCONFIG = void 0;
     Object.defineProperty(exports, "GLOBALCONFIG", { enumerable: true, get: function () { return QuickStack_2.GLOBALCONFIG; } });
     Object.defineProperty(exports, "QSTranslation", { enumerable: true, get: function () { return QuickStack_2.QSTranslation; } });
-    Object.defineProperty(exports, "QSMatchableGroups", { enumerable: true, get: function () { return QuickStack_2.QSMatchableGroups; } });
     class StaticHelper {
-        static QSdict() { return QuickStack_1.default.INSTANCE.dictionary; }
-        static TLget(id) { return Translation_1.default.get(QuickStack_1.default.INSTANCE.dictionary, QuickStack_1.QSTranslation[id]); }
+        static TLMain(id) { return Translation_1.default.get(QuickStack_1.default.INSTANCE.dictMain, QuickStack_1.QSTranslation[id]); }
+        static TLGroup(id) { return Translation_1.default.get(QuickStack_1.default.INSTANCE.dictGroups, QSMatchGroups_1.QSGroupsTranslation[id]); }
         static TLFromTo(to, from) {
-            return this.TLget("concat").addArgs(this.TLget("fromX").addArgs(typeof (from) === "string" ? this.TLget(from) : from), this.TLget("toX").addArgs(typeof (to) === "string" ? this.TLget(to) : to));
+            return this.TLMain("concat").addArgs(this.TLMain("fromX").addArgs(typeof (from) === "string" ? this.TLMain(from) : from), this.TLMain("toX").addArgs(typeof (to) === "string" ? this.TLMain(to) : to));
         }
     }
     __decorate([
@@ -26,4 +25,4 @@ define(["require", "exports", "language/Translation", "mod/Mod", "./QuickStack",
     ], StaticHelper, "QS_LOG", void 0);
     exports.default = StaticHelper;
 });
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiU3RhdGljSGVscGVyLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vc3JjL1N0YXRpY0hlbHBlci50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7O0lBTVMsMEdBQUEsWUFBWSxPQUFBO0lBQUUsMkdBQUEsYUFBYSxPQUFBO0lBQXVCLCtHQUFBLGlCQUFpQixPQUFBO0lBRTVFLE1BQXFCLFlBQVk7UUFPdEIsTUFBTSxDQUFDLE1BQU0sS0FBSyxPQUFPLG9CQUFVLENBQUMsUUFBUSxDQUFDLFVBQVUsQ0FBQyxDQUFDLENBQUM7UUFDMUQsTUFBTSxDQUFDLEtBQUssQ0FBQyxFQUE4QixJQUFpQixPQUFPLHFCQUFXLENBQUMsR0FBRyxDQUFDLG9CQUFVLENBQUMsUUFBUSxDQUFDLFVBQVUsRUFBRSwwQkFBYSxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDO1FBQ3hJLE1BQU0sQ0FBQyxRQUFRLENBQ2xCLEVBQStHLEVBQy9HLElBQWlIO1lBRWpILE9BQU8sSUFBSSxDQUFDLEtBQUssQ0FBQyxRQUFRLENBQUMsQ0FBQyxPQUFPLENBQy9CLElBQUksQ0FBQyxLQUFLLENBQUMsT0FBTyxDQUFDLENBQUMsT0FBTyxDQUFDLE9BQU8sQ0FBQyxJQUFJLENBQUMsS0FBSyxRQUFRLENBQUMsQ0FBQyxDQUFDLElBQUksQ0FBQyxLQUFLLENBQUMsSUFBSSxDQUFDLENBQUMsQ0FBQyxDQUFDLElBQUksQ0FBQyxFQUNqRixJQUFJLENBQUMsS0FBSyxDQUFDLEtBQUssQ0FBQyxDQUFDLE9BQU8sQ0FBQyxPQUFPLENBQUMsRUFBRSxDQUFDLEtBQUssUUFBUSxDQUFDLENBQUMsQ0FBQyxJQUFJLENBQUMsS0FBSyxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUMsQ0FBQyxFQUFFLENBQUMsQ0FBQyxDQUFDO1FBQ25GLENBQUM7S0FDSjtJQWZHO1FBREMsYUFBRyxDQUFDLFFBQVEsQ0FBYSxhQUFhLENBQUM7MkNBQ087SUFFL0M7UUFEQyxhQUFHLENBQUMsR0FBRyxDQUFDLGFBQWEsQ0FBQztzQ0FDWTtJQUp2QywrQkFpQkMifQ==
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiU3RhdGljSGVscGVyLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vc3JjL1N0YXRpY0hlbHBlci50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7O0lBT1MsMEdBQUEsWUFBWSxPQUFBO0lBQUUsMkdBQUEsYUFBYSxPQUFBO0lBRXBDLE1BQXFCLFlBQVk7UUFTdEIsTUFBTSxDQUFDLE1BQU0sQ0FBQyxFQUFvQixJQUFpQixPQUFPLHFCQUFXLENBQUMsR0FBRyxDQUFDLG9CQUFVLENBQUMsUUFBUSxDQUFDLFFBQVEsRUFBRSwwQkFBYSxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDO1FBQzdILE1BQU0sQ0FBQyxPQUFPLENBQUMsRUFBMEIsSUFBaUIsT0FBTyxxQkFBVyxDQUFDLEdBQUcsQ0FBQyxvQkFBVSxDQUFDLFFBQVEsQ0FBQyxVQUFVLEVBQUUsbUNBQW1CLENBQUMsRUFBRSxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUM7UUFFNUksTUFBTSxDQUFDLFFBQVEsQ0FDbEIsRUFBK0csRUFDL0csSUFBaUg7WUFFakgsT0FBTyxJQUFJLENBQUMsTUFBTSxDQUFDLFFBQVEsQ0FBQyxDQUFDLE9BQU8sQ0FDaEMsSUFBSSxDQUFDLE1BQU0sQ0FBQyxPQUFPLENBQUMsQ0FBQyxPQUFPLENBQUMsT0FBTyxDQUFDLElBQUksQ0FBQyxLQUFLLFFBQVEsQ0FBQyxDQUFDLENBQUMsSUFBSSxDQUFDLE1BQU0sQ0FBQyxJQUFJLENBQUMsQ0FBQyxDQUFDLENBQUMsSUFBSSxDQUFDLEVBQ25GLElBQUksQ0FBQyxNQUFNLENBQUMsS0FBSyxDQUFDLENBQUMsT0FBTyxDQUFDLE9BQU8sQ0FBQyxFQUFFLENBQUMsS0FBSyxRQUFRLENBQUMsQ0FBQyxDQUFDLElBQUksQ0FBQyxNQUFNLENBQUMsRUFBRSxDQUFDLENBQUMsQ0FBQyxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUM7UUFDckYsQ0FBQztLQUNKO0lBbEJHO1FBREMsYUFBRyxDQUFDLFFBQVEsQ0FBYSxhQUFhLENBQUM7MkNBQ087SUFFL0M7UUFEQyxhQUFHLENBQUMsR0FBRyxDQUFDLGFBQWEsQ0FBQztzQ0FDWTtJQUp2QywrQkFvQkMifQ==

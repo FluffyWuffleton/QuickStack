@@ -1,10 +1,10 @@
-import Island from "game/island/Island";
-import Item from "game/item/Item";
-import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
 import Player from "game/entity/player/Player";
-import { QSMatchableGroupKey } from "./StaticHelper";
-import { ITransferTarget, THState, ITransferPairing, ITransferItemMatch, THTargettingParam, IMatchParam } from "./ITransferHandler";
+import Island from "game/island/Island";
+import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
+import Item from "game/item/Item";
 import Log from "utilities/Log";
+import { ITransferItemMatch, ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
+import { IMatchParam, QSMatchableGroupKey } from "./QSMatchGroups";
 export declare type ThingWithContents = Pick<IContainer, "containedItems">;
 export declare function isHeldContainer(player: Player, item: Item): boolean;
 export declare function isStorageType(type: ItemType): boolean;

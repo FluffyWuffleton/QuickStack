@@ -1,7 +1,7 @@
 {
     "extends": "English",
     "dictionaries": {
-        "modQuickStackQSDictionary": {
+        "modQuickStackMainDictionary": {
             "qsPrefix": "QuickStack:", // Prepended to initial search message.
             "qsPrefixShort": ">", // Prepended to results messages.
             "parenthetical": "({0})",
@@ -53,8 +53,9 @@
             "optionForbidTiles": "No ground-targetting",
             "optionTopDown_desc": "In transfers that operate across multiple nested source containers (e.g. \"Deposit from full inventory\"), what should be the order of transfers?\n- Bottom-Up: subcontainer content goes first.\n- Top-down: parent-container content goes first.\n\nThis mainly affects behavior when a subcontainer item itself is a valid match to be transferred...\n- Bottom-up means any valid bag contents will be transferred OUT of the bag before the bag itself is moved.\n- Top-down means the bag itself will be transferred (if possible), in which case its contents are untouched.\n\nNote that an equipped bag will never be transferred (though its contents might), and no bags will ever be transfered with the \"never move containers\" option set.",
             "optionMatchSimilar": "Match similar item groups...",
-            "optionMatchSimilar_desc": "For any group selected below, all items within that group will be treated as a single type for stacking.",
-
+            "optionMatchSimilar_desc": "For any group selected below, all items within that group will be treated as a single type for stacking."
+        },
+        "modQuickStackGroupsDictionary": {
             // Custom groupings
             "Projectile": "Projectile",
             "ProjectileWeapon": "Projectile Weapon",

@@ -21,9 +21,9 @@ import { ItemType, ItemTypeGroup } from "game/item/IItem";
 import Details from "ui/component/Details";
 import ItemManager from "game/item/ItemManager";
 import Text from "ui/component/Text";
-import { Matchable } from "./ITransferHandler";
 import { TooltipLocation } from "ui/component/IComponent";
 import listSegment from "language/segment/ListSegment";
+import { QSMatchableGroupKey, QSMatchableGroups, QSGroupsTranslation, QSMatchableGroupsFlatType, QSGroupsTranslationKey } from "./QSMatchGroups";
 
 
 export namespace GLOBALCONFIG {
@@ -68,117 +68,11 @@ export enum QSTranslation {
 
     optionMatchSimilar,
     optionMatchSimilar_desc,
-
-    Projectile,
-    ProjectileWeapon,
-    Equipment,
-    Edible,
-    Raw,
-    Medical,
-    Potable,
-    Unpotable,
-    Rock,
-    Poles,
-    Fastening,
-    Needlework,
-    Seeds,
-    Fertilizing,
-    Paperwork,
-    Woodwork,
-
-    MatchGroupIncludes,
-    ItemGroupX,
-    ItemTypeX,
-    Item
 };
 export type QSTranslationKey = keyof typeof QSTranslation;
 
 type QSToggleOptionKey = keyof Pick<typeof QSTranslation,
     "optionForbidTiles" | "optionKeepContainers" | "optionTopDown">;
-
-// A collection of custom groupings for similar-item match options.
-export type QSMatchableGroupKey = keyof Pick<typeof QSTranslation,
-    "Projectile" | "ProjectileWeapon" | "Equipment" | "Edible" | "Raw" | "Medical" | "Potable" | "Unpotable"
-    | "Rock" | "Poles" | "Fastening" | "Needlework" | "Seeds" | "Fertilizing" | "Paperwork" | "Woodwork">;
-
-export const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly Matchable[] } = {
-    Projectile: [
-        ItemTypeGroup.Arrow,
-        ItemTypeGroup.Bullet],
-    ProjectileWeapon: [
-        ItemTypeGroup.WeaponThatFiresArrows,
-        ItemTypeGroup.WeaponThatFiresBullets],
-    Equipment: [
-        ItemTypeGroup.Equipment],
-    Edible: [
-        ItemTypeGroup.CookedFood,
-        ItemTypeGroup.Vegetable,
-        ItemTypeGroup.Fruit],
-    Raw: [
-        ItemTypeGroup.RawFish,
-        ItemTypeGroup.RawMeat,
-        ItemTypeGroup.Insect,
-        ItemTypeGroup.Egg,
-        ItemType.AnimalFat,
-        ItemType.Tallow],
-    Medical: [
-        ItemTypeGroup.Health,
-        ItemTypeGroup.Medicinal],
-    Potable: [
-        ItemTypeGroup.ContainerOfFilteredWater,
-        ItemTypeGroup.ContainerOfDesalinatedWater,
-        ItemTypeGroup.ContainerOfPurifiedFreshWater,
-        ItemTypeGroup.ContainerOfMilk],
-    Unpotable: [
-        ItemTypeGroup.ContainerOfSeawater,
-        ItemTypeGroup.ContainerOfSwampWater,
-        ItemTypeGroup.ContainerOfUnpurifiedFreshWater],
-    Rock: [
-        ItemTypeGroup.Rock],
-    Poles: [
-        ItemTypeGroup.Pole],
-    Fastening: [
-        ItemTypeGroup.Cordage,
-        ItemType.String,
-        ItemType.Rope],
-    Needlework: [
-        ItemTypeGroup.Needle,
-        ItemTypeGroup.Fabric,
-        ItemType.AnimalFur,
-        ItemType.AnimalPelt,
-        ItemType.LeatherHide,
-        ItemType.TannedLeather,
-        ItemType.Scales],
-    Seeds: [
-        ItemTypeGroup.Seed,
-        ItemTypeGroup.Spores],
-    Fertilizing: [
-        ItemType.AnimalDung,
-        ItemType.AnimalDroppings,
-        ItemType.BirdDroppings,
-        ItemType.Guano,
-        ItemType.PileOfCompost,
-        ItemType.BoneMeal,
-        ItemType.PileOfAsh,
-        ItemType.Fertilizer,
-        ItemType.Soil,
-        ItemType.FertileSoil],
-    Paperwork: [
-        ItemTypeGroup.Pulp,
-        ItemType.PaperMold,
-        ItemType.PaperSheet,
-        ItemType.Inkstick,
-        ItemType.DrawnMap,
-        ItemType.TatteredMap],
-    Woodwork: [
-        ItemType.Log,
-        ItemType.WoodenPlank,
-        ItemType.WoodenDowels,
-        ItemType.TreeBark
-    ]
-} as const;
-export type QSMatchableGroupsFlatType = { [k in QSMatchableGroupKey]?: ItemType[] };
-
 
 export const activeGroupKeyPrefix = "isActive_" as const;
 export type IQSGlobalData = {
@@ -192,12 +86,24 @@ export default class QuickStack extends Mod {
     public static readonly INSTANCE: QuickStack;
     @Mod.log()
     public static readonly LOG: Log;
+    
+    // private _localPlayerCache
+
+    // @EventHandler(EventBus.LocalPlayer, "moveComplete")
+    // private moveComplete() { }
+    // public function playerJoin
+
+    //@
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Dictionary
-    @Register.dictionary("QSDictionary", QSTranslation)
-    public readonly dictionary: Dictionary;
-    private readonly TLget = (id: keyof typeof QSTranslation) => Translation.get(this.dictionary, QSTranslation[id]);
+    @Register.dictionary("MainDictionary", QSTranslation)
+    public readonly dictMain: Dictionary;
+    private readonly TLGetMain = (id: QSTranslationKey) => Translation.get(this.dictMain, QSTranslation[id]);
+    
+    @Register.dictionary("GroupsDictionary", QSGroupsTranslation)
+    public readonly dictGroups: Dictionary
+    private readonly TLGetGroup = (id: QSGroupsTranslationKey) => Translation.get(this.dictGroups, QSGroupsTranslation[id]);
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Messages 
@@ -275,7 +181,6 @@ export default class QuickStack extends Mod {
     //
 
     // Global bindings
-
     @Register.bindable("StackAllSelfNearby", IInput.key("slash", "Shift"))
     public readonly bindableSASeN: Bindable;
     @Register.bindable("StackAllMainNearby")
@@ -299,7 +204,6 @@ export default class QuickStack extends Mod {
     public SANMBind(): boolean { return !execSANM(localPlayer); }
 
     // Submenu bindings
-
     @Register.bindable("All", IInput.key("a")) // for actions on all types
     public readonly bindableAll: Bindable;
     @Register.bindable("Type", IInput.key("t")) // for actions on specific type
@@ -349,7 +253,7 @@ export default class QuickStack extends Mod {
     public override onInitialize(): void {
         this.refreshMatchGroupsArray();
     }
-    /** 
+    /**
      * For each active match group, _activeMatchGroupsFlattened[<that group's key>] will contains an exhaustive list of ItemTypes belonging to that group.
      * @type {(QSMatchableGroupsFlatType)}
      * @type {{ [k in QSMatchableGroupKey]?: ItemType[] }}
@@ -400,9 +304,9 @@ export default class QuickStack extends Mod {
             new CheckButton()
                 .setTooltip(!(descKey in QSTranslation) ? undefined : ttip => ttip
                     .setLocation(TooltipLocation.CenterRight)
-                    .setText(this.TLget(descKey as keyof typeof QSTranslation)
+                    .setText(this.TLGetMain(descKey as keyof typeof QSTranslation)
                         .withSegments(listSegment)))
-                .setText(this.TLget(KEY))
+                .setText(this.TLGetMain(KEY))
                 .setRefreshMethod(() => !!(this.globalData[KEY] ?? false))
                 .event.subscribe("toggle", (_, checked) => { this.globalData[KEY] = checked; })
                 .appendTo(section);
@@ -411,24 +315,24 @@ export default class QuickStack extends Mod {
         // "Match Similar"
         new Details()
             .setSummary(btn => btn
-                .setText(this.TLget("optionMatchSimilar"))
+                .setText(this.TLGetMain("optionMatchSimilar"))
                 .setTooltip(ttip => ttip
                     .setLocation(TooltipLocation.CenterRight)
-                    .setText(this.TLget("optionMatchSimilar_desc"))))
+                    .setText(this.TLGetMain("optionMatchSimilar_desc"))))
             .setBlock(true)
             .append([...
                 (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[]).map(KEY => new CheckButton()
-                    .setText(this.TLget(KEY))
+                    .setText(this.TLGetGroup(KEY))
                     .setTooltip(ttip => ttip
                         .setLocation(TooltipLocation.Mouse)
                         .addBlock(ttblock => ttblock
-                            .setTitle(t => t.setText(this.TLget("MatchGroupIncludes")))
+                            .setTitle(t => t.setText(this.TLGetGroup("MatchGroupIncludes")))
                             .append([...QSMatchableGroups[KEY]
                                 .map(matchable => new Component<HTMLParagraphElement>()
                                     .setStyle("padding-left", "5ch")
                                     .setStyle("text-indent", "-5ch")
                                     .append(new Text()
-                                        .setText((matchable in ItemType ? this.TLget("ItemTypeX") : this.TLget("ItemGroupX"))
+                                        .setText((matchable in ItemType ? this.TLGetGroup("ItemTypeX") : this.TLGetGroup("ItemGroupX"))
                                             .addArgs(ItemManager.getItemTypeGroupName(matchable, false, 1)))))
                             ])
                         ))
