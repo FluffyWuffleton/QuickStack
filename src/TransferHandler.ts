@@ -4,11 +4,12 @@ import Island from "game/island/Island";
 import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
 import Item from "game/item/Item";
 import ItemManager from "game/item/ItemManager";
-import { ITile } from "game/tile/ITerrain";
+import { ITile, TerrainType } from "game/tile/ITerrain";
 import Dictionary from "language/Dictionary";
 import TranslationImpl from "language/impl/TranslationImpl";
 import { TextContext } from "language/ITranslation";
 import Translation from "language/Translation";
+import TileHelpers from "utilities/game/TileHelpers"
 import Log from "utilities/Log";
 
 import { ITransferItemMatch, ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
@@ -34,11 +35,18 @@ export function playerHeldContainers(player: Player, type?: ItemType[]): IContai
             .filter(i => type.some(t => t === (i as Item)?.type)) as IContainer[];
 }
 
-// getAdjacentContainers with respect for forbidTiles option.
+// getAdjacentContainers with respect for forbidTiles and open flame.
 export function validNearby(player: Player, overrideForbidTiles: boolean = false): IContainer[] {
     const adj = player.island.items.getAdjacentContainers(player, false);
-    if(StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !overrideForbidTiles)
-        return adj.filter(c => player.island.items.getContainerReference(c, undefined).crt !== ContainerReferenceType.Tile);
+    [...adj].entries().reverse().forEach(([idx, c]) => {
+        const crt = player.island.items.getContainerReference(c, undefined).crt;
+        if(crt === ContainerReferenceType.Tile
+            && (StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !overrideForbidTiles)
+            || TileHelpers.getType(c as ITile) === TerrainType.Lava
+            || (c as ITile).events?.some(e => e.description()?.providesFire || e.description()?.blocksTile)
+            || (c as ITile).doodad?.isDangerous(player)
+        ) adj.splice(idx, 1);
+    });
     return adj;
 }
 
@@ -288,8 +296,7 @@ export default class TransferHandler {
 
             // If a call to getAdjacentContainers will be needed, get it out of the way.
             const nearby: ITransferTarget[] = (target as THTargettingParam[]).some(p => ('doodads' in p || 'tiles' in p))
-                ? this.island.items
-                    .getAdjacentContainers(this.player, false)
+                ? validNearby(this.player, overrideForbidTiles)
                     .map(c => ({ container: c, type: this.island.items.getContainerReference(c, undefined).crt }))
                 : [];
 
@@ -300,7 +307,7 @@ export default class TransferHandler {
 
                 // Identify target containers
                 if('self' in p) adding = [{ container: this.player.inventory, type: ContainerReferenceType.PlayerInventory }];
-                else if('tiles' in p) adding = (StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !overrideForbidTiles) ? [] : adding = nearby.filter(near => near.type === ContainerReferenceType.Tile);
+                else if('tiles' in p) adding = nearby.filter(near => near.type === ContainerReferenceType.Tile);
                 else if('doodads' in p) adding = nearby.filter(near => near.type === ContainerReferenceType.Doodad);
                 else adding = (Array.isArray(p.container) ? p.container : [p.container]).map(c => ({ container: c, type: this.island.items.getContainerReference(c, undefined).crt }));
 
