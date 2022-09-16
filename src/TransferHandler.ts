@@ -39,15 +39,17 @@ export function playerHeldContainers(player: Player, type?: ItemType[]): IContai
 export function validNearby(player: Player, overrideForbidTiles: boolean = false): IContainer[] {
     const adj = player.island.items.getAdjacentContainers(player, false);
     [...adj].entries().reverse().forEach(([idx, c]) => {
-        const crt = player.island.items.getContainerReference(c, undefined).crt;
-        if(crt === ContainerReferenceType.Tile
-            && (StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !overrideForbidTiles)
-            || TileHelpers.getType(c as ITile) === TerrainType.Lava
-            || (c as ITile).events?.some(e => e.description()?.providesFire || e.description()?.blocksTile)
-            || (c as ITile).doodad?.isDangerous(player)
+        if(player.island.items.getContainerReference(c, undefined).crt === ContainerReferenceType.Tile
+            && !isSafeTile(player, c as ITile)
         ) adj.splice(idx, 1);
     });
     return adj;
+}
+
+export function isSafeTile(player: Player, tile: ITile): boolean {
+    return (TileHelpers.getType(tile) !== TerrainType.Lava)
+        && !(tile.events?.some(e => e.description()?.providesFire || e.description()?.blocksTile) ?? false)
+        && !(tile.doodad?.isDangerous(player) ?? false);
 }
 
 /**
