@@ -17,20 +17,22 @@ import { CheckButton } from "ui/component/CheckButton";
 import Translation from "language/Translation";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
-import { ContainerReferenceType, ItemType, ItemTypeGroup, SYMBOL_CONTAINER_CACHED_REFERENCE } from "game/item/IItem";
+import { ItemType, ItemTypeGroup } from "game/item/IItem";
 import Details from "ui/component/Details";
 import ItemManager from "game/item/ItemManager";
 import Text from "ui/component/Text";
 import { TooltipLocation } from "ui/component/IComponent";
 import listSegment from "language/segment/ListSegment";
 import { QSMatchableGroupKey, QSMatchableGroups, QSGroupsTranslation, QSMatchableGroupsFlatType, QSGroupsTranslationKey } from "./QSMatchGroups";
-import { ILocalStorageCache, StorageCache, StorageCacheDoodad, StorageCacheTile } from "./IStorageCache";
-import EventManager, { EventHandler } from "event/EventManager";
+import { ILocalStorageCache, StorageCacheDoodad, StorageCacheTile } from "./IStorageCache";
+import { EventHandler } from "event/EventManager";
 import { EventBus } from "event/EventBuses";
 import { ITile } from "game/tile/ITerrain";
 import Doodad from "game/doodad/Doodad";
-import ModManager from "mod/ModManager";
-import { getTilePosition } from "utilities/game/TilePosition";
+import TileHelpers from "utilities/game/TileHelpers"
+import Island from "game/island/Island";
+import { TileUpdateType } from "game/IGame"
+import Multiplayer from "multiplayer/Multiplayer";
 
 declare function is<T>(val: unknown): val is T;
 
@@ -73,20 +75,18 @@ export enum QSTranslation {
     optionTopDown_desc,
     optionKeepContainers,
     optionForbidTiles,
-
     optionMatchSimilar,
     optionMatchSimilar_desc,
 };
 export type QSTranslationKey = keyof typeof QSTranslation;
 
-type QSToggleOptionKey = keyof Pick<typeof QSTranslation,
-    "optionForbidTiles" | "optionKeepContainers" | "optionTopDown">;
+type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionForbidTiles" | "optionKeepContainers" | "optionTopDown">;
+const QSToggleOptionKeys: readonly QSToggleOptionKey[] = ["optionForbidTiles", "optionKeepContainers", "optionTopDown"] as const;
 
-export const activeGroupKeyPrefix = "isActive_" as const;
 export type IQSGlobalData = {
     [k in QSToggleOptionKey]: boolean
 } & {
-    activeMatchGroups: { [k in QSMatchableGroupKey]: boolean }
+    activeMatchGroups: { [k in QSMatchableGroupKey]: boolean },
 };
 
 export default class QuickStack extends Mod {
@@ -95,40 +95,14 @@ export default class QuickStack extends Mod {
     @Mod.log()
     public static readonly LOG: Log;
 
-    private _localPlayerCache: ILocalStorageCache;
-    public get localPlayerCache() { return this._localPlayerCache; }
-
-    
-    @EventHandler(EventBus.LocalPlayer, "moveComplete")
-    protected moveComplete() { this.updateLPCNearby(); }
-
-    private updateLPCNearby() {
-        this._localPlayerCache.nearby.map((n,i) => n.refreshRelation() ? undefined : i).filterNullish().reverse().forEach(removeIdx => {
-            const removed = this._localPlayerCache.nearby.splice(removeIdx,1)[0];
-
-    })
-
-        const nearEntities = this._localPlayerCache.nearby.map(n => n.entity);
-        localPlayer.island.items.getAdjacentContainers(localPlayer, false).forEach(c => {
-            const resolved = localPlayer.island.items.resolveContainer(c);
-            const isTile = is<ITile>(resolved);
-            if(!isTile && !is<Doodad>(resolved)) return;
-            if(nearEntities.includes(resolved)) return;
-            this._localPlayerCache.nearby.push(isTile ? new StorageCacheTile(resolved) : new StorageCacheDoodad(resolved));
-            if(isTile) 
-                EventManager.subscribe(localPlayer.island.items.getContainer(...getTilePosition(resolved.data), resolved), ""
-
-        });
-    }
-
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Dictionary
     @Register.dictionary("MainDictionary", QSTranslation)
     public readonly dictMain: Dictionary;
-    private readonly TLGetMain = (id: QSTranslationKey) => Translation.get(this.dictMain, QSTranslation[id]);
-
     @Register.dictionary("GroupsDictionary", QSGroupsTranslation)
     public readonly dictGroups: Dictionary
+
+    private readonly TLGetMain = (id: QSTranslationKey) => Translation.get(this.dictMain, QSTranslation[id]);
     private readonly TLGetGroup = (id: QSGroupsTranslationKey) => Translation.get(this.dictGroups, QSGroupsTranslation[id]);
 
     //////////////////////////////////////////////////////////////////////////////////////////////
@@ -138,64 +112,39 @@ export default class QuickStack extends Mod {
     //@Register.message("ArgBase") // {0}{ 1??} -- utility and debugging
     //public readonly messageArgBase: Message;
 
-    @Register.message("Search") // Smart-stack initiated 
-    public readonly messageSearch: Message;
-    @Register.message("NoMatch") // No items in inventory match available targets.
-    public readonly messageNoMatch: Message;
-    @Register.message("NoTypeMatch") // No available targets for selected item type.
-    public readonly messageNoTypeMatch: Message;
-    @Register.message("StackResult") // Master interpolator for transfer results messaging.
-    public readonly messageStackResult: Message;
+    @Register.message("Search") public readonly messageSearch: Message; // Smart-stack initiated 
+    @Register.message("NoMatch") public readonly messageNoMatch: Message; // No items in inventory match available targets.
+    @Register.message("NoTypeMatch") public readonly messageNoTypeMatch: Message; // No available targets for selected item type.
+    @Register.message("StackResult") public readonly messageStackResult: Message; // Master interpolator for transfer results messaging.
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Actions
-    @Register.action("StackAction", StackAction)
-    public readonly actionStackAction: ActionType;
+    @Register.action("StackAction", StackAction) public readonly actionStackAction: ActionType;
 
     // Icon placeholders for icon overrides in the submenu
-    @Register.usableActionTypePlaceholder("Self")
-    public readonly UAPSelf: UsableActionType;
-    @Register.usableActionTypePlaceholder("Main")
-    public readonly UAPMain: UsableActionType;
-    @Register.usableActionTypePlaceholder("Sub")
-    public readonly UAPSub: UsableActionType;
-    @Register.usableActionTypePlaceholder("Here")
-    public readonly UAPHere: UsableActionType;
-    @Register.usableActionTypePlaceholder("Alike")
-    public readonly UAPAlike: UsableActionType;
-    @Register.usableActionTypePlaceholder("Nearby")
-    public readonly UAPNearby: UsableActionType;
+    @Register.usableActionTypePlaceholder("Self") public readonly UAPSelf: UsableActionType;
+    @Register.usableActionTypePlaceholder("Main") public readonly UAPMain: UsableActionType;
+    @Register.usableActionTypePlaceholder("Sub") public readonly UAPSub: UsableActionType;
+    @Register.usableActionTypePlaceholder("Here") public readonly UAPHere: UsableActionType;
+    @Register.usableActionTypePlaceholder("Alike") public readonly UAPAlike: UsableActionType;
+    @Register.usableActionTypePlaceholder("Nearby") public readonly UAPNearby: UsableActionType;
 
 
-    // UA Types for all actions that have an associated slottable icon.
-    @Register.usableActionType("QuickStackDepositMenu")
-    public readonly UAPDepositMenu: UsableActionType;
-    @Register.usableActionType("StackAllSelfNearby")
-    public readonly UAPAllSelfNearby: UsableActionType;
-    @Register.usableActionTypePlaceholder("StackAllMainNearby")
-    public readonly UAPAllMainNearby: UsableActionType;
-    @Register.usableActionTypePlaceholder("StackAllSubNearby")
-    public readonly UAPAllSubNearby: UsableActionType;
-    @Register.usableActionTypePlaceholder("StackAllAlikeSubNearby")
-    public readonly UAPAllAlikeSubNearby: UsableActionType;
-    @Register.usableActionType("StackTypeSelfNearby")
-    public readonly UAPTypeSelfNearby: UsableActionType;
-    @Register.usableActionTypePlaceholder("StackTypeMainNearby")
-    public readonly UAPTypeMainNearby: UsableActionType;
-    @Register.usableActionTypePlaceholder("StackTypeHereNearby")
-    public readonly UAPTypeHereNearby: UsableActionType;
-    @Register.usableActionType("StackAllNearbySelf")
-    public readonly UAPAllNearbySelf: UsableActionType;
-    @Register.usableActionTypePlaceholder("StackAllNearbyMain")
-    public readonly UAPAllNearbyMain: UsableActionType;
-    @Register.usableActionTypePlaceholder("StackAllMainSub")
-    public readonly UAPAllMainSub: UsableActionType;
-    @Register.usableActionTypePlaceholder("StackAllNearbySub")
-    public readonly UAPAllNearbySub: UsableActionType;
-    @Register.usableActionType("StackTypeToHere")
-    public readonly UAPTypeToHere: UsableActionType;
-    @Register.usableActionType("StackAllToHere")
-    public readonly UAPAllToHere: UsableActionType;
+    // Placeholder types for all UAs that have an associated icon separate from the ones above.
+    @Register.usableActionTypePlaceholder("DepositMenu") public readonly UAPDepositMenu: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllSelfNear") public readonly UAPAllSelfNear: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllMainNear") public readonly UAPAllMainNear: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllSubNear") public readonly UAPAllSubNear: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllLikeNear") public readonly UAPAllLikeNear: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackTypeSelfNear") public readonly UAPTypeSelfNear: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackTypeMainNear") public readonly UAPTypeMainNear: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackTypeHereNear") public readonly UAPTypeHereNear: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllNearSelf") public readonly UAPAllNearSelf: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllNearMain") public readonly UAPAllNearMain: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllMainSub") public readonly UAPAllMainSub: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllNearSub") public readonly UAPAllNearSub: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackTypeToHere") public readonly UAPTypeToHere: UsableActionType;
+    @Register.usableActionTypePlaceholder("StackAllToHere") public readonly UAPAllToHere: UsableActionType;
 
     // Register the top-level QuickStack submenu.
     // The rest of the actions and menus are registered to this menu when its submenu function is called.
@@ -207,80 +156,109 @@ export default class QuickStack extends Mod {
     //
 
     // Global bindings
-    @Register.bindable("StackAllSelfNearby", IInput.key("slash", "Shift"))
+    @Register.bindable("StackAllSelfNear", IInput.key("slash", "Shift"))
     public readonly bindableSASeN: Bindable;
-    @Register.bindable("StackAllMainNearby")
+    @Register.bindable("StackAllMainNear")
     public readonly bindableSAMN: Bindable;
 
-    @Register.bindable("StackAllNearbySelf", IInput.key("slash", "Shift", "Ctrl"))
+    @Register.bindable("StackAllNearSelf", IInput.key("slash", "Shift", "Ctrl"))
     public readonly bindableSANSe: Bindable;
-    @Register.bindable("StackAllNearbyMain")
+    @Register.bindable("StackAllNearMain")
     public readonly bindableSANM: Bindable;
 
-    @Bind.onDown(Registry<QuickStack>().get("bindableSASeN"))
-    public SASeNBind(): boolean { return !execSASeN(localPlayer); }
-
-    @Bind.onDown(Registry<QuickStack>().get("bindableSAMN"))
-    public SAMNBind(): boolean { return !execSAMN(localPlayer); }
-
-    @Bind.onDown(Registry<QuickStack>().get("bindableSANSe"))
-    public SANSeBind(): boolean { return !execSANSe(localPlayer); }
-
-    @Bind.onDown(Registry<QuickStack>().get("bindableSANM"))
-    public SANMBind(): boolean { return !execSANM(localPlayer); }
+    @Bind.onDown(Registry<QuickStack>().get("bindableSASeN")) public SASeNBind(): boolean { return !execSASeN(localPlayer); }
+    @Bind.onDown(Registry<QuickStack>().get("bindableSAMN")) public SAMNBind(): boolean { return !execSAMN(localPlayer); }
+    @Bind.onDown(Registry<QuickStack>().get("bindableSANSe")) public SANSeBind(): boolean { return !execSANSe(localPlayer); }
+    @Bind.onDown(Registry<QuickStack>().get("bindableSANM")) public SANMBind(): boolean { return !execSANM(localPlayer); }
 
     // Submenu bindings
-    @Register.bindable("All", IInput.key("a")) // for actions on all types
-    public readonly bindableAll: Bindable;
-    @Register.bindable("Type", IInput.key("t")) // for actions on specific type
-    public readonly bindableType: Bindable;
-    @Register.bindable("Self", IInput.key("f")) // for actions to/from full inventory
-    public readonly bindableSelf: Bindable;
-    @Register.bindable("Main", IInput.key("t")) // for actions to/from top-level inventory
-    public readonly bindableMain: Bindable;
-    @Register.bindable("Sub", IInput.key("c")) // for actions to/from subcontainer
-    public readonly bindableSub: Bindable;
-    @Register.bindable("Alike", IInput.key("c", "Shift")) // for actions to/from similar subcontainer
-    public readonly bindableAlike: Bindable;
-    @Register.bindable("Here", IInput.key("h")) // for actions to/from selected item's location
-    public readonly bindableHere: Bindable;
-    @Register.bindable("Nearby", IInput.key("n")) // for actions to/from nearby
-    public readonly bindableNearby: Bindable;
+    @Register.bindable("All", IInput.key("a")) public readonly bindableAll: Bindable; // for actions on all types
+    @Register.bindable("Type", IInput.key("t")) public readonly bindableType: Bindable; // for actions on specific type
+    @Register.bindable("Self", IInput.key("f")) public readonly bindableSelf: Bindable; // for actions to/from full inventory
+    @Register.bindable("Main", IInput.key("t")) public readonly bindableMain: Bindable; // for actions to/from top-level inventory
+    @Register.bindable("Sub", IInput.key("c")) public readonly bindableSub: Bindable; // for actions to/from subcontainer
+    @Register.bindable("Like", IInput.key("c", "Shift")) public readonly bindableLike: Bindable; // for actions to/from similar subcontainer
+    @Register.bindable("Here", IInput.key("h")) public readonly bindableHere: Bindable; // for actions to/from selected item's location
+    @Register.bindable("Nearb", IInput.key("n")) public readonly bindableNear: Bindable; // for actions to/from nearby
+
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    // Events for storage cache maintenance
+    //
+    private static _isDedicatedServer: boolean; // set in onInitialize
+    public static get isDedicatedServer(): boolean { return QuickStack._isDedicatedServer; }
+
+    private static _localStorageCache: ILocalStorageCache; // initialized in onLoad
+    public static get localStorageCache() { return this._localStorageCache; }
+
+    @EventHandler(EventBus.LocalIsland, "tileUpdate")
+    protected islandTileUpdated(host: Island, tile: ITile, x: number, y: number, z: number, updtype: TileUpdateType): void {
+        switch(updtype) {
+            case TileUpdateType.Batch:
+                if()
+            case TileUpdateType.DoodadChangeType:
+            case TileUpdateType.DoodadCreate:
+            case TileUpdateType.DoodadRemove:
+            case TileUpdateType.DoodadOverHidden:
+
+            default:
+                return;
+                
+        }
+    }
+
+    private updateLSCNearbySpecific(alteredThing: Doodad | ITile) {
+    }
+    private updateLSCNearbyAll() {
+        QuickStack._localStorageCache.nearby.map((n, i) => n.refreshRelation() ? undefined : i).filterNullish().reverse().forEach(removeIdx => {
+            const removed = QuickStack._localStorageCache.nearby.splice(removeIdx, 1)[0];
+
+        });
+
+        const nearEntities = QuickStack._localStorageCache.nearby.map(n => n.entity);
+        localPlayer.island.items.getAdjacentContainers(localPlayer, false).forEach(c => {
+            const resolved = localPlayer.island.items.resolveContainer(c);
+            const isTile = is<ITile>(resolved);
+            if(!isTile && !is<Doodad>(resolved)) return;
+            if(nearEntities.includes(resolved)) return;
+            QuickStack._localStorageCache.nearby.push(isTile ? new StorageCacheTile(resolved) : new StorageCacheDoodad(resolved));
+        });
+    }
+
+    public override onLoad(): void {
+        if(!steamworks.isDedicatedServer()) this.registerEventHandlers("unload");
+    }
+    
+    public override onInitialize(): void {
+        this["subscribedHandlers"] = true;
+        this.refreshMatchGroupsArray();
+    }
+    
+
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Global data, helper data, and refresh methods
     //
-    @Mod.globalData<QuickStack>("Quick Stack")
-    public globalData: IQSGlobalData;
+    @Mod.globalData<QuickStack>("Quick Stack") public globalData: IQSGlobalData;
 
     public override initializeGlobalData(data?: IQSGlobalData): IQSGlobalData {
-        const retData = this.freshGlobalData();
-        if(!data) return retData;
-        retData.optionForbidTiles = data.optionForbidTiles;
-        retData.optionKeepContainers = data.optionKeepContainers;
-        retData.optionTopDown = data.optionTopDown;
-        // Make sure all sub-object properties are initialized
-        (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[]).forEach(KEY => {
-            if(data.activeMatchGroups?.[KEY] !== undefined) retData.activeMatchGroups[KEY] = data.activeMatchGroups[KEY];
-        });
-        return retData;
-    }
-
-    public freshGlobalData(): IQSGlobalData {
-        return {
+        const retData: IQSGlobalData = { // Blank slate, fully initialized, to be updated according to data where present.
             optionTopDown: false,
             optionForbidTiles: false,
             optionKeepContainers: false,
             activeMatchGroups: (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[])
                 .reduce((out, KEY) => ({ ...out, [`${KEY}`]: false }), {} as { [k in QSMatchableGroupKey]: boolean })
+        };
+        if(data !== undefined) {
+            QSToggleOptionKeys.forEach(KEY => { if(data[KEY] !== undefined) retData[KEY] = data[KEY]; });
+            (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[]).forEach(KEY => {
+                if(data.activeMatchGroups?.[KEY] !== undefined) retData.activeMatchGroups[KEY] = data.activeMatchGroups[KEY];
+            });
         }
+        return retData;
     }
 
-    public override onInitialize(): void {
-        this.refreshMatchGroupsArray();
-    }
     /**
-     * For each active match group, _activeMatchGroupsFlattened[<that group's key>] will contains an exhaustive list of ItemTypes belonging to that group.
+     * For each active match group, _activeMatchGroupsFlattened[<that group's key>] will contain an exhaustive list of ItemTypes belonging to that group.
      * @type {(QSMatchableGroupsFlatType)}
      * @type {{ [k in QSMatchableGroupKey]?: ItemType[] }}
      */
@@ -291,7 +269,7 @@ export default class QuickStack extends Mod {
      * An array of the keys for each each active match group
      * @type {QSMatchableGroupKey[]}
      */
-    private _activeMatchGroupsKeys: QSMatchableGroupKey[] = [];
+    private _activeMatchGroupsKeys: QSMatchableGroupKey[];
     public get activeMatchGroupsKeys(): QSMatchableGroupKey[] { return this._activeMatchGroupsKeys; }
 
     private _anyMatchgroupsActive: boolean = false;
@@ -324,8 +302,7 @@ export default class QuickStack extends Mod {
     @Register.optionsSection
     public constructOptionsSection(section: Component) {
         // Construct buttons for each of the toggleable options
-        const QSToggleKeys: Readonly<QSToggleOptionKey[]> = ["optionForbidTiles", "optionKeepContainers", "optionTopDown"] as const;
-        QSToggleKeys.forEach(KEY => {
+        QSToggleOptionKeys.forEach(KEY => {
             const descKey = `${KEY}_desc` as const;
             new CheckButton()
                 .setTooltip(!(descKey in QSTranslation) ? undefined : ttip => ttip
