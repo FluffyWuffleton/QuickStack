@@ -18,6 +18,8 @@ export enum QSGroupsTranslation {
     Potable,
     Unpotable,
     Rock,
+    Metal,
+    Smelting,
     Poles,
     Fastening,
     Needlework,
@@ -25,6 +27,7 @@ export enum QSGroupsTranslation {
     Fertilizing,
     Paperwork,
     Woodwork,
+    Treasure, 
     
     MatchGroupIncludes,
     ItemGroupX,
@@ -77,6 +80,23 @@ export const QSMatchableGroups: {[k in QSMatchableGroupKey]: readonly Matchable[
     Rock: [
         ItemTypeGroup.Rock
     ],
+    Metal: [
+        ItemType.CopperIngot,
+        ItemType.TinIngot,
+        ItemType.BronzeIngot,
+        ItemType.IronIngot,
+        ItemType.WroughtIron
+    ],
+    Smelting: [
+        ItemType.Limestone,
+        ItemType.Talc,
+        ItemType.LimestonePowder,
+        ItemType.TalcumPowder,
+        ItemType.CarbonPowder,
+        ItemType.TinOre,
+        ItemType.CopperOre,
+        ItemType.IronOre
+    ],
     Poles: [
         ItemTypeGroup.Pole
     ],
@@ -123,6 +143,9 @@ export const QSMatchableGroups: {[k in QSMatchableGroupKey]: readonly Matchable[
         ItemType.WoodenPlank,
         ItemType.WoodenDowels,
         ItemType.TreeBark
+    ],
+    Treasure: [
+        ItemTypeGroup.Treasure
     ]
 } as const;
 

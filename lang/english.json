@@ -66,6 +66,8 @@
             "Potable": "Drinkable",
             "Unpotable": "Unpotable Water",
             "Rock": "Rock",
+            "Metal": "Refined Metal",
+            "Smelting": "Smelting",
             "Poles": "Pole",
             "Fastening": "Fastening",
             "Needlework": "Needlework",
@@ -73,6 +75,7 @@
             "Fertilizing": "Fertilizer",
             "Paperwork": "Paperwork",
             "Woodwork": "Woodwork",
+            "Treasure": "Treasure",
 
             "MatchGroupIncludes": "Group includes...",
 
