@@ -11,15 +11,13 @@ import { IVector3 } from "utilities/math/IVector";
 import { IMatchParamSet } from "./QSMatchGroups";
 
 export class ILocalStorageCache {
-    private _localPlayer: StorageCachePlayer;
+    readonly player: StorageCachePlayer;
     private _nearby: (StorageCacheTile | StorageCacheDoodad)[];
-    private _nearbyFlat: IMatchParamSet;
-    private _upToDate: boolean = false;
+    private _nearbyFlat: IMatchParamSet | undefined = undefined;
 
-    public get localPlayer(): StorageCachePlayer { return this._localPlayer; }
     public get nearby(): (StorageCacheTile | StorageCacheDoodad)[] { return this._nearby; }
     public get nearbyFlat(): IMatchParamSet {
-        if(!this._upToDate) {
+        if(this._nearbyFlat === undefined) {
             this._nearbyFlat = this._nearby.reduce((out, n) => {
                 out.types.addFrom(n.unrolled.types);
                 out.groups.addFrom(n.unrolled.groups);
@@ -31,10 +29,7 @@ export class ILocalStorageCache {
         }
         return this._nearbyFlat;
     }
-
-    public set localPlayer(val: StorageCachePlayer) { this._localPlayer = val; this._upToDate = false; }
-    public set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]) { this._nearby = value; this._upToDate = false; }
-
+    public set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]) { this._nearby = value; this._nearbyFlat = undefined; }
 
 
 };
@@ -80,11 +75,10 @@ export abstract class StorageCache<T extends StorageCacheEntityType> {
 };
 
 export module StorageCache {
-    export declare function is<WHAT extends StorageCacheEntityType>(val: unknown): val is
-        WHAT extends Item ? StorageCacheItem
-        : WHAT extends Player ? StorageCachePlayer
-        : WHAT extends ITile ? StorageCacheTile
-        : StorageCacheDoodad
+    export function is<WHAT extends StorageCacheEntityType>(val: unknown): val is WHAT extends Item ? StorageCacheItem
+        : WHAT extends Player ? StorageCachePlayer : WHAT extends ITile ? StorageCacheTile : StorageCacheDoodad {
+        return val instanceof StorageCache<WHAT>;
+    }
 }
 
 /**
