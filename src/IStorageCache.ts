@@ -13,25 +13,25 @@ import { IMatchParamSet } from "./QSMatchGroups";
 export class ILocalStorageCache {
     readonly player: StorageCachePlayer;
     private _nearby: (StorageCacheTile | StorageCacheDoodad)[];
-    private _nearbyFlat: IMatchParamSet | undefined = undefined;
-
-    public get nearby(): (StorageCacheTile | StorageCacheDoodad)[] { return this._nearby; }
-    public get nearbyFlat(): IMatchParamSet {
-        if(this._nearbyFlat === undefined) {
-            this._nearbyFlat = this._nearby.reduce((out, n) => {
-                out.types.addFrom(n.unrolled.types);
-                out.groups.addFrom(n.unrolled.groups);
-                return out;
-            }, {
-                types: new Set<ItemType>,
-                groups: new Set<ItemTypeGroup>
-            });
-        }
+    private _nearbyFlat : IMatchParamSet | undefined;
+    
+    public get nearbyFlat(): IMatchParamSet {    
+        if(this._nearbyFlat === undefined) this._nearbyFlat = this.computeNearbyFlat();
         return this._nearbyFlat;
     }
-    public set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]) { this._nearby = value; this._nearbyFlat = undefined; }
+    public updateNearbyFlat() { this._nearbyFlat = this.computeNearbyFlat(); }
+    private computeNearbyFlat(): IMatchParamSet { 
+        const flat:IMatchParamSet = {types: new Set<ItemType>, groups: new Set<ItemTypeGroup> };
+        this._nearby.forEach(n => {
+            const unrolled = n.unroll();
+            flat.types.addFrom(unrolled.types);
+            flat.groups.addFrom(unrolled.groups);
+        });
+        return flat;
+    }
 
-
+    public get nearby(): (StorageCacheTile | StorageCacheDoodad)[] { this._nearbyFlat = undefined; return this._nearby;  }
+    public set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]) { this._nearbyFlat = undefined; this._nearby = value; }
 };
 
 type StorageCacheEntityType = Item | Player | Doodad | ITile;
@@ -40,20 +40,25 @@ export abstract class StorageCache<T extends StorageCacheEntityType> {
     readonly entity: T;
     private _main: IMatchParamSet;
     private _subs: StorageCacheItem[];
-    private _unrolled?: IMatchParamSet;
 
     public get main(): IMatchParamSet { return this._main; }
     public get subs(): StorageCacheItem[] { return this._subs; }
-    public get unrolled(): IMatchParamSet { // Flattened contents across nested inventory.
-        if(this._unrolled === undefined) {
-            const subFlat = this._subs.flatMap(sub => sub.unrolled);
-            this._unrolled = { types: new Set<ItemType>, groups: new Set<ItemTypeGroup> };
-            for(const sub of subFlat) {
-                this._unrolled.types.addFrom(sub.types);
-                this._unrolled.groups.addFrom(sub.groups);
-            }
+    public unroll(): IMatchParamSet { // Flattened contents across nested inventory.
+        const unrolled = { types: new Set<ItemType>, groups: new Set<ItemTypeGroup> };
+        for(const sub of [this._main, ...this._subs.flatMap(sub => sub.unroll())]) {
+            unrolled.types.addFrom(sub.types);
+            unrolled.groups.addFrom(sub.groups);
         }
-        return this._unrolled
+        return unrolled;
+    }
+
+    public findSub(i: Item): StorageCacheItem | undefined {
+        for(const s of this._subs) {
+            if(s.entity === i) return s;
+            const ss = s.findSub(i);
+            if(ss) return ss;
+        }
+        return undefined;
     }
 
     protected refreshFromArray(i: Item[]) {
@@ -63,7 +68,6 @@ export abstract class StorageCache<T extends StorageCacheEntityType> {
 
         this._main = { types: types, groups: groups };
         this._subs = i.filter(i => ItemManager.isInGroup(i.type, ItemTypeGroup.Storage)).map(ii => new StorageCacheItem(ii));
-        this._unrolled = undefined;
     }
 
     public abstract refresh(): void;
@@ -108,7 +112,7 @@ abstract class StorageCacheNearby<T extends ITile | Doodad> extends StorageCache
         return false;
     }
     protected abstract refreshRelation(): boolean;
-    public refresh(): boolean {
+    public  refresh(): boolean {
         if(this.refreshRelation()) {
             this.refreshFromArray(this.entity.containedItems ?? []);
             return true;
