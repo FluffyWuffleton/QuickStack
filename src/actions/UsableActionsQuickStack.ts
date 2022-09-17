@@ -296,6 +296,7 @@ export const StackAllSelfNear = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            
             return TransferHandler.canFitAny([player.inventory, ...playerHeldContainers(player)], validNearby(player), player);
         },
         execute: execSASeN

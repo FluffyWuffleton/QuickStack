@@ -12,7 +12,7 @@ import Translation from "language/Translation";
 import TileHelpers from "utilities/game/TileHelpers"
 import Log from "utilities/Log";
 
-import { ITransferItemMatch, ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
+import { ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
 import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups } from "./QSMatchGroups";
 import StaticHelper, { GLOBALCONFIG } from "./StaticHelper";
 
@@ -86,12 +86,12 @@ export default class TransferHandler {
     // Take a list of match parameters. 
     // If any item parameters can be represented by an enabled match-group, use the group parameter instead.
     // Returns a set of flattened parameters.
-    private static groupifyParameters(P: IMatchParam[]): Set<(ItemType | QSMatchableGroupKey)> {
+    public static groupifyParameters(P: IMatchParam[] | Set<IMatchParam>): Set<ItemType | QSMatchableGroupKey> {
         const pSet = new Set<ItemType | QSMatchableGroupKey>;
         P.forEach(param => pSet.add(param.group !== undefined ? param.group : (this.getActiveGroup(param.type) ?? param.type)));
         return pSet;
     }
-
+    
     //private static flattenParameters(P: IMatchParam[]): (ItemType | QSMatchableGroupKey)[] { return P.map(p => p.type ?? p.group); }
 
     /**
@@ -100,7 +100,7 @@ export default class TransferHandler {
      * @param {ThingWithContents[]} X 
      * @returns {Set<ItemType>}
      */
-    private static setOfTypes(X: ThingWithContents[]): Set<ItemType> {
+    public static setOfTypes(X: ThingWithContents[]): Set<ItemType> {
         return new Set<ItemType>([...X.flatMap(x => x.containedItems.map(it => it.type))]);
     }
     /**
@@ -108,7 +108,7 @@ export default class TransferHandler {
      * @param {Set<ItemType>} Types 
      * @returns {Set<QSMatchableGroupKey>}
      */
-    private static setOfActiveGroups(Types: Set<ItemType> | ItemType[]): Set<QSMatchableGroupKey> {
+    public static setOfActiveGroups(Types: Set<ItemType> | ItemType[]): Set<QSMatchableGroupKey> {
         if(!StaticHelper.QS_INSTANCE.anyMatchgroupsActive) return new Set<QSMatchableGroupKey>();
         const MGKeySet = new Set<QSMatchableGroupKey>(StaticHelper.QS_INSTANCE.activeMatchGroupsKeys);
         const mset = new Set<Matchable>([...Types, ...[...Types].flatMap(t => ItemManager.getGroups(t))]);
@@ -124,7 +124,7 @@ export default class TransferHandler {
      * @param {ThingWithContents[]} X 
      * @returns {Set<IMatchParam>}
      */
-    private static setOfParams(X: ThingWithContents[]): Set<IMatchParam> {
+    public static setOfParams(X: ThingWithContents[]): Set<IMatchParam> {
         const types = this.setOfTypes(X);               // Set of all types present in the thing.
         const groups = this.setOfActiveGroups(types);   // Set of all active groups comprised by those types
 
@@ -142,7 +142,7 @@ export default class TransferHandler {
      * @param {ThingWithContents[]} X 
      * @returns {Set<ItemType|QSMatchableGroupKey>}
      */
-    private static setOfFlatParams(X: ThingWithContents[]): Set<ItemType | QSMatchableGroupKey> {
+    public static setOfFlatParams(X: ThingWithContents[]): Set<ItemType | QSMatchableGroupKey> {
         const types = this.setOfTypes(X);               // Set of all types present in the thing.
         const groups = this.setOfActiveGroups(types);   // Set of all active groups comprised by those types
         // Remove type params for types encompassed by an active group.
@@ -165,7 +165,7 @@ export default class TransferHandler {
      * @param {IMatchParam[]} [filter = []] Only matches types/groups found in the filter array (if specified).
      * @returns {ITransferItemMatch[]} List of matches.
      */
-    public static getMatches(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): ITransferItemMatch[] {
+    public static getMatches(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): IMatchParam[] {
         if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`GET MATCHES:: ${A}  ${B}`);
 
         // setOfParams will favor providing a group over a type if the group exists. If an item is present, it has no active group.
@@ -180,13 +180,8 @@ export default class TransferHandler {
             StaticHelper.QS_LOG.info(`GET MATCHES:: REMAINING::`);
             console.log(AParams);
         }
-        return [...AParams].map((p) => ({
-            matched: (p in ItemType)
-                ? { type: p as ItemType }
-                : { group: p as QSMatchableGroupKey },
-            had: -1,
-            sent: -1
-        }));
+
+        return [...AParams].map(p => (typeof p === "string") ? { group: p } : { type: p });
     }
 
     /**
@@ -221,7 +216,6 @@ export default class TransferHandler {
 
     /**
      * Returns the matchable group key in which the provided ItemType or ItemTypeGroup can be found, if any such group is active. 
-     * There are no types or groups belonging to multiple matchable groups.
      * @param {(ItemType|ItemTypeGroup)} type
      * @returns {QSMatchableGroupKey|undefined}
      */
@@ -373,7 +367,7 @@ export default class TransferHandler {
                 const thisPairing: ITransferPairing = {
                     source: src,
                     destination: dest,
-                    matches: TransferHandler.getMatches([src.container], [dest.container], this.typeFilter)
+                    matches: TransferHandler.getMatches([src.container], [dest.container], this.typeFilter).map(m => ({ matched: m, had: -1, sent: -1}))
                 };
 
                 // Remove any forbidden types.

@@ -1,29 +1,38 @@
 import Doodad from "game/doodad/Doodad";
 import Player from "game/entity/player/Player";
 import Item from "game/item/Item";
+import ItemManager from "game/item/ItemManager";
 import { ITile } from "game/tile/ITerrain";
 import { Direction } from "utilities/math/Direction";
 import { IVector3 } from "utilities/math/IVector";
 import { IMatchParamSet } from "./QSMatchGroups";
-export declare type ILocalStorageCache = {
-    localPlayer: StorageCachePlayer;
-} & {
-    nearby: (StorageCacheTile | StorageCacheDoodad)[];
-};
+export declare class ILocalStorageCache {
+    readonly player: StorageCachePlayer;
+    private _nearby;
+    private _nearbyUnrolled;
+    get nearby(): (StorageCacheTile | StorageCacheDoodad)[];
+    set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]);
+    get nearbyUnrolled(): IMatchParamSet;
+    unrollNearby(): void;
+}
 declare type StorageCacheEntityType = Item | Player | Doodad | ITile;
 export declare abstract class StorageCache<T extends StorageCacheEntityType> {
     readonly entity: T;
+    readonly cHash: string;
     private _main;
     private _subs;
-    private _unrolled?;
+    private _unrolled;
     get main(): IMatchParamSet;
     get subs(): StorageCacheItem[];
     get unrolled(): IMatchParamSet;
+    updateUnrolled(): void;
+    findSub(i: Item): StorageCacheItem | undefined;
     protected refreshFromArray(i: Item[]): void;
     abstract refresh(): void;
-    protected constructor(e: T);
+    constructor(e: T, hash: string);
 }
-export declare module StorageCache {
+export declare namespace StorageCache {
+    function is<WHAT extends StorageCacheEntityType>(val: unknown): val is WHAT extends Item ? StorageCacheItem : WHAT extends Player ? StorageCachePlayer : WHAT extends ITile ? StorageCacheTile : StorageCacheDoodad;
 }
 declare abstract class StorageCacheNearby<T extends ITile | Doodad> extends StorageCache<T> {
     readonly nearWhom: Player;
@@ -33,16 +42,20 @@ declare abstract class StorageCacheNearby<T extends ITile | Doodad> extends Stor
     protected abstract refreshRelation(): boolean;
     refresh(): boolean;
 }
-declare class StorageCacheItem extends StorageCache<Item> {
+export declare class StorageCacheItem extends StorageCache<Item> {
     refresh(): void;
+    constructor(e: Item);
 }
-declare class StorageCachePlayer extends StorageCache<Player> {
+export declare class StorageCachePlayer extends StorageCache<Player> {
     refresh(): void;
+    constructor(e: Player);
 }
-declare class StorageCacheTile extends StorageCacheNearby<ITile> {
+export declare class StorageCacheTile extends StorageCacheNearby<ITile> {
     refreshRelation(): boolean;
+    constructor(e: ITile, items: ItemManager);
 }
-declare class StorageCacheDoodad extends StorageCacheNearby<Doodad> {
+export declare class StorageCacheDoodad extends StorageCacheNearby<Doodad> {
     refreshRelation(): boolean;
+    constructor(e: Doodad, items: ItemManager);
 }
 export {};

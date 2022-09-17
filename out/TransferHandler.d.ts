@@ -2,6 +2,7 @@ import Player from "game/entity/player/Player";
 import Island from "game/island/Island";
 import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
 import Item from "game/item/Item";
+import { ITile } from "game/tile/ITerrain";
 import Log from "utilities/Log";
 import { ITransferItemMatch, ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
 import { IMatchParam, QSMatchableGroupKey } from "./QSMatchGroups";
@@ -13,6 +14,7 @@ export declare function playerHasItem(player: Player, item: Item): boolean;
 export declare function playerHasType(player: Player, type: ItemType): boolean;
 export declare function playerHeldContainers(player: Player, type?: ItemType[]): IContainer[];
 export declare function validNearby(player: Player, overrideForbidTiles?: boolean): IContainer[];
+export declare function isSafeTile(player: Player, tile: ITile): boolean;
 export default class TransferHandler {
     readonly player: Player;
     readonly sources: ITransferTarget[];

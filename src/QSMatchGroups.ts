@@ -4,7 +4,6 @@ import { ItemType, ItemTypeGroup } from "game/item/IItem";
 interface IMatchByType { type: ItemType; group?: never;};
 interface IMatchByGroup { type?: never; group: QSMatchableGroupKey; };
 export type IMatchParam = IMatchByType | IMatchByGroup; // Will contain exactly one defined property, 'type' or 'group'
-export type IMatchParamSet = { types: Set<ItemType>, groups: Set<ItemTypeGroup> };
 export type Matchable = ItemType | ItemTypeGroup;
 
 // A collection of custom groupings for similar-item match options.

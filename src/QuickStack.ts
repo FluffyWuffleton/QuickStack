@@ -17,27 +17,24 @@ import { CheckButton } from "ui/component/CheckButton";
 import Translation from "language/Translation";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
-import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
+import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
 import Details from "ui/component/Details";
 import ItemManager from "game/item/ItemManager";
 import Text from "ui/component/Text";
 import { TooltipLocation } from "ui/component/IComponent";
 import listSegment from "language/segment/ListSegment";
 import { QSMatchableGroupKey, QSMatchableGroups, QSGroupsTranslation, QSMatchableGroupsFlatType, QSGroupsTranslationKey } from "./QSMatchGroups";
-import { ILocalStorageCache, StorageCacheDoodad, StorageCacheItem, StorageCacheTile } from "./IStorageCache";
+import { LocalStorageCache } from "./IStorageCache";
 import { EventHandler } from "event/EventManager";
 import { EventBus } from "event/EventBuses";
 import { ITile } from "game/tile/ITerrain";
 import Doodad from "game/doodad/Doodad";
-import TileHelpers from "utilities/game/TileHelpers"
 import Island from "game/island/Island";
-import { CreationId, TileUpdateType } from "game/IGame"
-import Multiplayer from "multiplayer/Multiplayer";
-import { isSafeTile } from "./TransferHandler";
-import { getTilePosition } from "utilities/game/TilePosition";
-import Player from "game/entity/player/Player";
+import { TileUpdateType } from "game/IGame"
 import Item from "game/item/Item";
 import { IVector3 } from "utilities/math/IVector";
+import Vector3 from "utilities/math/Vector3";
+
 
 export namespace GLOBALCONFIG {
     export const log_info = true as const;
@@ -91,6 +88,8 @@ export type IQSGlobalData = {
 } & {
     activeMatchGroups: { [k in QSMatchableGroupKey]: boolean },
 };
+
+export function isOnOrAdjacent(A: IVector3, B: IVector3): boolean { return A.z === B.z && (Math.abs(A.x - B.x) + Math.abs(A.y - B.y)) <= 1 }
 
 export default class QuickStack extends Mod {
     @Mod.instance<QuickStack>()
@@ -190,26 +189,19 @@ export default class QuickStack extends Mod {
     private _isDedicatedServer: boolean; // set in onInitialize
     public get isDedicatedServer(): boolean { return this._isDedicatedServer; }
 
-    private _localStorageCache: ILocalStorageCache; // initialized in onLoad
+    private _localStorageCache: LocalStorageCache; // initialized in onLoad
     public get localStorageCache() { return this._localStorageCache; }
 
     @EventHandler(EventBus.LocalPlayer, "moveComplete")
-    protected localPlayerMoved(host: Player): void {
-        if(!host.asLocalPlayer) return;
-        this.updateLSCNearbyAll();
-    }
-
+    protected localPlayerMoved(): void { this._localStorageCache.setOutdated("nearby"); }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemAdd")
-    protected localPlayerItemAdd(host: Player): void { this._localStorageCache.player.refresh(); }
+    protected localPlayerItemAdd(): void { this._localStorageCache.setOutdated("player"); }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemRemove")
-    protected localPlayerItemRemove(host: Player): void { this._localStorageCache.player.refresh(); }
-    @EventHandler(EventBus.LocalPlayer, "inventoryItemUpdate")
-    protected localPlayerItemUpdate(host: Player): void { this._localStorageCache.player.refresh(); }
+    protected localPlayerItemRemove(): void { this._localStorageCache.setOutdated("player"); }
 
     @EventHandler(EventBus.LocalIsland, "tileUpdate")
-    protected islandTileUpdated(host: Island, tile: ITile, x: number, y: number, z: number, updtype: TileUpdateType): void {
-        if(!host.isLocalIsland) return;
-        if(!TileHelpers.isAdjacent(localPlayer.getPoint(), { x: x, y: y, z: z })) return;
+    protected islandTileUpdated(_host: Island, _tile: ITile, x: number, y: number, z: number, updtype: TileUpdateType): void {
+        if(!isOnOrAdjacent(this._localStorageCache.player.entity.getPoint(), new Vector3(x, y, z))) return;
         switch(updtype) {
             case TileUpdateType.Batch:
             case TileUpdateType.DoodadChangeType:
@@ -218,98 +210,55 @@ export default class QuickStack extends Mod {
             case TileUpdateType.DoodadOverHidden:
             case TileUpdateType.Item:
             case TileUpdateType.ItemDrop:
-                this.updateLSCNearbyThing(tile);
+                this._localStorageCache.setOutdated("nearby");
             default:
                 return;
         }
     }
-    
+
     @EventHandler(EventBus.ItemManager, "containerItemAdd")
-    protected itemsContainerItemAdd(host: ItemManager, item: Item, container: IContainer): void { this.containerContentsAltered(host, container); }
+    protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void { this.containerUpdated(host, c, undefined); }
+
     @EventHandler(EventBus.ItemManager, "containerItemRemove")
-    protected itemsContainerItemRemove(host: ItemManager, item: Item, c?: IContainer, cpos?: IVector3): void { /*DO THIS */  }
-    @EventHandler(EventBus.ItemManager, "containerItemUpdate")
-    protected itemsContainerItemUpdate(host: ItemManager, item: Item, cFrom?: IContainer, cFpos?: IVector3, c: IContainer): void { /* DO THIS */ }
+    protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void { this.containerUpdated(host, c, cpos); }
 
+    // Shouldn't need to track this if we're accounting for both Add and Remove events already..
+    // @EventHandler(EventBus.ItemManager, "containerItemUpdate")
+    // protected itemsContainerItemUpdate(host: ItemManager, item: Item, cFrom: IContainer | undefined, cFpos: IVector3 | undefined, c: IContainer): void {
+    //     QuickStack.LOG.info(`containerItemUpdate\nITEM ${item.getName()}\nFROM ${cFrom}\nAT   ${cFpos}\nTO   ${c}`);
+    // }
 
-    
-    private containerContentsAltered(host: ItemManager, container: IContainer): void {
-        const topLevel = (c: IContainer): IContainer => (c.containedWithin === undefined ? c : topLevel(c.containedWithin));
-        let containerOfInterest = container;
-        switch(host.getContainerReference(container, undefined).crt) {
-            case ContainerReferenceType.Tile: return; // handled in LocalIsland.tileUpdate.
-            case ContainerReferenceType.Item:
-                containerOfInterest = topLevel(container);
-                switch(host.getContainerReference(containerOfInterest, undefined).crt) {
-                    case ContainerReferenceType.Tile: // If it's an item container on the ground, update on that tile.
-                        return this.updateLSCNearbyThing(host.resolveContainer(containerOfInterest) as ITile);
-                    case ContainerReferenceType.Doodad: // If it's an item container in a doodad, pass through to outer doodad case
-                        break;
-                    default: // Anything else is irrelevant or handled by another event.
-                        return;
-                }
-            case ContainerReferenceType.Doodad:
-                return this.updateLSCNearbyThing(host.resolveContainer(containerOfInterest) as Doodad);
-
-            default:
+    protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined) {
+        const topLevel: (c: IContainer) => IContainer = (c) => (c.containedWithin === undefined) ? c : topLevel(c.containedWithin);
+        if(container !== undefined) {
+            const top = topLevel(container);
+            if(items.hashContainer(top) === this._localStorageCache.player.cHash) {
+                this._localStorageCache.setOutdated("player");
                 return;
+            }
+            if(Doodad.is(container) || items.isTileContainer(top))
+                cpos = (container as IVector3);
         }
-    }
-
-    private updateLSCNearbyThing(thing: Doodad | ITile): void {
-        const isDoodad = Doodad.is(thing);
-        if(!TileHelpers.isAdjacent(localPlayer.getPoint(), isDoodad
-            ? { x: thing.x, y: thing.y, z: thing.z }
-            : ((a: any[]) => ({ x: a[0], y: a[1], z: a[2] })).call(undefined, getTilePosition(thing.data)))
-        ) return;
-
-        const cachedAt = this._localStorageCache.nearby.findIndex(n => (
-            isDoodad ? (Doodad.is(n.entity) && n.entity.id === thing.id) : (!Doodad.is(n.entity) && n.entity.data === thing.data)
-        ));
-
-        if(cachedAt !== -1) this._localStorageCache.nearby[cachedAt].refresh();
-        else this._localStorageCache.nearby.push(isDoodad ? new StorageCacheDoodad(thing) : new StorageCacheTile(thing));
-
-        this._localStorageCache.updateNearbyFlat();
-    }
-
-    private updateLSCNearbyAll() {
-        this._localStorageCache.nearby.map((n, i) => !!n.refreshRelation() ? undefined : i).filterNullish().reverse().forEach(removeIdx => {
-            this._localStorageCache.nearby.splice(removeIdx, 1)[0];
-        });
-
-        const nearTileIDs: number[] = [];
-        const nearDoodadIDs: number[] = [];
-        this._localStorageCache.nearby.forEach(n => { if(Doodad.is(n.entity)) nearDoodadIDs.push(n.entity.id); else nearTileIDs.push(n.entity.data); });
-        localPlayer.island.items.getAdjacentContainers(localPlayer, false).forEach(c => {
-            const resolved = localPlayer.island.items.resolveContainer(c);
-            if(resolved !== undefined) {
-                if(Doodad.is(resolved)) {
-                    if(!nearDoodadIDs.includes(resolved.id)) this._localStorageCache.nearby.push(new StorageCacheDoodad(resolved));
-                } else if("data" in resolved) {
-                    if(!nearDoodadIDs.includes(resolved.data)) this._localStorageCache.nearby.push(new StorageCacheTile(resolved));
-                }
-            } else if(GLOBALCONFIG.log_info) QuickStack.LOG.warn(`updateLSCNearbyAll: Encountered undefined container resolved from getAdjacentContainers`);
-        });
-        this._localStorageCache.updateNearbyFlat;
-    }
-
-    private updateLSCPlayerMain() {
-
+        if(cpos !== undefined) {
+            if(isOnOrAdjacent(cpos, this._localStorageCache.player.entity.getPoint()))
+                this._localStorageCache.setOutdated("nearby");
+            return;
+        }
+        QuickStack.LOG.warn(`QuickStack.containerUpdated\nUnhandled case for container '${container}' at ${cpos}`);
     }
 
 
-
-    public override onLoad(): void {
-        if(!steamworks.isDedicatedServer()) this.registerEventHandlers("unload");
-    }
 
     public override onInitialize(): void {
         this["subscribedHandlers"] = true;
         this.refreshMatchGroupsArray();
     }
-
-
+    public override onLoad(): void {
+        if(!steamworks.isDedicatedServer()) {
+            this["subscribedHandlers"] = false;
+            this.registerEventHandlers("unload");
+        }
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Global data, helper data, and refresh methods
