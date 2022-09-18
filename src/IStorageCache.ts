@@ -1,6 +1,6 @@
 import Doodad from "game/doodad/Doodad";
 import Player from "game/entity/player/Player";
-import { IContainable, ItemType, ItemTypeGroup } from "game/item/IItem";
+import { IContainable, IContainer, ItemType } from "game/item/IItem";
 import Item from "game/item/Item";
 import ItemManager from "game/item/ItemManager";
 import { ITile } from "game/tile/ITerrain";
@@ -11,17 +11,22 @@ import { IVector3 } from "utilities/math/IVector";
 import Vector3 from "utilities/math/Vector3";
 import { IMatchParam, QSMatchableGroupKey } from "./QSMatchGroups";
 import StaticHelper, { GLOBALCONFIG } from "./StaticHelper";
-import TransferHandler, { isStorageType } from "./TransferHandler";
+import TransferHandler, { isStorageType, validNearby } from "./TransferHandler";
 
-export type ABMatchTuple = [match: ItemType | QSMatchableGroupKey, canFitAtoB: boolean, canFitBtoA: boolean];
+export type ABMatchesObserved = [match: (ItemType | QSMatchableGroupKey), fitAtoB: boolean, fitBtoA: boolean];
+export enum locationGroup { self = 0, nearby = 1 };
 
 export class LocalStorageCache {
     readonly player: StorageCachePlayer;
     private _nearby: (StorageCacheTile | StorageCacheDoodad)[];
     private _nearbyUnrolled: Set<IMatchParam> = new Set<IMatchParam>;
     private _outdated: { player: boolean, nearby: boolean } = { player: true, nearby: true };
-    private _interrelations: { [ABHash: string]: ABMatchTuple[] }
-
+    private _interrelations: {
+        [ABHash: string]: {
+            checked: (ItemType | QSMatchableGroupKey)[],
+            found: ABMatchesObserved[]
+        }
+    }
     public get nearby(): (StorageCacheTile | StorageCacheDoodad)[] { return this._nearby; }
     public set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]) { this._nearby = value; }
 
@@ -40,7 +45,7 @@ export class LocalStorageCache {
             });
             const hashes: string[] = this._nearby.map(n => n.cHash);
             const itemMgr = this.player.entity.island.items;
-            itemMgr.getAdjacentContainers(this.player.entity, false).forEach(adj => {
+            validNearby(this.player.entity, true).forEach(adj => {
                 const adjHash = itemMgr.hashContainer(adj);
                 if(!hashes.includes(adjHash)) { // New container. Add it.
                     if(Doodad.is(adj)) this._nearby.push(new StorageCacheDoodad(adj, itemMgr));
@@ -59,34 +64,124 @@ export class LocalStorageCache {
         this._nearby.forEach(n => this._nearbyUnrolled.addFrom(n.unrolled));
     }
 
-    public updateRelation(AHash: string, BHash: string): boolean {
-        if(AHash > BHash) [AHash, BHash] = [BHash, AHash];
-        const ABHash = `${AHash}${BHash}`;
+
+    private locationGroupHashes(g: locationGroup): string[] {
+        switch(g) {
+            case locationGroup.nearby: return this._nearby.map(n => n.cHash);
+            case locationGroup.self: return [this.player.cHash, ...this.player.deepSubs().map(s => s.cHash)];
+        }
+    }
+
+    public flipHash(A: string, B: string): boolean { return A > B; }
+    public ABHash(A: string, B: string): string { return this.flipHash(A, B) ? `${B}${A}` : `${A}${B}` }
+
+    // Returns false if any of the hashes could not be found in the cache. Does nothing if the hashes are equal.
+    public updateRelation(A: string | locationGroup, B: string | locationGroup, filter?: (ItemType | QSMatchableGroupKey)[]): boolean {
+        if(A === B) return true;
+        if(typeof A !== "string") { return !this.locationGroupHashes(A).map(hash => this.updateRelation(hash, B, filter)).some(ret => !ret); } // Recursive for locgroups.
+        if(typeof B !== "string") { return !this.locationGroupHashes(B).map(hash => this.updateRelation(A, hash, filter)).some(ret => !ret); } // Recursive for locgroups.
+
+        if(A < B) { [A, B] = [B, A]; }
+        const ABHash = `${A}${B}`;
+
+        // Identify previously checked parameters in this match, if it exists in the array.
+        // If it doesn't exist in the array, initialize it.
+        const checkedParams: Set<ItemType | QSMatchableGroupKey> = new Set();
+        if(this._interrelations[ABHash] !== undefined) {
+            checkedParams.addFrom(this._interrelations[ABHash].checked);
+            if(filter !== undefined && filter.length > 0) {
+                filter = [...TransferHandler.groupifyParameters(filter.map(p => typeof p === "string" ? { group: p } : { type: p }))]
+                filter = filter.filter(p => !checkedParams.has(p));
+                if(filter.length === 0) return true; // Is valid relation, but nothing new needs to be checked.
+            }
+        } else this._interrelations[ABHash] = { checked: [], found: [] };
 
         // Locate the cache entries for the provided hashes.
         const fullCacheTreeFlat = [this.player, ...this.player.deepSubs(), ...this.nearby.flatMap(n => [n, ...n.deepSubs()])];
-        const fullHashList = fullCacheTreeFlat.map(c => c.cHash);
-        const Aidx = fullHashList.findIndex(h => h === AHash);
-        const Bidx = fullHashList.findIndex(h => h === BHash);
-        if(Aidx < 0 || Bidx < 0) return false; // one of the provided hashes wasn't in the tree...
-        
-        const ARef = fullCacheTreeFlat[Aidx];
-        const BRef = fullCacheTreeFlat[Bidx];
+        const ARef = fullCacheTreeFlat.find(cache => cache.cHash === A);
+        const BRef = fullCacheTreeFlat.find(cache => cache.cHash === B);
+        if(ARef === undefined || BRef === undefined) return false; // one of the provided hashes wasn't in the tree...
 
-        // Identify matching parameters
         const matches = new Set<ItemType | QSMatchableGroupKey>([...ARef.main].map(p => p.group ?? p.type));
+        if(filter !== undefined && filter.length > 0) matches.retainWhere(m => !filter!.includes(m));
+        this._interrelations[ABHash].checked.push(...matches)
+
         const BParams = [...BRef.main].map(p => p.group ?? p.type)
         matches.retainWhere(m => BParams.includes(m));
-        
-        this._interrelations[ABHash] = [];
-        matches.forEach(m => this._interrelations[ABHash].push(
-            
+        if(matches.size < 1) return true; // nothing new to check.
+        const infA = StorageCache.is<Player>(ARef);
+        const infB = StorageCache.is<Player>(BRef);
 
-        ))
-
+        matches.forEach(m => {
+            const fitAB = infB ? true : TransferHandler.canFitAny([ARef.cRef], [BRef.cRef], this.player.entity, typeof (m) === "string" ? [{ group: m }] : [{ type: m }]);
+            const fitBA = infA ? true : TransferHandler.canFitAny([BRef.cRef], [ARef.cRef], this.player.entity, typeof (m) === "string" ? [{ group: m }] : [{ type: m }]);
+            this._interrelations[ABHash].found.push([m, fitAB, fitBA])
+        });
         return true;
     }
 
+    public checkSelfNearby(filter?: (ItemType | QSMatchableGroupKey)[], reverse?: true): boolean {
+        this.update();
+        this.updateRelation(locationGroup.self, locationGroup.nearby, filter);
+
+        for(const s of [this.player, ...this.player.deepSubs()])
+            for(const n of this.nearby) {
+                if(StorageCache.is<ITile>(n) && StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !reverse) continue; // This is a tile and a deposit operation, but tile deposit is forbidden.
+                if(this._interrelations[this.ABHash(s.cHash, n.cHash)].found
+                    .filter(fnd => filter === undefined || filter.length > 0 || filter.includes(fnd[0]))
+                    .some(fnd => fnd[(this.flipHash(s.cHash, n.cHash) ? !reverse : reverse) ? 1 : 2]) // flip XOR reverse ? BtoA : AtoB
+                ) return true;
+            }
+        return false;
+    }
+
+    // Return undefined if AHash isn't found in the cache.
+    // Return true if transfer possible.
+    public checkSpecificNearby(AHash: string, filter?: (ItemType | QSMatchableGroupKey)[], reverse?: true): boolean | undefined {
+        this.update();
+        if(this.updateRelation(AHash, locationGroup.nearby, filter) === false) return undefined;
+
+        for(const n of this._nearby) {
+            if(StorageCache.is<ITile>(n) && StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !reverse) continue; // This is a tile and a deposit operation, but tile deposit is forbidden.
+            if(n.cHash === AHash) continue; // This is the same container...
+            
+            if(this._interrelations[this.ABHash(AHash, n.cHash)].found
+                .filter(fnd => filter === undefined || filter.length > 0 || filter.includes(fnd[0]))
+                .some(fnd => fnd[(this.flipHash(AHash, n.cHash) ? !reverse : reverse) ? 2 : 1]) // flip XOR reverse ? BtoA : AtoB
+            ) return true;
+        }
+        return false;
+    }
+
+    // Return undefined if AHash isn't found in the cache.
+    // Return true if transfer possible.
+    public checkSelfSpecific(BHash: string, filter?: (ItemType | QSMatchableGroupKey)[], reverse?: true): boolean | undefined {
+        this.update();
+        if(this.updateRelation(BHash, locationGroup.nearby, filter) === false) return undefined;
+
+        for(const s of [this.player, ...this.player.deepSubs()]) {
+            if(s.cHash === BHash) continue; // This is the same container...
+            
+            if(this._interrelations[this.ABHash(s.cHash, BHash)].found
+                .filter(fnd => filter === undefined || filter.length > 0 || filter.includes(fnd[0]))
+                .some(fnd => fnd[(this.flipHash(s.cHash, BHash) ? !reverse : reverse) ? 2 : 1]) // flip XOR reverse ? BtoA : AtoB
+            ) return true;
+        }
+        return false;
+    }
+
+    // Return undefined if a hash isn't found in the cache.
+    // Return true if transfer possible. Returns false if no transfer possible or if hashes are equal.
+    public checkSpecific(fromHash: string, toHash: string, filter?: (ItemType | QSMatchableGroupKey)[]): boolean | undefined {
+        this.update();
+        if(fromHash === toHash) return false;
+        if(this.updateRelation(fromHash, toHash, filter) === false) return undefined;
+        if(this._interrelations[this.ABHash(fromHash, toHash)].found
+            .filter(fnd => filter === undefined || filter.length > 0 || filter.includes(fnd[0]))
+            .some(fnd => fnd[this.flipHash(fromHash, toHash) ? 2 : 1]) // flip ? BtoA : AtoB
+        ) return true;
+        return false;
+    }
 };
 
 type StorageCacheEntityType = Item | Player | Doodad | ITile;
@@ -94,7 +189,8 @@ type StorageCacheEntityType = Item | Player | Doodad | ITile;
 export abstract class StorageCache<T extends StorageCacheEntityType> {
     readonly entity: T;                 // The entity whos contents this cache is observing. (player, doodad, etc)
     readonly cHash: string;             // The hash string for the IContainer corresponding to this cache's entity.
-    private _main: Set<IMatchParam>;    // Matchable contents at this .
+    abstract readonly cRef: IContainer;
+    private _main: Set<IMatchParam>;    // Matchable contents at this.
     private _subs: StorageCacheItem[];  // Array of nested subcaches for any identified sub-containers.
     private _unrolled: Set<IMatchParam>;
 
@@ -147,9 +243,10 @@ export abstract class StorageCache<T extends StorageCacheEntityType> {
         this._unrolled = new Set<IMatchParam>;
         this.refresh();
     }
-};
+}
 
-export namespace StorageCache {
+export module StorageCache {
+
     export function is<WHAT extends StorageCacheEntityType>(val: unknown): val is WHAT extends Item ? StorageCacheItem
         : WHAT extends Player ? StorageCachePlayer : WHAT extends ITile ? StorageCacheTile : StorageCacheDoodad {
         return val instanceof StorageCache<WHAT>;
@@ -191,19 +288,35 @@ abstract class StorageCacheNearby<T extends ITile | Doodad> extends StorageCache
 }
 
 export class StorageCacheItem extends StorageCache<Item> {
+    public readonly cRef: IContainer;
     public refresh() { this.refreshFromArray(this.entity.containedItems ?? []); }
-    constructor(e: Item) { super(e, e.island.items.hashContainer(e)); }
+    constructor(e: Item) {
+        super(e, e.island.items.hashContainer(e));
+        this.cRef = this.entity as IContainer;
+    }
 }
 export class StorageCachePlayer extends StorageCache<Player> {
+    public readonly cRef: IContainer;
     public refresh() { this.refreshFromArray(this.entity.inventory.containedItems, true); }
-    constructor(e: Player) { super(e, e.island.items.hashContainer(e.inventory)); }
+    constructor(e: Player) {
+        super(e, e.island.items.hashContainer(e.inventory));
+        this.cRef = this.entity.inventory;
+    }
 }
 
 export class StorageCacheTile extends StorageCacheNearby<ITile> {
+    public readonly cRef: IContainer;
     public refreshRelation(): boolean { return super.refreshRelationFromPos(new Vector3(getTilePosition(this.entity.data))); }
-    constructor(e: ITile, items: ItemManager) { super(e, items.hashContainer(e/* island.items.getTileContainer(...getTilePosition(e.data), e) */)); }
+    constructor(e: ITile, items: ItemManager) {
+        super(e, items.hashContainer(e));
+        this.cRef = items.getTileContainer(...getTilePosition(e.data), e);
+    }
 }
 export class StorageCacheDoodad extends StorageCacheNearby<Doodad> {
+    public readonly cRef: IContainer;
     public refreshRelation(): boolean { return super.refreshRelationFromPos({ x: this.entity.x, y: this.entity.y, z: this.entity.z }); }
-    constructor(e: Doodad, items: ItemManager) { super(e, items.hashContainer(e as IContainable)); }
+    constructor(e: Doodad, items: ItemManager) {
+        super(e, items.hashContainer(e as IContainable));
+        this.cRef = e;
+    }
 }

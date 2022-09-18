@@ -13,6 +13,7 @@ export default class StaticHelper {
     @Mod.log("Quick Stack")
     public static readonly QS_LOG: Log;
     
+    public static get QSLSC() { return StaticHelper.QS_INSTANCE.localStorageCache; }
     //public static get QSDict() { return QuickStack.INSTANCE.dictMain; }
     //public static get QSGroupsDict() { return QuickStack.INSTANCE.}
     public static TLMain(id: QSTranslationKey): Translation { return Translation.get(QuickStack.INSTANCE.dictMain, QSTranslation[id]); }

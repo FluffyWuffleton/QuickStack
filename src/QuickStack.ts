@@ -281,7 +281,7 @@ export default class QuickStack extends Mod {
         }
         return retData;
     }
-
+    
     /**
      * For each active match group, _activeMatchGroupsFlattened[<that group's key>] will contain an exhaustive list of ItemTypes belonging to that group.
      * @type {(QSMatchableGroupsFlatType)}
