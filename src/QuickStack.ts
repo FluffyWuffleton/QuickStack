@@ -204,21 +204,21 @@ export default class QuickStack extends Mod {
     public SANMBind(): boolean { return !execSANM(localPlayer); }
 
     // Submenu bindings
-    @Register.bindable("All", IInput.key("a")) // for actions on all types
+    @Register.bindable("All", IInput.key("KeyA")) // for actions on all types
     public readonly bindableAll: Bindable;
-    @Register.bindable("Type", IInput.key("t")) // for actions on specific type
+    @Register.bindable("Type", IInput.key("KeyT")) // for actions on specific type
     public readonly bindableType: Bindable;
-    @Register.bindable("Self", IInput.key("f")) // for actions to/from full inventory
+    @Register.bindable("Self", IInput.key("KeyF")) // for actions to/from full inventory
     public readonly bindableSelf: Bindable;
-    @Register.bindable("Main", IInput.key("t")) // for actions to/from top-level inventory
+    @Register.bindable("Main", IInput.key("KeyT")) // for actions to/from top-level inventory
     public readonly bindableMain: Bindable;
-    @Register.bindable("Sub", IInput.key("c")) // for actions to/from subcontainer
+    @Register.bindable("Sub", IInput.key("KeyC")) // for actions to/from subcontainer
     public readonly bindableSub: Bindable;
-    @Register.bindable("Alike", IInput.key("c", "Shift")) // for actions to/from similar subcontainer
+    @Register.bindable("Alike", IInput.key("KeyC", "Shift")) // for actions to/from similar subcontainer
     public readonly bindableAlike: Bindable;
-    @Register.bindable("Here", IInput.key("h")) // for actions to/from selected item's location
+    @Register.bindable("Here", IInput.key("KeyH")) // for actions to/from selected item's location
     public readonly bindableHere: Bindable;
-    @Register.bindable("Nearby", IInput.key("n")) // for actions to/from nearby
+    @Register.bindable("Nearby", IInput.key("KeyN")) // for actions to/from nearby
     public readonly bindableNearby: Bindable;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
