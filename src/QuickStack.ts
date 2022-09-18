@@ -174,14 +174,14 @@ export default class QuickStack extends Mod {
     @Bind.onDown(Registry<QuickStack>().get("bindableSANM")) public SANMBind(): boolean { return !execSANM(localPlayer); }
 
     // Submenu bindings
-    @Register.bindable("All", IInput.key("a")) public readonly bindableAll: Bindable; // for actions on all types
-    @Register.bindable("Type", IInput.key("t")) public readonly bindableType: Bindable; // for actions on specific type
-    @Register.bindable("Self", IInput.key("f")) public readonly bindableSelf: Bindable; // for actions to/from full inventory
-    @Register.bindable("Main", IInput.key("t")) public readonly bindableMain: Bindable; // for actions to/from top-level inventory
-    @Register.bindable("Sub", IInput.key("c")) public readonly bindableSub: Bindable; // for actions to/from subcontainer
-    @Register.bindable("Like", IInput.key("c", "Shift")) public readonly bindableLike: Bindable; // for actions to/from similar subcontainer
-    @Register.bindable("Here", IInput.key("h")) public readonly bindableHere: Bindable; // for actions to/from selected item's location
-    @Register.bindable("Nearb", IInput.key("n")) public readonly bindableNear: Bindable; // for actions to/from nearby
+    @Register.bindable("All", IInput.key("KeyA")) public readonly bindableAll: Bindable; // for actions on all types
+    @Register.bindable("Type", IInput.key("KeyT")) public readonly bindableType: Bindable; // for actions on specific type
+    @Register.bindable("Self", IInput.key("KeyF")) public readonly bindableSelf: Bindable; // for actions to/from full inventory
+    @Register.bindable("Main", IInput.key("KeyM")) public readonly bindableMain: Bindable; // for actions to/from top-level inventory
+    @Register.bindable("Sub", IInput.key("KeyC")) public readonly bindableSub: Bindable; // for actions to/from subcontainer
+    @Register.bindable("Like", IInput.key("KeyC", "Shift")) public readonly bindableLike: Bindable; // for actions to/from similar subcontainer
+    @Register.bindable("Here", IInput.key("KeyH")) public readonly bindableHere: Bindable; // for actions to/from selected item's location
+    @Register.bindable("Near", IInput.key("KeyN")) public readonly bindableNear: Bindable; // for actions to/from nearby
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Events for storage cache maintenance

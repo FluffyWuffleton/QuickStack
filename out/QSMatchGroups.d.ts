@@ -8,10 +8,6 @@ interface IMatchByGroup {
     group: QSMatchableGroupKey;
 }
 export declare type IMatchParam = IMatchByType | IMatchByGroup;
-export declare type IMatchParamSet = {
-    types: Set<ItemType>;
-    groups: Set<ItemTypeGroup>;
-};
 export declare type Matchable = ItemType | ItemTypeGroup;
 export declare enum QSGroupsTranslation {
     Projectile = 0,
