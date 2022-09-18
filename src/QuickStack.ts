@@ -158,12 +158,12 @@ export default class QuickStack extends Mod {
     //
 
     // Global bindings
-    @Register.bindable("StackAllSelfNear", IInput.key("slash", "Shift"))
+    @Register.bindable("StackAllSelfNearby", IInput.key("Slash", "Shift"))
     public readonly bindableSASeN: Bindable;
     @Register.bindable("StackAllMainNear")
     public readonly bindableSAMN: Bindable;
 
-    @Register.bindable("StackAllNearSelf", IInput.key("slash", "Shift", "Ctrl"))
+    @Register.bindable("StackAllNearSelf", IInput.key("Slash", "Shift", "Ctrl"))
     public readonly bindableSANSe: Bindable;
     @Register.bindable("StackAllNearMain")
     public readonly bindableSANM: Bindable;

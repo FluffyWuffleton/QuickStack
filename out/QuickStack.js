@@ -335,13 +335,13 @@ define(["require", "exports", "mod/Mod", "mod/ModRegistry", "ui/input/IInput", "
         ModRegistry_1.default.usableActions("QSUsableActions", UsableActionsMain_1.UsableActionSet.ItemMoveMenus, reg => UsableActionsQuickStack_1.UsableActionsQuickStack.register(reg))
     ], QuickStack.prototype, "QSUsableActions", void 0);
     __decorate([
-        ModRegistry_1.default.bindable("StackAllSelfNear", IInput_1.IInput.key("slash", "Shift"))
+        ModRegistry_1.default.bindable("StackAllSelfNear", IInput_1.IInput.key("Slash", "Shift"))
     ], QuickStack.prototype, "bindableSASeN", void 0);
     __decorate([
         ModRegistry_1.default.bindable("StackAllMainNear")
     ], QuickStack.prototype, "bindableSAMN", void 0);
     __decorate([
-        ModRegistry_1.default.bindable("StackAllNearSelf", IInput_1.IInput.key("slash", "Shift", "Ctrl"))
+        ModRegistry_1.default.bindable("StackAllNearSelf", IInput_1.IInput.key("Slash", "Shift", "Ctrl"))
     ], QuickStack.prototype, "bindableSANSe", void 0);
     __decorate([
         ModRegistry_1.default.bindable("StackAllNearMain")
