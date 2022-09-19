@@ -1,61 +1,93 @@
 import Doodad from "game/doodad/Doodad";
 import Player from "game/entity/player/Player";
+import { IContainer } from "game/item/IItem";
 import Item from "game/item/Item";
-import ItemManager from "game/item/ItemManager";
 import { ITile } from "game/tile/ITerrain";
 import { Direction } from "utilities/math/Direction";
 import { IVector3 } from "utilities/math/IVector";
-import { IMatchParamSet } from "./QSMatchGroups";
-export declare class ILocalStorageCache {
-    readonly player: StorageCachePlayer;
+import { IMatchParam, MatchParamFlat } from "./QSMatchGroups";
+export declare type ABCheckedMatch = [match: MatchParamFlat, fitAtoB: boolean, fitBtoA: boolean];
+interface ICheckedRelations {
+    checked: MatchParamFlat[];
+    found: ABCheckedMatch[];
+}
+export declare enum locationGroup {
+    self = 0,
+    nearby = 1
+}
+export declare type ContainerHash = string;
+export declare function isOnOrAdjacent(A: IVector3, B: IVector3): boolean;
+export declare class LocalStorageCache {
+    private _player;
     private _nearby;
-    private _nearbyUnrolled;
+    private _nearbyOutdated;
+    private _interrelations;
+    get player(): StorageCachePlayer;
     get nearby(): (StorageCacheTile | StorageCacheDoodad)[];
-    set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]);
-    get nearbyUnrolled(): IMatchParamSet;
-    unrollNearby(): void;
+    interrelation(A: ContainerHash, B: ContainerHash, filter?: MatchParamFlat[]): ICheckedRelations | undefined;
+    setOutdated(K?: "player" | "nearby"): void;
+    private refreshNearby;
+    private locationGroupMembers;
+    flipHash(A: ContainerHash, B: ContainerHash): boolean;
+    ABHash(A: ContainerHash, B: ContainerHash): string;
+    CheckedMatchCanTransfer(ABMatch: ABCheckedMatch, filter?: MatchParamFlat[], reverse?: boolean): boolean;
+    private purgeRelations;
+    updateRelation(A: ContainerHash, B: ContainerHash, filter?: MatchParamFlat[]): boolean;
+    checkSelfNearby(filter?: MatchParamFlat[], reverse?: true): boolean;
+    checkSpecificNearby(AHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined;
+    checkSelfSpecific(BHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined;
+    checkSpecific(fromHash: ContainerHash, toHash: ContainerHash, filter?: MatchParamFlat[]): boolean | undefined;
+    constructor(p: Player);
 }
 declare type StorageCacheEntityType = Item | Player | Doodad | ITile;
-export declare abstract class StorageCache<T extends StorageCacheEntityType> {
+declare type StorageCacheEntityTypeString = "Item" | "Player" | "Doodad" | "ITile";
+export declare abstract class StorageCacheBase<T extends StorageCacheEntityType = StorageCacheEntityType> {
     readonly entity: T;
     readonly cHash: string;
+    abstract readonly iswhat: StorageCacheEntityTypeString;
+    abstract readonly cRef: IContainer;
     private _main;
     private _subs;
-    private _unrolled;
-    get main(): IMatchParamSet;
+    protected _outdated: boolean;
+    get main(): Set<IMatchParam>;
     get subs(): StorageCacheItem[];
-    get unrolled(): IMatchParamSet;
-    updateUnrolled(): void;
-    findSub(i: Item): StorageCacheItem | undefined;
-    protected refreshFromArray(i: Item[]): void;
-    abstract refresh(): void;
-    constructor(e: T, hash: string);
+    get outdated(): boolean;
+    setOutdated(recursive?: true): void;
+    deepSubs(): StorageCacheItem[];
+    findSub(sub: Item | ContainerHash): StorageCacheItem | undefined;
+    protected refresh(protect?: true): this;
+    constructor(e: T, hash: string, noRefresh?: true);
 }
-export declare namespace StorageCache {
-    function is<WHAT extends StorageCacheEntityType>(val: unknown): val is WHAT extends Item ? StorageCacheItem : WHAT extends Player ? StorageCachePlayer : WHAT extends ITile ? StorageCacheTile : StorageCacheDoodad;
-}
-declare abstract class StorageCacheNearby<T extends ITile | Doodad> extends StorageCache<T> {
+declare abstract class StorageCacheNearby<T extends ITile | Doodad> extends StorageCacheBase<T> {
     readonly nearWhom: Player;
     private _relation;
     get relation(): Direction.Cardinal | Direction.None;
-    protected refreshRelationFromPos(thisPos: IVector3): boolean;
-    protected abstract refreshRelation(): boolean;
-    refresh(): boolean;
+    protected abstract thisPos(): IVector3;
+    protected refreshRelation(): boolean;
+    refreshIfNear(): boolean;
+    constructor(e: T, p: Player, hash: string);
 }
-export declare class StorageCacheItem extends StorageCache<Item> {
-    refresh(): void;
+export declare class StorageCacheItem extends StorageCacheBase<Item> {
+    readonly iswhat = "Item";
+    readonly cRef: IContainer;
     constructor(e: Item);
 }
-export declare class StorageCachePlayer extends StorageCache<Player> {
-    refresh(): void;
+export declare class StorageCachePlayer extends StorageCacheBase<Player> {
+    readonly iswhat = "Player";
+    readonly cRef: IContainer;
+    refresh(): this;
     constructor(e: Player);
 }
 export declare class StorageCacheTile extends StorageCacheNearby<ITile> {
-    refreshRelation(): boolean;
-    constructor(e: ITile, items: ItemManager);
+    readonly iswhat = "ITile";
+    readonly cRef: IContainer;
+    thisPos(): IVector3;
+    constructor(e: ITile, p: Player);
 }
 export declare class StorageCacheDoodad extends StorageCacheNearby<Doodad> {
-    refreshRelation(): boolean;
-    constructor(e: Doodad, items: ItemManager);
+    readonly iswhat = "Doodad";
+    readonly cRef: IContainer;
+    thisPos(): IVector3;
+    constructor(e: Doodad, p: Player);
 }
 export {};

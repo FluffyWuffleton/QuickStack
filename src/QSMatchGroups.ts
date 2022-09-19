@@ -4,6 +4,7 @@ import { ItemType, ItemTypeGroup } from "game/item/IItem";
 interface IMatchByType { type: ItemType; group?: never;};
 interface IMatchByGroup { type?: never; group: QSMatchableGroupKey; };
 export type IMatchParam = IMatchByType | IMatchByGroup; // Will contain exactly one defined property, 'type' or 'group'
+export type MatchParamFlat = ItemType | QSMatchableGroupKey;
 export type Matchable = ItemType | ItemTypeGroup;
 
 // A collection of custom groupings for similar-item match options.
@@ -19,6 +20,8 @@ export enum QSGroupsTranslation {
     Rock,
     Metal,
     Smelting,
+    Glassblowing,
+    ClayThrowing,
     Poles,
     Fastening,
     Needlework,
@@ -94,7 +97,26 @@ export const QSMatchableGroups: {[k in QSMatchableGroupKey]: readonly Matchable[
         ItemType.CarbonPowder,
         ItemType.TinOre,
         ItemType.CopperOre,
-        ItemType.IronOre
+        ItemType.IronOre,
+        ItemTypeGroup.SandCastFlask
+    ],
+    Glassblowing: [
+        ItemTypeGroup.Sand,
+        ItemType.RefinedSand,
+        ItemType.SheetOfGlass,
+        ItemType.Lens,
+        ItemType.ClayBlowpipe
+    ],
+    ClayThrowing: [
+        ItemType.RawClay,
+        ItemType.RawClayBlowpipe,
+        ItemType.RawClayBrick,
+        ItemType.RawClayJug,
+        ItemType.RawClayMortarAndPestle,
+        ItemType.ClayFlakes,
+        ItemType.ClayBrick,
+        ItemType.AshCement,
+        ItemType.AshCementBrick
     ],
     Poles: [
         ItemTypeGroup.Pole
@@ -106,6 +128,7 @@ export const QSMatchableGroups: {[k in QSMatchableGroupKey]: readonly Matchable[
     ],
     Needlework: [
         ItemTypeGroup.Needle,
+        ItemTypeGroup.Spine,
         ItemTypeGroup.Fabric,
         ItemType.AnimalFur,
         ItemType.AnimalPelt,

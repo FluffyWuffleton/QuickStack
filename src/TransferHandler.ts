@@ -13,7 +13,7 @@ import TileHelpers from "utilities/game/TileHelpers"
 import Log from "utilities/Log";
 
 import { ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
-import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups } from "./QSMatchGroups";
+import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups, MatchParamFlat } from "./QSMatchGroups";
 import StaticHelper, { GLOBALCONFIG } from "./StaticHelper";
 
 export type ThingWithContents = Pick<IContainer, "containedItems">;
@@ -86,13 +86,13 @@ export default class TransferHandler {
     // Take a list of match parameters. 
     // If any item parameters can be represented by an enabled match-group, use the group parameter instead.
     // Returns a set of flattened parameters.
-    public static groupifyParameters(P: IMatchParam[] | Set<IMatchParam>): Set<ItemType | QSMatchableGroupKey> {
-        const pSet = new Set<ItemType | QSMatchableGroupKey>;
+    public static groupifyParameters(P: IMatchParam[] | Set<IMatchParam>): Set<MatchParamFlat> {
+        const pSet = new Set<MatchParamFlat>;
         P.forEach(param => pSet.add(param.group !== undefined ? param.group : (this.getActiveGroup(param.type) ?? param.type)));
         return pSet;
     }
-    
-    //private static flattenParameters(P: IMatchParam[]): (ItemType | QSMatchableGroupKey)[] { return P.map(p => p.type ?? p.group); }
+
+    //private static flattenParameters(P: IMatchParam[]): MatchParamFlat[] { return P.map(p => p.type ?? p.group); }
 
     /**
      * Return set of unique Item types in a given Container or Item array.
@@ -101,7 +101,7 @@ export default class TransferHandler {
      * @returns {Set<ItemType>}
      */
     public static setOfTypes(X: ThingWithContents[]): Set<ItemType> {
-        return new Set<ItemType>([...X.flatMap(x => x.containedItems.map(it => it.type))]);
+        return new Set<ItemType>([...X.flatMap(x => (x.containedItems ?? X).map(it => it.type))]);
     }
     /**
      * Return set of unique active match-groups in which the given item types can be found. Might be empty.
@@ -121,7 +121,7 @@ export default class TransferHandler {
     /**
      * Return set of unique parameters (types and active groups) in then given containers
      * If a given type belongs to an active group, that specific type's parameter will be omitted in favor of the group parameter.
-     * @param {ThingWithContents[]} X 
+     * @param {ThingWithContents[]|Item[]} X 
      * @returns {Set<IMatchParam>}
      */
     public static setOfParams(X: ThingWithContents[]): Set<IMatchParam> {
@@ -142,7 +142,7 @@ export default class TransferHandler {
      * @param {ThingWithContents[]} X 
      * @returns {Set<ItemType|QSMatchableGroupKey>}
      */
-    public static setOfFlatParams(X: ThingWithContents[]): Set<ItemType | QSMatchableGroupKey> {
+    public static setOfFlatParams(X: ThingWithContents[]): Set<MatchParamFlat> {
         const types = this.setOfTypes(X);               // Set of all types present in the thing.
         const groups = this.setOfActiveGroups(types);   // Set of all active groups comprised by those types
         // Remove type params for types encompassed by an active group.
@@ -155,7 +155,7 @@ export default class TransferHandler {
             StaticHelper.QS_LOG.info(`Resolved params: (Flat) [TYPES, GROUPS]`);
             console.log([[...types], [...groups]]);
         }
-        return new Set<ItemType | QSMatchableGroupKey>([...types, ...groups]);
+        return new Set<MatchParamFlat>([...types, ...groups]);
     }
 
     /** 
@@ -367,7 +367,7 @@ export default class TransferHandler {
                 const thisPairing: ITransferPairing = {
                     source: src,
                     destination: dest,
-                    matches: TransferHandler.getMatches([src.container], [dest.container], this.typeFilter).map(m => ({ matched: m, had: -1, sent: -1}))
+                    matches: TransferHandler.getMatches([src.container], [dest.container], this.typeFilter).map(m => ({ matched: m, had: -1, sent: -1 }))
                 };
 
                 // Remove any forbidden types.

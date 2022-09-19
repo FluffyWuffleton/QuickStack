@@ -24,16 +24,16 @@ import Text from "ui/component/Text";
 import { TooltipLocation } from "ui/component/IComponent";
 import listSegment from "language/segment/ListSegment";
 import { QSMatchableGroupKey, QSMatchableGroups, QSGroupsTranslation, QSMatchableGroupsFlatType, QSGroupsTranslationKey } from "./QSMatchGroups";
-import { LocalStorageCache } from "./IStorageCache";
+import { isOnOrAdjacent, LocalStorageCache } from "./IStorageCache";
 import { EventHandler } from "event/EventManager";
 import { EventBus } from "event/EventBuses";
 import { ITile } from "game/tile/ITerrain";
-import Doodad from "game/doodad/Doodad";
 import Island from "game/island/Island";
 import { TileUpdateType } from "game/IGame"
 import Item from "game/item/Item";
 import { IVector3 } from "utilities/math/IVector";
 import Vector3 from "utilities/math/Vector3";
+import { Priority } from "event/EventEmitter";
 
 
 export namespace GLOBALCONFIG {
@@ -88,8 +88,6 @@ export type IQSGlobalData = {
 } & {
     activeMatchGroups: { [k in QSMatchableGroupKey]: boolean },
 };
-
-export function isOnOrAdjacent(A: IVector3, B: IVector3): boolean { return A.z === B.z && (Math.abs(A.x - B.x) + Math.abs(A.y - B.y)) <= 1 }
 
 export default class QuickStack extends Mod {
     @Mod.instance<QuickStack>()
@@ -158,15 +156,10 @@ export default class QuickStack extends Mod {
     //
 
     // Global bindings
-    @Register.bindable("StackAllSelfNearby", IInput.key("Slash", "Shift"))
-    public readonly bindableSASeN: Bindable;
-    @Register.bindable("StackAllMainNear")
-    public readonly bindableSAMN: Bindable;
-
-    @Register.bindable("StackAllNearSelf", IInput.key("Slash", "Shift", "Ctrl"))
-    public readonly bindableSANSe: Bindable;
-    @Register.bindable("StackAllNearMain")
-    public readonly bindableSANM: Bindable;
+    @Register.bindable("StackAllSelfNear", IInput.key("Slash", "Shift", "Alt")) public readonly bindableSASeN: Bindable;
+    @Register.bindable("StackAllMainNear", IInput.key("Slash", "Shift")) public readonly bindableSAMN: Bindable;
+    @Register.bindable("StackAllNearSelf", IInput.key("Slash", "Ctrl", "Alt")) public readonly bindableSANSe: Bindable;
+    @Register.bindable("StackAllNearMain", IInput.key("Slash", "Ctrl")) public readonly bindableSANM: Bindable;
 
     @Bind.onDown(Registry<QuickStack>().get("bindableSASeN")) public SASeNBind(): boolean { return !execSASeN(localPlayer); }
     @Bind.onDown(Registry<QuickStack>().get("bindableSAMN")) public SAMNBind(): boolean { return !execSAMN(localPlayer); }
@@ -222,6 +215,9 @@ export default class QuickStack extends Mod {
     @EventHandler(EventBus.ItemManager, "containerItemRemove")
     protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void { this.containerUpdated(host, c, cpos); }
 
+    @EventHandler(EventBus.LocalPlayer, "loadedOnIsland", Priority.High)
+    protected initCache() { this._localStorageCache = new LocalStorageCache(localPlayer); }
+
     // Shouldn't need to track this if we're accounting for both Add and Remove events already..
     // @EventHandler(EventBus.ItemManager, "containerItemUpdate")
     // protected itemsContainerItemUpdate(host: ItemManager, item: Item, cFrom: IContainer | undefined, cFpos: IVector3 | undefined, c: IContainer): void {
@@ -230,17 +226,20 @@ export default class QuickStack extends Mod {
 
     protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined) {
         const topLevel: (c: IContainer) => IContainer = (c) => (c.containedWithin === undefined) ? c : topLevel(c.containedWithin);
+        const findCoords: (c: IContainer) => IVector3 | undefined = (c) =>
+            ('x' in c && 'y' in c && 'z' in c) ? (c as unknown as IVector3) : (c.containedWithin !== undefined) ? findCoords(c.containedWithin) : undefined;
         if(container !== undefined) {
-            const top = topLevel(container);
-            if(items.hashContainer(top) === this._localStorageCache.player.cHash) {
+            const topLevel: (c: IContainer) => IContainer = (c) => (c.containedWithin === undefined) ? c : topLevel(c.containedWithin);
+            if(items.hashContainer(topLevel(container)) === this._localStorageCache.player.cHash) {
                 this._localStorageCache.setOutdated("player");
                 return;
             }
-            if(Doodad.is(container) || items.isTileContainer(top))
-                cpos = (container as IVector3);
+            cpos = findCoords(container);
+            // if(Doodad.is(container) || items.isTileContainer(top))
+            //     cpos = (container as IVector3);
         }
         if(cpos !== undefined) {
-            if(isOnOrAdjacent(cpos, this._localStorageCache.player.entity.getPoint()))
+            if(isOnOrAdjacent(cpos, this._localStorageCache.player.entity.getPoint())) 
                 this._localStorageCache.setOutdated("nearby");
             return;
         }
@@ -248,17 +247,18 @@ export default class QuickStack extends Mod {
     }
 
 
-
     public override onInitialize(): void {
         this["subscribedHandlers"] = true;
         this.refreshMatchGroupsArray();
     }
     public override onLoad(): void {
+        console.log("ON LOAD");
         if(!steamworks.isDedicatedServer()) {
             this["subscribedHandlers"] = false;
             this.registerEventHandlers("unload");
         }
     }
+
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Global data, helper data, and refresh methods
@@ -281,7 +281,7 @@ export default class QuickStack extends Mod {
         }
         return retData;
     }
-    
+
     /**
      * For each active match group, _activeMatchGroupsFlattened[<that group's key>] will contain an exhaustive list of ItemTypes belonging to that group.
      * @type {(QSMatchableGroupsFlatType)}

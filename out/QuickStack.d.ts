@@ -66,7 +66,6 @@ export declare type IQSGlobalData = {
         [k in QSMatchableGroupKey]: boolean;
     };
 };
-export declare function isOnOrAdjacent(A: IVector3, B: IVector3): boolean;
 export default class QuickStack extends Mod {
     static readonly INSTANCE: QuickStack;
     static readonly LOG: Log;
@@ -126,6 +125,7 @@ export default class QuickStack extends Mod {
     protected islandTileUpdated(_host: Island, _tile: ITile, x: number, y: number, z: number, updtype: TileUpdateType): void;
     protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void;
     protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void;
+    protected initCache(): void;
     protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined): void;
     onInitialize(): void;
     onLoad(): void;
