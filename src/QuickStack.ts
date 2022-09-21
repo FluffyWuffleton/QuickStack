@@ -1,39 +1,40 @@
 import { ActionType } from "game/entity/action/IAction";
+import { UsableActionSet } from "game/entity/action/usable/actions/UsableActionsMain";
+import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
+import Player from "game/entity/player/Player";
 import Message from "language/dictionary/Message";
 import Mod from "mod/Mod";
 import Register, { Registry } from "mod/ModRegistry";
 import Bindable from "ui/input/Bindable";
 import { IInput } from "ui/input/IInput";
-import { UsableActionSet } from "game/entity/action/usable/actions/UsableActionsMain";
-import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
 import Log from "utilities/Log";
+import { EventBus } from "event/EventBuses";
+import { Priority } from "event/EventEmitter";
+import { EventHandler } from "event/EventManager";
+import { UsableActionType } from "game/entity/action/usable/UsableActionType";
+import { Delay } from "game/entity/IHuman";
+import { TileUpdateType } from "game/IGame";
+import Island from "game/island/Island";
+import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
+import Item from "game/item/Item";
+import ItemManager from "game/item/ItemManager";
+import { ITile } from "game/tile/ITerrain";
+import Dictionary from "language/Dictionary";
+import listSegment from "language/segment/ListSegment";
+import Translation from "language/Translation";
+import { CheckButton } from "ui/component/CheckButton";
+import Component from "ui/component/Component";
+import Details from "ui/component/Details";
+import { TooltipLocation } from "ui/component/IComponent";
+import Text from "ui/component/Text";
+import Bind from "ui/input/Bind";
+import { IVector3 } from "utilities/math/IVector";
+import Vector3 from "utilities/math/Vector3";
 
 import { StackAction } from "./actions/Actions";
 import { execSAMN, execSANM, execSANSe, execSASeN, UsableActionsQuickStack } from "./actions/UsableActionsQuickStack";
-import Bind from "ui/input/Bind";
-import Dictionary from "language/Dictionary";
-import Component from "ui/component/Component";
-import { CheckButton } from "ui/component/CheckButton";
-import Translation from "language/Translation";
-import { UsableActionType } from "game/entity/action/usable/UsableActionType";
-import { Delay } from "game/entity/IHuman";
-import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
-import Details from "ui/component/Details";
-import ItemManager from "game/item/ItemManager";
-import Text from "ui/component/Text";
-import { TooltipLocation } from "ui/component/IComponent";
-import listSegment from "language/segment/ListSegment";
-import { QSMatchableGroupKey, QSMatchableGroups, QSGroupsTranslation, QSMatchableGroupsFlatType, QSGroupsTranslationKey } from "./QSMatchGroups";
-import { isOnOrAdjacent, LocalStorageCache } from "./IStorageCache";
-import { EventHandler } from "event/EventManager";
-import { EventBus } from "event/EventBuses";
-import { ITile } from "game/tile/ITerrain";
-import Island from "game/island/Island";
-import { TileUpdateType } from "game/IGame"
-import Item from "game/item/Item";
-import { IVector3 } from "utilities/math/IVector";
-import Vector3 from "utilities/math/Vector3";
-import { Priority } from "event/EventEmitter";
+import { isOnOrAdjacent, LocalStorageCache } from "./LocalStorageCache";
+import { QSGroupsTranslation, QSGroupsTranslationKey, QSMatchableGroupKey, QSMatchableGroups, QSMatchableGroupsFlatType } from "./QSMatchGroups";
 
 
 export namespace GLOBALCONFIG {
@@ -95,6 +96,8 @@ export default class QuickStack extends Mod {
     @Mod.log()
     public static readonly LOG: Log;
 
+    public static get MaybeLog(): Log | undefined { return GLOBALCONFIG.log_info ? QuickStack.LOG : undefined; }
+
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Dictionary
     @Register.dictionary("MainDictionary", QSTranslation)
@@ -128,10 +131,13 @@ export default class QuickStack extends Mod {
     @Register.usableActionTypePlaceholder("Here") public readonly UAPHere: UsableActionType;
     @Register.usableActionTypePlaceholder("Alike") public readonly UAPAlike: UsableActionType;
     @Register.usableActionTypePlaceholder("Nearby") public readonly UAPNearby: UsableActionType;
+    @Register.usableActionTypePlaceholder("All") public readonly UAPAll: UsableActionType;
+    @Register.usableActionTypePlaceholder("Type") public readonly UAPType: UsableActionType;
 
 
     // Placeholder types for all UAs that have an associated icon separate from the ones above.
     @Register.usableActionTypePlaceholder("DepositMenu") public readonly UAPDepositMenu: UsableActionType;
+    @Register.usableActionTypePlaceholder("CollectMenu") public readonly UAPCollectMenu: UsableActionType;
     @Register.usableActionTypePlaceholder("StackAllSelfNear") public readonly UAPAllSelfNear: UsableActionType;
     @Register.usableActionTypePlaceholder("StackAllMainNear") public readonly UAPAllMainNear: UsableActionType;
     @Register.usableActionTypePlaceholder("StackAllSubNear") public readonly UAPAllSubNear: UsableActionType;
@@ -179,22 +185,47 @@ export default class QuickStack extends Mod {
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Events for storage cache maintenance
     //
-    private _isDedicatedServer: boolean; // set in onInitialize
-    public get isDedicatedServer(): boolean { return this._isDedicatedServer; }
 
+    private haveCache: boolean = false;
     private _localStorageCache: LocalStorageCache; // initialized in onLoad
     public get localStorageCache() { return this._localStorageCache; }
 
     @EventHandler(EventBus.LocalPlayer, "moveComplete")
-    protected localPlayerMoved(): void { this._localStorageCache.setOutdated("nearby"); }
+    protected localPlayerMoved(): void {
+        if(!this.haveCache) return;
+        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- localPlayer.moveComplete\n`);
+        this._localStorageCache.setOutdated("nearby");
+    }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemAdd")
-    protected localPlayerItemAdd(): void { this._localStorageCache.setOutdated("player"); }
+    protected localPlayerItemAdd(): void {
+        if(!this.haveCache) return;
+        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- localPlayer.inventoryItemAdd\n`);
+        this._localStorageCache.setOutdated("player");
+    }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemRemove")
-    protected localPlayerItemRemove(): void { this._localStorageCache.setOutdated("player"); }
+    protected localPlayerItemRemove(): void {
+        if(!this.haveCache) return;
+        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- localPlayer.inventoryItemRemove\n`);
+        this._localStorageCache.setOutdated("player");
+    }
+    @EventHandler(EventBus.LocalPlayer, "inventoryItemUpdate")
+    protected localPlayerItemUpdate(): void {
+        if(!this.haveCache) return;
+        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- localPlayer.inventoryItemUpdate\n`);
+        this._localStorageCache.setOutdated("player");
+    }
+
+    @EventHandler(EventBus.LocalPlayer, "idChanged")
+    protected localPlayerIDChanged(host: Player, curID: number, newID: number, absent: boolean): any { 
+        if(!this.haveCache) return;
+        this._localStorageCache.playerNoUpdate.updateHash();
+    }
 
     @EventHandler(EventBus.LocalIsland, "tileUpdate")
     protected islandTileUpdated(_host: Island, _tile: ITile, x: number, y: number, z: number, updtype: TileUpdateType): void {
-        if(!isOnOrAdjacent(this._localStorageCache.player.entity.getPoint(), new Vector3(x, y, z))) return;
+        if(!this.haveCache) return;
+        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- localIsland.tileUpdate\n\t${[x, y, z].toString()} type '${TileUpdateType[updtype]}'\n`);
+        if(!isOnOrAdjacent(this._localStorageCache.playerNoUpdate.entity.getPoint(), new Vector3(x, y, z))) return;
         switch(updtype) {
             case TileUpdateType.Batch:
             case TileUpdateType.DoodadChangeType:
@@ -210,13 +241,24 @@ export default class QuickStack extends Mod {
     }
 
     @EventHandler(EventBus.ItemManager, "containerItemAdd")
-    protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void { this.containerUpdated(host, c, undefined); }
+    protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void {
+        if(!this.haveCache) return;
+        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- ItemManager.containerItemAdd\n\t'${_item.getName()}' to '${c ? host.hashContainer(c) : "undefined"}'\n`);
+        this.containerUpdated(host, c, undefined);
+    }
 
     @EventHandler(EventBus.ItemManager, "containerItemRemove")
-    protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void { this.containerUpdated(host, c, cpos); }
+    protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void {
+        if(!this.haveCache) return;
+        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- ItemManager.containerItemRemove\n\t'${_item.getName()}' from '${c ? host.hashContainer(c) : "undefined"}'\n`);
+        this.containerUpdated(host, c, cpos);
+    }
 
     @EventHandler(EventBus.LocalPlayer, "loadedOnIsland", Priority.High)
-    protected initCache() { this._localStorageCache = new LocalStorageCache(localPlayer); }
+    protected initCache() {
+        this._localStorageCache = new LocalStorageCache(localPlayer);
+        this.haveCache = true;
+    }
 
     // Shouldn't need to track this if we're accounting for both Add and Remove events already..
     // @EventHandler(EventBus.ItemManager, "containerItemUpdate")
@@ -226,21 +268,33 @@ export default class QuickStack extends Mod {
 
     protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined) {
         const topLevel: (c: IContainer) => IContainer = (c) => (c.containedWithin === undefined) ? c : topLevel(c.containedWithin);
-        const findCoords: (c: IContainer) => IVector3 | undefined = (c) =>
-            ('x' in c && 'y' in c && 'z' in c) ? (c as unknown as IVector3) : (c.containedWithin !== undefined) ? findCoords(c.containedWithin) : undefined;
+        const findIVecValid: (c: IContainer) => IContainer | undefined = (c) =>
+            ('x' in c && 'y' in c && 'z' in c) ? c : (c.containedWithin !== undefined) ? findIVecValid(c.containedWithin) : undefined;
+
         if(container !== undefined) {
             const topLevel: (c: IContainer) => IContainer = (c) => (c.containedWithin === undefined) ? c : topLevel(c.containedWithin);
-            if(items.hashContainer(topLevel(container)) === this._localStorageCache.player.cHash) {
-                this._localStorageCache.setOutdated("player");
+            if(items.hashContainer(topLevel(container)) === this._localStorageCache.playerNoUpdate.cHash) {
+                // this._localStorageCache.setOutdated("player"); // Handled in localPlayer events.
                 return;
             }
-            cpos = findCoords(container);
+            container = findIVecValid(container);
+            cpos = container as unknown as IVector3;
             // if(Doodad.is(container) || items.isTileContainer(top))
             //     cpos = (container as IVector3);
         }
         if(cpos !== undefined) {
-            if(isOnOrAdjacent(cpos, this._localStorageCache.player.entity.getPoint())) 
+            if(isOnOrAdjacent(cpos, this._localStorageCache.playerNoUpdate.entity.getPoint())) {
+                const found = container ? this._localStorageCache.findNearby(items.hashContainer(container)) : undefined;
+
+                if(!!found) {
+                    QuickStack.MaybeLog?.info(`QuickStack.containerUpdated: Updated container '${found.cHash}' identified in cache. Flagging.`);
+                    if(this._localStorageCache.setOutdatedSpecific(found.cHash, true)) return;
+                    else QuickStack.MaybeLog?.info(`QuickStack.containerUpdated: Specific flagging failed...`);
+
+                }
+                QuickStack.MaybeLog?.info(`QuickStack.containerUpdated: Updated container not found in cache. Flagging 'nearby'.`);
                 this._localStorageCache.setOutdated("nearby");
+            }
             return;
         }
         QuickStack.LOG.warn(`QuickStack.containerUpdated\nUnhandled case for container '${container}' at ${cpos}`);
@@ -257,6 +311,9 @@ export default class QuickStack extends Mod {
             this["subscribedHandlers"] = false;
             this.registerEventHandlers("unload");
         }
+    }
+    public override onUnload(): void {
+        this.haveCache = false;
     }
 
 
@@ -321,6 +378,8 @@ export default class QuickStack extends Mod {
             console.log(this._activeMatchGroupsKeys);
             console.log(this._activeMatchGroupsFlattened);
         }
+
+        if(this.haveCache) this._localStorageCache.setOutdated();
     }
 
     // Option section

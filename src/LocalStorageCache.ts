@@ -8,7 +8,7 @@ import { Direction } from "utilities/math/Direction";
 import { IVector3 } from "utilities/math/IVector";
 import Vector3 from "utilities/math/Vector3";
 import { IMatchParam, MatchParamFlat } from "./QSMatchGroups";
-import StaticHelper, { GLOBALCONFIG } from "./StaticHelper";
+import StaticHelper from "./StaticHelper";
 import TransferHandler, { isStorageType, validNearby } from "./TransferHandler";
 
 export type ABCheckedMatch = [match: MatchParamFlat, fitAtoB: boolean, fitBtoA: boolean];
@@ -16,7 +16,6 @@ interface ICheckedRelations { checked: MatchParamFlat[], found: ABCheckedMatch[]
 
 export enum locationGroup { self = 0, nearby = 1 };
 export type ContainerHash = string;
-
 
 export function isOnOrAdjacent(A: IVector3, B: IVector3): boolean { return A.z === B.z && (Math.abs(A.x - B.x) + Math.abs(A.y - B.y)) <= 1 }
 
@@ -28,6 +27,7 @@ export class LocalStorageCache {
 
     private _interrelations: { [ABHash: string]: ICheckedRelations } = {};
     public get player(): StorageCachePlayer { return this._player.refresh(); }
+    public get playerNoUpdate(): StorageCachePlayer { return this._player; }
     public get nearby(): (StorageCacheTile | StorageCacheDoodad)[] { return this.refreshNearby()._nearby; }
 
     //public set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]) { this._nearby = value; }
@@ -37,35 +37,52 @@ export class LocalStorageCache {
 
     //public setOutdated(K?: "player" | "nearby") { if(K) this._outdated[K] = true; else { this._outdated.nearby = true; this._outdated.player = true; } }
     public setOutdated(K?: "player" | "nearby") {
-        const upd = !K ? ["player", "nearby"] : [K];
-        if(upd.includes("player")) this.player.setOutdated(true);
-        if(upd.includes("nearby")) {
+        StaticHelper.MaybeLog?.info(`LocalStorageCache.setOutdated: Flagging ${K ? K : "player+nearby"} as outdated.${!K || K === "player" ? " Player relations wiped." : ""}`);
+        if(!K || K === "player") {
+            this.purgeRelations(this._player);
+            this._player.setOutdated(true);
+        }
+        if(!K || K === "nearby") {
+            //this._nearby.forEach(n => this.purgeRelations(n));
             this._nearbyOutdated = true;
             this._nearby.forEach(n => n.setOutdated(true));
         }
-        this._interrelations = {};
+    }
+    
+    // Set the outdated flag for a cache with specified container hash. Returns false if no such cache exists.
+    public setOutdatedSpecific(Hash: ContainerHash, recursive?: true): boolean {
+        const found = this._player.findSub(Hash) ?? this.findNearby(Hash);
+        if(found !== undefined) {
+            if(found.setOutdated(recursive)) {
+                StaticHelper.MaybeLog?.info(`LocalStorageCache.setOutdatedSpecific: Cache or subcache of '${Hash}' newly flagged as outdated. Wiping its relations.`);
+                this.purgeRelations(found);
+            }
+            return true;
+        }
+        return false;
     }
 
+    // Update the contents of the array _nearby, and flag the caches themselves as outdated.
     private refreshNearby(): this {
         if(!this._nearbyOutdated) return this;
-        //if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info("LocalStorageCache: Updating nearby...");
+        //StaticHelper.MaybeLog?.info("LocalStorageCache: Updating nearby...");
 
         const hashes: string[] = this._nearby.map(n => n.cHash);
-        const itemMgr = this.player.entity.island.items;
+        const itemMgr = this._player.entity.island.items;
 
         this._nearby.map((n, i) => n.refreshIfNear() ? undefined : i).filterNullish().reverse().forEach(removeIdx => {
-            if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`Removing cache for distant entity '${this._nearby[removeIdx].cHash}' at index ${removeIdx}.`);
-            this.purgeRelations(this._nearby[removeIdx].cHash);
+            StaticHelper.MaybeLog?.info(`Removing cache for distant entity '${this._nearby[removeIdx].cHash}' at index ${removeIdx}.`);
+            this.purgeRelations(this._nearby[removeIdx]);
             this._nearby.splice(removeIdx, 1); // containers reported by refresh() to no longer be adjacent. Remove.
         });
 
-        validNearby(this.player.entity, true).forEach(adj => {
+        validNearby(this._player.entity, true).forEach(adj => {
             const adjHash = itemMgr.hashContainer(adj);
             if(!hashes.includes(adjHash)) { // New container. Add it.
-                if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`Appending new cache for nearby entity '${this.player.entity.island.items.hashContainer(adj)}'`);
-                if(Doodad.is(adj)) this._nearby.push(new StorageCacheDoodad(adj, this.player.entity));
-                else if(itemMgr.isTileContainer(adj) && "data" in adj) this._nearby.push(new StorageCacheTile(adj as ITile, this.player.entity));
-                else if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.warn(`FAILED TO HANDLE ADJACENT CONTAINER: ${adj}'`);
+                StaticHelper.MaybeLog?.info(`Appending new cache for nearby entity '${this._player.entity.island.items.hashContainer(adj)}'`);
+                if(Doodad.is(adj)) this._nearby.push(new StorageCacheDoodad(adj, this._player.entity));
+                else if(itemMgr.isTileContainer(adj) && "data" in adj) this._nearby.push(new StorageCacheTile(adj as ITile, this._player.entity));
+                else StaticHelper.MaybeLog?.warn(`FAILED TO HANDLE ADJACENT CONTAINER: ${adj}'`);
             }
         });
 
@@ -83,7 +100,7 @@ export class LocalStorageCache {
     private locationGroupMembers(g: locationGroup): StorageCacheBase[] {
         switch(g) {
             case locationGroup.nearby: return this._nearby;
-            case locationGroup.self: return [this.player, ...this.player.deepSubs()];
+            case locationGroup.self: return [this._player, ...this._player.deepSubs()];
         }
     }
 
@@ -92,15 +109,17 @@ export class LocalStorageCache {
     public flipHash(A: ContainerHash, B: ContainerHash): boolean { return A > B; }
     public ABHash(A: ContainerHash, B: ContainerHash): string { return this.flipHash(A, B) ? `${B}::${A}` : `${A}::${B}` }
     public CheckedMatchCanTransfer(ABMatch: ABCheckedMatch, filter?: MatchParamFlat[], reverse?: boolean) {
-        return ABMatch[reverse ? 2 : 1] && (!filter || !filter.length || filter.includes(ABMatch[0]));
+        const f = (!filter || !filter.length || TransferHandler.groupifyFlatParameters(filter).has(ABMatch[0]));
+        return ABMatch[reverse ? 2 : 1] && f;
     }
 
-
-    private purgeRelations(oldHash: ContainerHash) {
+    // Delete any interrelation entries involving the given cache and its subcaches (recursive).
+    // Does not attempt to update subcache list.
+    private purgeRelations(old: StorageCacheBase) {
+        old.subsNoUpdate.forEach(s => this.purgeRelations(s));
         Object.keys(this._interrelations)
-            .map(KEY => KEY.includes(oldHash) ? KEY : undefined).filterNullish()
-            .forEach(KEY => delete(this._interrelations[KEY])
-        )
+            .map(KEY => KEY.includes(old.cHash) ? KEY : undefined).filterNullish()
+            .forEach(KEY => delete (this._interrelations[KEY]))
     }
 
     /**
@@ -124,7 +143,7 @@ export class LocalStorageCache {
         if(this._interrelations[ABHash] !== undefined) {
             checkedParams.addFrom(this._interrelations[ABHash].checked);
             if(filter !== undefined && filter.length > 0) {
-                filter = [...TransferHandler.groupifyParameters(filter.map(p => typeof p === "string" ? { group: p } : { type: p }))]
+                filter = [...TransferHandler.groupifyFlatParameters(filter)];
                 filter = filter.filter(p => !checkedParams.has(p));
                 if(filter.length === 0) return true; // Is valid relation, but nothing new needs to be checked.
             }
@@ -138,6 +157,7 @@ export class LocalStorageCache {
         const matches = new Set<MatchParamFlat>([...Ref[0].main].map(p => p.group ?? p.type));
         if(filter !== undefined && filter.length > 0) matches.retainWhere(m => filter!.includes(m));
         matches.retainWhere(m => !this._interrelations[ABHash].checked.includes(m));
+        if(matches.size < 1) return true; // nothing new to check.
         this._interrelations[ABHash].checked.push(...matches)
 
         const BParams = [...Ref[1].main].map(p => p.group ?? p.type)
@@ -153,13 +173,24 @@ export class LocalStorageCache {
         return true;
     }
 
+    public canFind(Hash: ContainerHash): boolean {
+        return [this.player, ...this._nearby].some(c => c.cHash === Hash || !!c.findSub(Hash));
+    }
+    public findNearby(Hash: ContainerHash): StorageCacheBase | undefined {
+        for(const n of this.nearby) {
+            const nGot = n.cHash === Hash ? n : n.findSub(Hash);
+            if(!!nGot) return nGot;
+        }
+        return undefined;
+    }
+
     public checkSelfNearby(filter?: MatchParamFlat[], reverse?: true): boolean {
         //this.update();
         for(const s of this.locationGroupMembers(locationGroup.self))
-            for(const n of this.locationGroupMembers(locationGroup.self)) {
+            for(const n of this.locationGroupMembers(locationGroup.nearby)) {
                 if(n.iswhat === "ITile" && StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !reverse) continue; // This is a tile and a deposit operation, but tile deposit is forbidden.
                 const flip = this.flipHash(s.cHash, n.cHash) ? !reverse : !!reverse;
-                if(this.interrelation(s.cHash, n.cHash)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip)))
+                if(this.interrelation(s.cHash, n.cHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip)))
                     return true;
             }
         return false;
@@ -168,14 +199,14 @@ export class LocalStorageCache {
     // Return undefined if AHash isn't found in the cache.
     // Return true if transfer possible.
     public checkSpecificNearby(AHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined {
-        if(![this.player, ...this._nearby].some(c => c.findSub(AHash))) return undefined; // hash wasn't found.
+        if(!this.canFind(AHash)) return undefined; // hash wasn't found.
 
         for(const n of this.nearby) {
             if(n.iswhat === "ITile" && StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !reverse) continue; // This is a tile and a deposit operation, but tile deposit is forbidden.
             if(n.cHash === AHash) continue; // This is the same container...
 
             const flip = this.flipHash(AHash, n.cHash) ? !reverse : !!reverse;
-            if(this.interrelation(AHash, n.cHash)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip)))
+            if(this.interrelation(AHash, n.cHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip)))
                 return true;
         }
         return false;
@@ -184,12 +215,12 @@ export class LocalStorageCache {
     // Return undefined if AHash isn't found in the cache.
     // Return true if transfer possible.
     public checkSelfSpecific(BHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined {
-        if(![this.player, ...this._nearby].some(c => c.findSub(BHash))) return undefined; // hash wasn't found.
+        if(!this.canFind(BHash)) return undefined; // hash wasn't found.
 
-        for(const s of [this.player, ...this.player.deepSubs()]) {
+        for(const s of this.locationGroupMembers(locationGroup.self)) {
             if(s.cHash === BHash) continue; // This is the same container...
             const flip = this.flipHash(s.cHash, BHash) ? !reverse : !!reverse;
-            if(this.interrelation(s.cHash, BHash)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip)))
+            if(this.interrelation(s.cHash, BHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip)))
                 return true;
         }
         return false;
@@ -199,9 +230,9 @@ export class LocalStorageCache {
     // Return true if transfer possible. Returns false if no transfer possible or if hashes are equal.
     public checkSpecific(fromHash: ContainerHash, toHash: ContainerHash, filter?: MatchParamFlat[]): boolean | undefined {
         if(fromHash === toHash) return false;
-        [fromHash, toHash].forEach(h => { if(![this.player, ...this._nearby].some(c => c.findSub(h))) return undefined; }); // hash wasn't found.
+        [fromHash, toHash].forEach(h => { if(![this.player, ...this.nearby].some(c => c.findSub(h))) return undefined; }); // hash wasn't found.
         const flip = this.flipHash(fromHash, toHash);
-        return this.interrelation(fromHash, toHash)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip))
+        return this.interrelation(fromHash, toHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip))
     }
 
     constructor(p: Player) {
@@ -227,13 +258,26 @@ export abstract class StorageCacheBase<T extends StorageCacheEntityType = Storag
 
     public get main(): Set<IMatchParam> { this.refresh(); return this._main; }
     public get subs(): StorageCacheItem[] { this.refresh(); return this._subs; }
+    public get subsNoUpdate(): StorageCacheItem[] { return this._subs; }
+
     //public get unrolled(): Set<IMatchParam> { this.updateUnrolled(); return this._unrolled; }
     public get outdated(): boolean { return this._outdated; }
 
-    public setOutdated(recursive?: true): void { this._outdated = true; if(recursive) this._subs.forEach(s => s.setOutdated(true)); }
+    // Returns true if any target caches were not already flagged as outdated
+    public setOutdated(recursive?: true): boolean {
+        let flagged = false;
+        if(!this._outdated) {
+            StaticHelper.MaybeLog?.info(`StorageCacheBase.setOutdated: Cache for '${this.cHash}' is now outdated.`);
+            flagged = true;
+            this._outdated = true;
+        }
+        if(recursive) this._subs.forEach(s => flagged ||= s.setOutdated(true));
+        return flagged;
+    }
 
     // All subcaches in the nested tree beneath this one.
     public deepSubs(): StorageCacheItem[] { return [...this.subs, ...this.subs.flatMap(s => s.deepSubs())]; }
+    public deepProperty<T extends keyof StorageCacheBase>(prop: T): StorageCacheBase[T][] { return [this[prop], ...this.deepSubs().map(s => (s as StorageCacheBase)[prop])]; }
 
     // public updateUnrolled() {
     //     this._unrolled.clear();
@@ -243,6 +287,7 @@ export abstract class StorageCacheBase<T extends StorageCacheEntityType = Storag
     // }
 
     // If the provided item is a container found within any nested subcache of this object (i.e. subcache.entity === item), returns a reference to that subcache.
+    // Does not update if outdated.
     // Otherwise returns undefined.
     public findSub(sub: Item | ContainerHash): StorageCacheItem | undefined {
         if(typeof (sub) !== "string") sub = sub.island.items.hashContainer(sub);
@@ -263,25 +308,26 @@ export abstract class StorageCacheBase<T extends StorageCacheEntityType = Storag
      **/
     protected refresh(protect?: true): this {
         if(!this._outdated) return this;
-        if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`StorageCacheBase.refresh(): Updating outdated cache for entity ${this.entity} with hash '${this.cHash}'`);
-        this._main = TransferHandler.setOfParams([{
+        StaticHelper.MaybeLog?.info(`StorageCacheBase.refresh(): Updating outdated cache for '${this.cHash}'`);
+        this._main = !this.cRef.containedItems ? new Set<IMatchParam>() : TransferHandler.setOfParams([{
             containedItems: (protect ?? false)
                 ? this.cRef.containedItems.filter(i => !(i.isProtected() || i.isEquipped(true) || (StaticHelper.QS_INSTANCE.globalData.optionKeepContainers && isStorageType(i.type))))
                 : this.cRef.containedItems
         }]);
 
         const subCacheHashes = this._subs.map(s => s.cHash); // existing subcache hashes.
-        const subContainers = this.cRef.containedItems.filter(i => ItemManager.isContainer(i)); // Identified subcontainers.
-        const subConHashes = subContainers.map(s => s.island.items.hashContainer(s)); // Subcontainer hashes.
+
+        const subContainers = this.cRef.containedItems?.filter(i => ItemManager.isContainer(i)) ?? []; // Up-to-date list of subcontainer items.
+        const subConHashes = subContainers.map(s => s.island.items.hashContainer(s)); // Up-to-date list of subcontainer hashes.
 
         // Remove subcache entries for containers that are no longer present, and add entries for containers that lack one.
         subCacheHashes.map((h, idx) => subConHashes.includes(h) ? undefined : idx).filterNullish().reverse().forEach(idx => {
-            if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`... removing cache entry for missing subcontainer, hash '${this._subs[idx].cHash}'`);
+            StaticHelper.MaybeLog?.info(`... removing cache entry for missing subcontainer '${this._subs[idx].cHash}' within ${this.cHash}`);
             this._subs.splice(idx); subCacheHashes.splice(idx);
         });
         subConHashes.map((h, idx) => subCacheHashes.includes(h) ? undefined : idx).filterNullish().forEach(idx => {
             this._subs.push(new StorageCacheItem(subContainers[idx]))
-            if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`... adding new cache entry for subcontainer, hash '${this._subs.last()?.cHash}'`);
+            StaticHelper.MaybeLog?.info(`... adding new cache entry for subcontainer, hash '${this._subs.last()?.cHash}'`);
         });
 
 
@@ -291,7 +337,7 @@ export abstract class StorageCacheBase<T extends StorageCacheEntityType = Storag
     }
 
     constructor(e: T, hash: string, noRefresh?: true) {
-        if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`Constructing StorageCache for entity ${e} with hash '${hash}'`);
+        StaticHelper.MaybeLog?.info(`Constructing StorageCache for entity ${e} with hash '${hash}'`);
         this.entity = e;
         this.cHash = hash;
         this._main = new Set<IMatchParam>;
@@ -321,8 +367,8 @@ abstract class StorageCacheNearby<T extends ITile | Doodad> extends StorageCache
 
         const diff = { x: thisPos.x - ppos.x, y: thisPos.y - ppos.y, z: thisPos.z - ppos.z };
         const ok = isOnOrAdjacent(ppos, thisPos);
-        if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(
-            `StorageCacheNearby: Updating relation of '${this.cHash}'. Identified positions\n` +
+        StaticHelper.MaybeLog?.info(
+            `StorageCacheNearby: Updating relation of '${this.cHash}'. Identified positions     ` +
             `Player: ${new Vector3(ppos).xyz}    Entity${new Vector3(thisPos).xyz}     OK?: ${ok}`);
 
         if(!ok) return false; // not adjacent or on top.
@@ -356,6 +402,11 @@ export class StorageCachePlayer extends StorageCacheBase<Player> {
     public readonly iswhat = "Player";
     public readonly cRef: IContainer;
     public override refresh(): this { return super.refresh(true); }
+    public updateHash(): this { 
+        this.cHash.replace(this.cHash, this.entity.island.items.hashContainer(this.cRef)); //"readonly" lol yea sure.
+        return this;
+    }
+    
     constructor(e: Player) {
         super(e, e.island.items.hashContainer(e.inventory), true);
         this.cRef = this.entity.inventory;

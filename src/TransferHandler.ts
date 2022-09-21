@@ -91,6 +91,11 @@ export default class TransferHandler {
         P.forEach(param => pSet.add(param.group !== undefined ? param.group : (this.getActiveGroup(param.type) ?? param.type)));
         return pSet;
     }
+    public static groupifyFlatParameters(P: MatchParamFlat[] | Set<MatchParamFlat>): Set<MatchParamFlat> {
+        const pSet = new Set<MatchParamFlat>;
+        P.forEach(param => pSet.add(typeof param == "string" ? param : (this.getActiveGroup(param) ?? param)));
+        return pSet;
+    }
 
     //private static flattenParameters(P: IMatchParam[]): MatchParamFlat[] { return P.map(p => p.type ?? p.group); }
 
@@ -166,7 +171,7 @@ export default class TransferHandler {
      * @returns {ITransferItemMatch[]} List of matches.
      */
     public static getMatches(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): IMatchParam[] {
-        if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`GET MATCHES:: ${A}  ${B}`);
+        StaticHelper.MaybeLog?.info(`GET MATCHES:: ${A}  ${B}`);
 
         // setOfParams will favor providing a group over a type if the group exists. If an item is present, it has no active group.
         const AParams = TransferHandler.setOfFlatParams(A);
@@ -192,7 +197,7 @@ export default class TransferHandler {
      * @returns {boolean}
      */
     public static hasMatch(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): boolean {
-        if(GLOBALCONFIG.log_info) StaticHelper.QS_LOG.info(`HAS MATCH:: ${A}  ${B}`);
+        StaticHelper.MaybeLog?.info(`HAS MATCH:: ${A}  ${B}`);
 
         const AParams = TransferHandler.setOfFlatParams(A);
         const BParams = TransferHandler.setOfFlatParams(B);

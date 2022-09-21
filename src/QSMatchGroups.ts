@@ -130,6 +130,7 @@ export const QSMatchableGroups: {[k in QSMatchableGroupKey]: readonly Matchable[
         ItemTypeGroup.Needle,
         ItemTypeGroup.Spine,
         ItemTypeGroup.Fabric,
+        ItemType.Tannin,
         ItemType.AnimalFur,
         ItemType.AnimalPelt,
         ItemType.LeatherHide,

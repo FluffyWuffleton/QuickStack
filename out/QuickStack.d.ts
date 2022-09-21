@@ -1,22 +1,23 @@
 import { ActionType } from "game/entity/action/IAction";
+import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
+import Player from "game/entity/player/Player";
 import Message from "language/dictionary/Message";
 import Mod from "mod/Mod";
 import Bindable from "ui/input/Bindable";
-import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
 import Log from "utilities/Log";
-import Dictionary from "language/Dictionary";
-import Component from "ui/component/Component";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
-import { IContainer } from "game/item/IItem";
-import ItemManager from "game/item/ItemManager";
-import { QSMatchableGroupKey, QSMatchableGroupsFlatType } from "./QSMatchGroups";
-import { LocalStorageCache } from "./IStorageCache";
-import { ITile } from "game/tile/ITerrain";
-import Island from "game/island/Island";
 import { TileUpdateType } from "game/IGame";
+import Island from "game/island/Island";
+import { IContainer } from "game/item/IItem";
 import Item from "game/item/Item";
+import ItemManager from "game/item/ItemManager";
+import { ITile } from "game/tile/ITerrain";
+import Dictionary from "language/Dictionary";
+import Component from "ui/component/Component";
 import { IVector3 } from "utilities/math/IVector";
+import { LocalStorageCache } from "./LocalStorageCache";
+import { QSMatchableGroupKey, QSMatchableGroupsFlatType } from "./QSMatchGroups";
 export declare namespace GLOBALCONFIG {
     const log_info: true;
     const pause_length: Delay.ShortPause;
@@ -69,6 +70,7 @@ export declare type IQSGlobalData = {
 export default class QuickStack extends Mod {
     static readonly INSTANCE: QuickStack;
     static readonly LOG: Log;
+    static get MaybeLog(): Log | undefined;
     readonly dictMain: Dictionary;
     readonly dictGroups: Dictionary;
     private readonly TLGetMain;
@@ -84,7 +86,10 @@ export default class QuickStack extends Mod {
     readonly UAPHere: UsableActionType;
     readonly UAPAlike: UsableActionType;
     readonly UAPNearby: UsableActionType;
+    readonly UAPAll: UsableActionType;
+    readonly UAPType: UsableActionType;
     readonly UAPDepositMenu: UsableActionType;
+    readonly UAPCollectMenu: UsableActionType;
     readonly UAPAllSelfNear: UsableActionType;
     readonly UAPAllMainNear: UsableActionType;
     readonly UAPAllSubNear: UsableActionType;
@@ -115,13 +120,14 @@ export default class QuickStack extends Mod {
     readonly bindableLike: Bindable;
     readonly bindableHere: Bindable;
     readonly bindableNear: Bindable;
-    private _isDedicatedServer;
-    get isDedicatedServer(): boolean;
+    private haveCache;
     private _localStorageCache;
     get localStorageCache(): LocalStorageCache;
     protected localPlayerMoved(): void;
     protected localPlayerItemAdd(): void;
     protected localPlayerItemRemove(): void;
+    protected localPlayerItemUpdate(): void;
+    protected localPlayerIDChanged(host: Player, curID: number, newID: number, absent: boolean): any;
     protected islandTileUpdated(_host: Island, _tile: ITile, x: number, y: number, z: number, updtype: TileUpdateType): void;
     protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void;
     protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void;
@@ -129,6 +135,7 @@ export default class QuickStack extends Mod {
     protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined): void;
     onInitialize(): void;
     onLoad(): void;
+    onUnload(): void;
     globalData: IQSGlobalData;
     initializeGlobalData(data?: IQSGlobalData): IQSGlobalData;
     private _activeMatchGroupsFlattened;

@@ -34,6 +34,7 @@ export default class TransferHandler {
     get anyPartial(): boolean;
     get anyFailed(): boolean;
     static groupifyParameters(P: IMatchParam[] | Set<IMatchParam>): Set<MatchParamFlat>;
+    static groupifyFlatParameters(P: MatchParamFlat[] | Set<MatchParamFlat>): Set<MatchParamFlat>;
     static setOfTypes(X: ThingWithContents[]): Set<ItemType>;
     static setOfActiveGroups(Types: Set<ItemType> | ItemType[]): Set<QSMatchableGroupKey>;
     static setOfParams(X: ThingWithContents[]): Set<IMatchParam>;

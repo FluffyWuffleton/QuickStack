@@ -57,7 +57,7 @@ export declare abstract class StorageCacheBase<T extends StorageCacheEntityType 
     get subs(): StorageCacheItem[];
     get subsNoUpdate(): StorageCacheItem[];
     get outdated(): boolean;
-    setOutdated(recursive?: true): void;
+    setOutdated(recursive?: true): boolean;
     deepSubs(): StorageCacheItem[];
     deepProperty<T extends keyof StorageCacheBase>(prop: T): StorageCacheBase[T][];
     findSub(sub: Item | ContainerHash): StorageCacheItem | undefined;

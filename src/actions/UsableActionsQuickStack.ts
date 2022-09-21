@@ -45,7 +45,7 @@ export namespace QSSubmenu {
     // Item in inventory
     //      Deposit type to nearby from full inv
     //      Deposit type to nearby from item's location
-    export const Deposit = new UsableActionGenerator(reg => reg.add("DepositMenu"/* StaticHelper.QS_INSTANCE.UAPDepositMenu */, UsableAction
+    export const Deposit = new UsableActionGenerator(reg => reg.add(StaticHelper.QS_INSTANCE.UAPDepositMenu, UsableAction
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
             displayLevel: ActionDisplayLevel.Always,
@@ -72,12 +72,13 @@ export namespace QSSubmenu {
     ));
 
     // 2nd-level menu for deposit operations operating on all item types
-    export const DepositAll = new UsableActionGenerator(reg => reg.add("DepositAllSubmenu", UsableAction
+    export const DepositAll = new UsableActionGenerator(reg => reg.add("DepositAllMenu", UsableAction
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
             displayLevel: ActionDisplayLevel.Always,
             bindable: StaticHelper.QS_INSTANCE.bindableAll,
             translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
+            icon: StaticHelper.QS_INSTANCE.UAPAll,
             isUsable: (player, using) => {
                 if(GLOBALCONFIG.force_isusable) return true;
                 if(using.item) {
@@ -105,11 +106,12 @@ export namespace QSSubmenu {
     ));
 
     // 2nd-level menu for deposit operations that require a selected item type
-    export const DepositType = new UsableActionGenerator(reg => reg.add("DepositTypeSubmenu", UsableAction
+    export const DepositType = new UsableActionGenerator(reg => reg.add("DepositTypeMenu", UsableAction
         .requiring({ item: true })
         .create({
             displayLevel: ActionDisplayLevel.Always,
             bindable: StaticHelper.QS_INSTANCE.bindableType,
+            icon: StaticHelper.QS_INSTANCE.UAPType,
             translate: (translator) => translator.name(({ item, itemType }) => {
                 const grp = TransferHandler.getActiveGroup(item?.type ?? itemType ?? ItemTypeGroup.Invalid);
                 return StaticHelper.TLMain("onlyXType").addArgs(...
@@ -150,7 +152,7 @@ export namespace QSSubmenu {
     // Item in nearby container
     //      Collect all to here from nearby
     //      Collect all to here from inventory
-    export const Collect = new UsableActionGenerator(reg => reg.add("CollectMenu"/* StaticHelper.QS_INSTANCE.UAPCollectMenu */, UsableAction
+    export const Collect = new UsableActionGenerator(reg => reg.add(StaticHelper.QS_INSTANCE.UAPCollectMenu, UsableAction
         .requiring({ item: { allowNone: true } })
         .create({
             displayLevel: ActionDisplayLevel.Always,
@@ -171,31 +173,27 @@ export namespace QSSubmenu {
     ));
 
     // 2nd-level menu for collection operations operating on all item types
-    export const CollectAll = new UsableActionGenerator(reg => reg.add("CollectAllSubmenu", UsableAction
+    export const CollectAll = new UsableActionGenerator(reg => reg.add("CollectAllMenu", UsableAction
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
             displayLevel: ActionDisplayLevel.Always,
             bindable: StaticHelper.QS_INSTANCE.bindableAll,
             translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
-            isUsable: (player, { item }) =>
-                GLOBALCONFIG.force_isusable
-                || (
-                    (item === undefined)
-                    && (StackAllNearSelf.get().actions[0][1] as UsableAction<{ item: { allowNone: true } }>)
+            icon: StaticHelper.QS_INSTANCE.UAPAll,
+            isUsable: (player, { item }) => {
+                if(GLOBALCONFIG.force_isusable) return true;
+                if(item === undefined)
+                    return (StackAllNearSelf.get().actions[0][1] as UsableAction<{ item: { allowNone: true } }>)
                         .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: undefined, npc: undefined }).usable
-                ) || (
-                    (item !== undefined)
-                    && (
-                        (StackAllNearHere.get().actions[0][1] as UsableAction<{ item: true }>)
-                            .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
-                        ||
-                        (StackAllSelfHere.get().actions[0][1] as UsableAction<{ item: true }>)
-                            .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
-                        ||
-                        (StackAllMainSub.get().actions[0][1] as UsableAction<{ item: true }>)
-                            .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
-                    )
-                ),
+                else return (StackAllNearHere.get().actions[0][1] as UsableAction<{ item: true }>)
+                    .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
+                    ||
+                    (StackAllSelfHere.get().actions[0][1] as UsableAction<{ item: true }>)
+                        .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
+                    ||
+                    (StackAllMainSub.get().actions[0][1] as UsableAction<{ item: true }>)
+                        .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
+            },
             submenu: (subreg) => {
                 StackAllNearSelf.register(subreg);
                 StackAllNearMain.register(subreg);
@@ -208,11 +206,12 @@ export namespace QSSubmenu {
     ));
 
     // 2nd-level menu for collection operations that require a selected item type
-    export const CollectType = new UsableActionGenerator(reg => reg.add("CollectTypeSubmenu", UsableAction
+    export const CollectType = new UsableActionGenerator(reg => reg.add("CollectTypeMenu", UsableAction
         .requiring({ item: true })
         .create({
             displayLevel: ActionDisplayLevel.Always,
             bindable: StaticHelper.QS_INSTANCE.bindableType,
+            icon: StaticHelper.QS_INSTANCE.UAPType,
             translate: (translator) => translator.name(({ item, itemType }) => {
                 const grp = TransferHandler.getActiveGroup(item?.type ?? itemType ?? ItemTypeGroup.Invalid);
                 return StaticHelper.TLMain("onlyXType").addArgs(...
@@ -333,7 +332,7 @@ export const StackAllSubNear = new UsableActionGenerator((reg, isMainReg: boolea
         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPSub,
         iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing.
         translate: (translator) => translator.name(({ item, itemType }) => {
-            const itemStr = item ? item.getName("indefinite",1) : itemType ? Translation.nameOf(Dictionary.Item, itemType, 1, "indefinite") : StaticHelper.TLMain("thisContainer");
+            const itemStr = item ? item.getName("indefinite", 1) : itemType ? Translation.nameOf(Dictionary.Item, itemType, 1, "indefinite") : StaticHelper.TLMain("thisContainer");
             return isMainReg
                 ? StaticHelper.TLMain("deposit").addArgs(
                     StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
