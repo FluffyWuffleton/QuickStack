@@ -11,6 +11,7 @@ import { ItemDetailIconLocation } from "ui/screen/screens/game/component/Item";
 import StaticHelper, { GLOBALCONFIG } from "../StaticHelper";
 import TransferHandler, { isHeldContainer, isStorageType, playerHasItem, playerHeldContainers, validNearby } from "../TransferHandler";
 import { executeStackAction, executeStackAction_notify } from "./Actions";
+import { getActiveGroups } from "../QSMatchGroups";
 
 export const UsableActionsQuickStack = new UsableActionGenerator(reg => {
     // 2nd-level submenus are registered by the parent. Visible submenu actions are registered by 2nd-level menus.
@@ -111,11 +112,11 @@ export namespace QSSubmenu {
             bindable: StaticHelper.QS_INSTANCE.bindableType,
             icon: StaticHelper.QS_INSTANCE.UAPType,
             translate: (translator) => translator.name(({ item, itemType }) => {
-                const grp = TransferHandler.getActiveGroup(item?.type ?? itemType ?? ItemTypeGroup.Invalid);
+                const grp = getActiveGroups(item?.type ?? itemType ?? ItemTypeGroup.Invalid);
                 return StaticHelper.TLMain("onlyXType").addArgs(...
-                    (grp !== undefined
+                    (grp.length
                         ? [
-                            StaticHelper.TLGroup(grp).passTo(StaticHelper.TLMain("colorMatchGroup")),
+                            StaticHelper.TLGroup(grp[0]).passTo(StaticHelper.TLMain("colorMatchGroup")),
                             StaticHelper.TLGroup("Item").passTo(Translation.reformatSingularNoun(999, false))
                         ] : [
                             item?.getName(false, 999, false, false, false, false)
@@ -223,11 +224,11 @@ export namespace QSSubmenu {
             bindable: StaticHelper.QS_INSTANCE.bindableType,
             icon: StaticHelper.QS_INSTANCE.UAPType,
             translate: (translator) => translator.name(({ item, itemType }) => {
-                const grp = TransferHandler.getActiveGroup(item?.type ?? itemType ?? ItemTypeGroup.Invalid);
+                const grp = getActiveGroups(item?.type ?? itemType ?? ItemTypeGroup.Invalid);
                 return StaticHelper.TLMain("onlyXType").addArgs(...
-                    (grp !== undefined
+                    (grp.length
                         ? [
-                            StaticHelper.TLGroup(grp).passTo(StaticHelper.TLMain("colorMatchGroup")),
+                            StaticHelper.TLGroup(grp[0]).passTo(StaticHelper.TLMain("colorMatchGroup")),
                             StaticHelper.TLGroup("Item").passTo(Translation.reformatSingularNoun(999, false))
                         ] : [
                             item?.getName(false, 999, false, false, false, false)
@@ -245,8 +246,8 @@ export namespace QSSubmenu {
                         .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: () => boolean } }>).usable;
             },
             submenu: (subreg) => {
-                StackTypeNearHere.register(subreg);
                 StackTypeSelfHere.register(subreg);
+                StackTypeNearHere.register(subreg);
             }
         })
     ));
@@ -335,17 +336,15 @@ export const execSAMN = (p: Player): boolean => executeStackAction_notify(p, [{ 
  *      Selected container(s) contents have type match(es) nearby 
  */
 export const StackAllSubNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllSubNear, UsableAction
-    .requiring({
-        item: { validate: (_, item) => isStorageType(item.type) }
-    })
+    .requiring({ item: true })
     .create({
         slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableSub,
         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPSub,
         iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing.
-        translate: (translator) => translator.name(({ item, itemType }) => {
-            const itemStr = item ? item.getName("indefinite", 1) : itemType ? Translation.nameOf(Dictionary.Item, itemType, 1, "indefinite") : StaticHelper.TLMain("thisContainer");
+        translate: (translator) => translator.name(({ item }) => {
+            const itemStr = item?.getName("indefinite", 1) ?? StaticHelper.TLMain("thisContainer");
             return isMainReg
                 ? StaticHelper.TLMain("deposit").addArgs(
                     StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
@@ -667,8 +666,8 @@ export const StackAllNearHere = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(!item.containedWithin) return false;
-            if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin), [], true)) return true;
+            if(item.containedWithin === undefined) return false;
+            if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin), undefined, true)) return true;
             return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: (player, { item }, _context) => executeStackAction(player,

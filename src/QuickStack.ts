@@ -13,8 +13,6 @@ import { Priority } from "event/EventEmitter";
 import EventManager, { EventHandler } from "event/EventManager";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
-import { TileUpdateType } from "game/IGame";
-import Island from "game/island/Island";
 import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
 import Item from "game/item/Item";
 import ItemManager from "game/item/ItemManager";
@@ -29,7 +27,6 @@ import { TooltipLocation } from "ui/component/IComponent";
 import Text from "ui/component/Text";
 import Bind from "ui/input/Bind";
 import { IVector3 } from "utilities/math/IVector";
-import Vector3 from "utilities/math/Vector3";
 
 import { StackAction } from "./actions/Actions";
 import { execSAMN, execSANM, execSANSe, execSASeN, UsableActionsQuickStack } from "./actions/UsableActionsQuickStack";
@@ -194,25 +191,25 @@ export default class QuickStack extends Mod {
     @EventHandler(EventBus.LocalPlayer, "postMove")
     protected localPlayerPostMove(host:Player, fromX:number, fromY:number, fromZ: number, _fromTile: ITile, toX: number, toY: number, toZ:number,_toTile: ITile): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.postMove\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.postMove`);
         this._localStorageCache.setOutdated("nearby");
     }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemAdd")
     protected localPlayerItemAdd(): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemAdd\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemAdd`);
         this._localStorageCache.setOutdated("player");
     }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemRemove")
     protected localPlayerItemRemove(): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemRemove\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemRemove`);
         this._localStorageCache.setOutdated("player");
     }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemUpdate")
     protected localPlayerItemUpdate(): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemUpdate\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemUpdate`);
         this._localStorageCache.setOutdated("player");
     }
 
@@ -221,11 +218,11 @@ export default class QuickStack extends Mod {
         if(!this.haveCache) return;
         this._localStorageCache.playerNoUpdate.updateHash();
     }
-
-    @EventHandler(EventBus.LocalIsland, "tileUpdate")
+    // Tile item events also trigger containerItemAdd/Remove events.
+    /* @EventHandler(EventBus.LocalIsland, "tileUpdate")
     protected islandTileUpdated(_host: Island, _tile: ITile, x: number, y: number, z: number, updtype: TileUpdateType): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localIsland.tileUpdate\n\t${[x, y, z].toString()} type '${TileUpdateType[updtype]}'\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localIsland.tileUpdate\t\t${[x, y, z].toString()} type '${TileUpdateType[updtype]}'`);
         if(!isOnOrAdjacent(this._localStorageCache.playerNoUpdate.entity.getPoint(), new Vector3(x, y, z))) return;
         switch(updtype) {
             case TileUpdateType.Batch:
@@ -239,19 +236,19 @@ export default class QuickStack extends Mod {
             default:
                 return;
         }
-    }
+    } */
 
     @EventHandler(EventBus.ItemManager, "containerItemAdd")
     protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- ItemManager.containerItemAdd\n\t'${_item.getName()}' to '${c ? host.hashContainer(c) : "undefined"}'\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- ItemManager.containerItemAdd\t\t'${_item.getName()}' to '${c ? host.hashContainer(c) : "undefined"}'`);
         this.containerUpdated(host, c, undefined);
     }
 
     @EventHandler(EventBus.ItemManager, "containerItemRemove")
     protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- ItemManager.containerItemRemove\n\t'${_item.getName()}' from '${c ? host.hashContainer(c) : "undefined"}'\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- ItemManager.containerItemRemove\t\t'${_item.getName()}' from '${c ? host.hashContainer(c) : "undefined"}'`);
         this.containerUpdated(host, c, cpos);
     }
 
@@ -274,24 +271,17 @@ export default class QuickStack extends Mod {
 
         if(container !== undefined) {
             const topLevel: (c: IContainer) => IContainer = (c) => (c.containedWithin === undefined) ? c : topLevel(c.containedWithin);
-            if(items.hashContainer(topLevel(container)) === this._localStorageCache.playerNoUpdate.cHash) {
-                // this._localStorageCache.setOutdated("player"); // Handled in localPlayer events.
-                return;
-            }
+            if(items.hashContainer(topLevel(container)) === this._localStorageCache.playerNoUpdate.cHash) return; // Handled in localPlayer events.
             container = findIVecValid(container);
             cpos = container as unknown as IVector3;
-            // if(Doodad.is(container) || items.isTileContainer(top))
-            //     cpos = (container as IVector3);
         }
         if(cpos !== undefined) {
             if(isOnOrAdjacent(cpos, this._localStorageCache.playerNoUpdate.entity.getPoint())) {
                 const found = container ? this._localStorageCache.findNearby(items.hashContainer(container)) : undefined;
-
                 if(!!found) {
                     QuickStack.MaybeLog?.info(`QuickStack.containerUpdated: Updated container '${found.cHash}' identified in cache. Flagging.`);
                     if(this._localStorageCache.setOutdatedSpecific(found.cHash, true)) return;
                     else QuickStack.MaybeLog?.info(`QuickStack.containerUpdated: Specific flagging failed...`);
-
                 }
                 QuickStack.MaybeLog?.info(`QuickStack.containerUpdated: Updated container not found in cache. Flagging 'nearby'.`);
                 this._localStorageCache.setOutdated("nearby");

@@ -69,6 +69,6 @@ export const StackAction = new Action(ActionArgument.Array, ActionArgument.Array
             if(!suppress?.delay) action.setDelay(GLOBALCONFIG.pause_length);
             action.setUpdateTablesAndWeight();
             action.setUpdateView(false);
-            action.setPassTurn(GLOBALCONFIG.pass_turn_success ? TurnTypeFlag.Idle : undefined);
+            if(GLOBALCONFIG.pass_turn_success) action.setPassTurn(TurnTypeFlag.Idle);
         }
     })

@@ -13,7 +13,7 @@ import TileHelpers from "utilities/game/TileHelpers"
 import Log from "utilities/Log";
 
 import { ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
-import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups, MatchParamFlat } from "./QSMatchGroups";
+import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups, MatchParamFlat, getActiveGroups, canMatchActiveGroup } from "./QSMatchGroups";
 import StaticHelper, { GLOBALCONFIG } from "./StaticHelper";
 
 export type ThingWithContents = Pick<IContainer, "containedItems">;
@@ -21,11 +21,11 @@ export type ThingWithContents = Pick<IContainer, "containedItems">;
 // Utility functions for item and inventory fetching/checking. Pretty self-explanatory.
 export function isHeldContainer(player: Player, item: Item): boolean { return player.island.items.isContainer(item) && player === item.getCurrentOwner(); }
 export function isStorageType(type: ItemType): boolean { return ItemManager.isInGroup(type, ItemTypeGroup.Storage); }
-export function isInHeldContainer(player: Player, item: Item): boolean { return (item?.containedWithin) ? player.island.items.getContainedContainers(player.inventory).includes(item.containedWithin) : false; }
+export function isInHeldContainer(player: Player, item: Item): boolean { return !!(item?.containedWithin) ? player.island.items.getContainedContainers(player.inventory).includes(item.containedWithin) : false; }
 export function playerHasItem(player: Player, item: Item): boolean { return item.getCurrentOwner() === player; }
-export function playerHasType(player: Player, type: ItemType): boolean { //return player.inventory.containedItems.some(i => i.type === type); }
-    const g = TransferHandler.getActiveGroup(type);
-    return TransferHandler.canMatch([player.inventory, ...playerHeldContainers(player)], [g !== undefined ? { group: g } : { type: type }]);
+export function playerHasType(player: Player, type: ItemType): boolean {
+    const groups = getActiveGroups(type);
+    return TransferHandler.canMatch([player.inventory, ...playerHeldContainers(player)], (groups.length > 0) ? groups.map(g => ({ group: g })) : [{ type: type }]);
 }
 export function playerHeldContainers(player: Player, type?: ItemType[]): IContainer[] {
     return (type === undefined || !type.length)
@@ -40,7 +40,9 @@ export function validNearby(player: Player, overrideForbidTiles: boolean = false
     const adj = player.island.items.getAdjacentContainers(player, false);
     [...adj].entries().reverse().forEach(([idx, c]) => {
         if(player.island.items.getContainerReference(c, undefined).crt === ContainerReferenceType.Tile
+            && (overrideForbidTiles || !StaticHelper.QS_INSTANCE.globalData.optionForbidTiles)
             && !isSafeTile(player, c as ITile)
+            && !(c as ITile).doodad?.description()?.blockMove
         ) adj.splice(idx, 1);
     });
     return adj;
@@ -88,12 +90,26 @@ export default class TransferHandler {
     // Returns a set of flattened parameters.
     public static groupifyParameters(P: IMatchParam[] | Set<IMatchParam>): Set<MatchParamFlat> {
         const pSet = new Set<MatchParamFlat>;
-        P.forEach(param => pSet.add(param.group !== undefined ? param.group : (this.getActiveGroup(param.type) ?? param.type)));
+        P.forEach(param => {
+            if(param.group) pSet.add(param.group);
+            else {
+                const grps = getActiveGroups(param.type);
+                if(grps.length) pSet.addFrom(grps);
+                else pSet.add(param.type);
+            }
+        });
         return pSet;
     }
     public static groupifyFlatParameters(P: MatchParamFlat[] | Set<MatchParamFlat>): Set<MatchParamFlat> {
         const pSet = new Set<MatchParamFlat>;
-        P.forEach(param => pSet.add(typeof param == "string" ? param : (this.getActiveGroup(param) ?? param)));
+        P.forEach(param => {
+            if(typeof param === "string") pSet.add(param);
+            else {
+                const grps = getActiveGroups(param);
+                if(grps.length) pSet.addFrom(grps);
+                else pSet.add(param);
+            }
+        });
         return pSet;
     }
 
@@ -156,10 +172,10 @@ export default class TransferHandler {
                 StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[g]?.includes(t) ?? false));
 
 
-        if(GLOBALCONFIG.log_info) {
-            StaticHelper.QS_LOG.info(`Resolved params: (Flat) [TYPES, GROUPS]`);
-            console.log([[...types], [...groups]]);
-        }
+        // if(GLOBALCONFIG.log_info) {
+        //     StaticHelper.QS_LOG.info(`Resolved params: (Flat) [TYPES, GROUPS]`);
+        //     console.log([[...types], [...groups]]);
+        // }
         return new Set<MatchParamFlat>([...types, ...groups]);
     }
 
@@ -171,7 +187,7 @@ export default class TransferHandler {
      * @returns {ITransferItemMatch[]} List of matches.
      */
     public static getMatches(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): IMatchParam[] {
-        StaticHelper.MaybeLog?.info(`GET MATCHES:: ${A}  ${B}`);
+        //StaticHelper.MaybeLog?.info(`GET MATCHES:: ${A}  ${B}`);
 
         // setOfParams will favor providing a group over a type if the group exists. If an item is present, it has no active group.
         const AParams = TransferHandler.setOfFlatParams(A);
@@ -197,7 +213,7 @@ export default class TransferHandler {
      * @returns {boolean}
      */
     public static hasMatch(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): boolean {
-        StaticHelper.MaybeLog?.info(`HAS MATCH:: ${A}  ${B}`);
+        //StaticHelper.MaybeLog?.info(`HAS MATCH:: ${A}  ${B}`);
 
         const AParams = TransferHandler.setOfFlatParams(A);
         const BParams = TransferHandler.setOfFlatParams(B);
@@ -217,19 +233,6 @@ export default class TransferHandler {
     public static canMatch(X: ThingWithContents[], params: IMatchParam[]): boolean {
         const xFlat = this.setOfFlatParams(X);
         return [...this.groupifyParameters(params)].some(p => xFlat.has(p));
-    }
-
-    /**
-     * Returns the matchable group key in which the provided ItemType or ItemTypeGroup can be found, if any such group is active. 
-     * @param {(ItemType|ItemTypeGroup)} type
-     * @returns {QSMatchableGroupKey|undefined}
-     */
-    public static getActiveGroup(type: ItemType | ItemTypeGroup): QSMatchableGroupKey | undefined {
-        if(type in ItemTypeGroup) return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys.find(KEY => QSMatchableGroups[KEY].includes(type));
-        else return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys.find(KEY => {
-            if(QSMatchableGroups[KEY].includes(type)) return true;
-            return ItemManager.getGroups(type as ItemType).some(g => QSMatchableGroups[KEY].includes(g));
-        });
     }
 
     public static canFitAny(src: ThingWithContents[], dest: IContainer[], player: Player, filter: IMatchParam[] = []) {
@@ -259,7 +262,7 @@ export default class TransferHandler {
                 remaining > srcItems.reduce((w, it) => // reduce => LightestMatchedItemWeight | Infinity
                     (param.type !== undefined
                         ? it.type === param.type
-                        : (this.getActiveGroup(it.type) === param.group
+                        : (getActiveGroups(it.type).includes(param.group)
                             && (StaticHelper.QS_INSTANCE.globalData.optionKeepContainers
                                 ? !ItemManager.isInGroup(it.type, ItemTypeGroup.Storage)
                                 : true))
@@ -383,7 +386,7 @@ export default class TransferHandler {
                 // If any matches are group-based, remove type-based matches that overlap with that group to avoid redundancy.
                 for(const origMatch of [...thisPairing.matches.filter(m => m.matched.group !== undefined)])
                     thisPairing.matches = thisPairing.matches.filter(m =>
-                        (m.matched.type === undefined) || TransferHandler.getActiveGroup(m.matched.type) !== origMatch.matched.group)
+                        !((m.matched.group === undefined) && canMatchActiveGroup(m.matched.type, origMatch.matched.group!)))
 
 
                 // We'll want to keep track of any matches caused exclusively by protected/equipped items when drawing from player inventory,

@@ -1,6 +1,6 @@
 import Player from "game/entity/player/Player";
 import Island from "game/island/Island";
-import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
+import { IContainer, ItemType } from "game/item/IItem";
 import Item from "game/item/Item";
 import { ITile } from "game/tile/ITerrain";
 import Log from "utilities/Log";
@@ -42,7 +42,6 @@ export default class TransferHandler {
     static getMatches(A: ThingWithContents[], B: ThingWithContents[], filter?: IMatchParam[]): IMatchParam[];
     static hasMatch(A: ThingWithContents[], B: ThingWithContents[], filter?: IMatchParam[]): boolean;
     static canMatch(X: ThingWithContents[], params: IMatchParam[]): boolean;
-    static getActiveGroup(type: ItemType | ItemTypeGroup): QSMatchableGroupKey | undefined;
     static canFitAny(src: ThingWithContents[], dest: IContainer[], player: Player, filter?: IMatchParam[]): boolean;
     private resolveTargetting;
     private executeTransfer;

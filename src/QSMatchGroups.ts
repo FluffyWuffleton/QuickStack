@@ -1,11 +1,31 @@
 import { ItemType, ItemTypeGroup } from "game/item/IItem";
+import ItemManager from "game/item/ItemManager";
+import StaticHelper from "./StaticHelper";
 
 // A generic item-matching parameters based on either ItemType or itemTypeGroup (vanilla groups, not custom groups)
-interface IMatchByType { type: ItemType; group?: never;};
+interface IMatchByType { type: ItemType; group?: never; };
 interface IMatchByGroup { type?: never; group: QSMatchableGroupKey; };
 export type IMatchParam = IMatchByType | IMatchByGroup; // Will contain exactly one defined property, 'type' or 'group'
 export type MatchParamFlat = ItemType | QSMatchableGroupKey;
 export type Matchable = ItemType | ItemTypeGroup;
+
+/**
+ * Returns the matchable group key in which the provided ItemType or ItemTypeGroup can be found, if any such group is active. 
+ * @param {(ItemType|ItemTypeGroup)} type
+ * @returns {QSMatchableGroupKey[]}
+ */
+export function getActiveGroups(type: ItemType | ItemTypeGroup): QSMatchableGroupKey[] {
+    if(type in ItemTypeGroup) return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys.filter(KEY => QSMatchableGroups[KEY].includes(type));
+
+    const typeAndGroups = [type as ItemType, ...ItemManager.getGroups(type as ItemType)];
+    return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys.filter(KEY => typeAndGroups.some(tg => QSMatchableGroups[KEY].includes(tg)));
+}
+
+export function canMatchActiveGroup(type: ItemType, group: QSMatchableGroupKey): boolean {
+    return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys.includes(group)
+        && (QSMatchableGroups[group].includes(type) || ItemManager.getGroups(type).some(g => QSMatchableGroups[group].includes(g)));
+}
+
 
 // A collection of custom groupings for similar-item match options.
 export enum QSGroupsTranslation {
@@ -29,8 +49,8 @@ export enum QSGroupsTranslation {
     Fertilizing,
     Paperwork,
     Woodwork,
-    Treasure, 
-    
+    Treasure,
+
     MatchGroupIncludes,
     ItemGroupX,
     ItemTypeX,
@@ -38,8 +58,8 @@ export enum QSGroupsTranslation {
 };
 export type QSGroupsTranslationKey = keyof typeof QSGroupsTranslation;
 
-export type QSMatchableGroupKey = keyof Omit<typeof QSGroupsTranslation, "MatchGroupIncludes"|"ItemGroupX"|"ItemTypeX"|"Item">;
-export const QSMatchableGroups: {[k in QSMatchableGroupKey]: readonly Matchable[]} = {
+export type QSMatchableGroupKey = keyof Omit<typeof QSGroupsTranslation, "MatchGroupIncludes" | "ItemGroupX" | "ItemTypeX" | "Item">;
+export const QSMatchableGroups: { [k in QSMatchableGroupKey]: readonly Matchable[] } = {
     Projectile: [
         ItemTypeGroup.Arrow,
         ItemTypeGroup.Bullet
@@ -131,6 +151,7 @@ export const QSMatchableGroups: {[k in QSMatchableGroupKey]: readonly Matchable[
         ItemTypeGroup.Spine,
         ItemTypeGroup.Fabric,
         ItemType.Tannin,
+        ItemType.Cotton,
         ItemType.AnimalFur,
         ItemType.AnimalPelt,
         ItemType.LeatherHide,

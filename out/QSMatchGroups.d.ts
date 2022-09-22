@@ -10,6 +10,8 @@ interface IMatchByGroup {
 export declare type IMatchParam = IMatchByType | IMatchByGroup;
 export declare type MatchParamFlat = ItemType | QSMatchableGroupKey;
 export declare type Matchable = ItemType | ItemTypeGroup;
+export declare function getActiveGroups(type: ItemType | ItemTypeGroup): QSMatchableGroupKey[];
+export declare function canMatchActiveGroup(type: ItemType, group: QSMatchableGroupKey): boolean;
 export declare enum QSGroupsTranslation {
     Projectile = 0,
     ProjectileWeapon = 1,

@@ -425,7 +425,7 @@ export class StorageCachePlayer extends StorageCacheBase<Player> {
 export class StorageCacheTile extends StorageCacheNearby<ITile> {
     public readonly iswhat = "ITile";
     public readonly cRef: IContainer;
-    public thisPos(): IVector3 { return !this.nearWhom.island.isTileEmpty(this.entity) ? { x: NaN, y: NaN, z: NaN } : this.entity as IVector3; }
+    public thisPos(): IVector3 { return !('x' in this.entity && 'y' in this.entity && 'z' in this.entity) ? { x: NaN, y: NaN, z: NaN } : this.entity as IVector3; }
     constructor(e: ITile, p: Player) {
         super(e, p, p.island.items.hashContainer(e));
         this.cRef = e as ITileContainer;

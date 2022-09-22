@@ -7,8 +7,6 @@ import Bindable from "ui/input/Bindable";
 import Log from "utilities/Log";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
-import { TileUpdateType } from "game/IGame";
-import Island from "game/island/Island";
 import { IContainer } from "game/item/IItem";
 import Item from "game/item/Item";
 import ItemManager from "game/item/ItemManager";
@@ -129,7 +127,6 @@ export default class QuickStack extends Mod {
     protected localPlayerItemRemove(): void;
     protected localPlayerItemUpdate(): void;
     protected localPlayerIDChanged(host: Player, curID: number, newID: number, absent: boolean): any;
-    protected islandTileUpdated(_host: Island, _tile: ITile, x: number, y: number, z: number, updtype: TileUpdateType): void;
     protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void;
     protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void;
     protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined): void;
