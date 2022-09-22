@@ -19,7 +19,7 @@ import StaticHelper, { GLOBALCONFIG } from "./StaticHelper";
 export type ThingWithContents = Pick<IContainer, "containedItems">;
 
 // Utility functions for item and inventory fetching/checking. Pretty self-explanatory.
-export function isHeldContainer(player: Player, item: Item): boolean { return player.island.items.isContainer(item) && player === player.island.items.getPlayerWithItemInInventory(item); }
+export function isHeldContainer(player: Player, item: Item): boolean { return player.island.items.isContainer(item) && player === item.getCurrentOwner(); }
 export function isStorageType(type: ItemType): boolean { return ItemManager.isInGroup(type, ItemTypeGroup.Storage); }
 export function isInHeldContainer(player: Player, item: Item): boolean { return (item?.containedWithin) ? player.island.items.getContainedContainers(player.inventory).includes(item.containedWithin) : false; }
 export function playerHasItem(player: Player, item: Item): boolean { return item.getCurrentOwner() === player; }
@@ -48,8 +48,8 @@ export function validNearby(player: Player, overrideForbidTiles: boolean = false
 
 export function isSafeTile(player: Player, tile: ITile): boolean {
     return (TileHelpers.getType(tile) !== TerrainType.Lava)
-        && !(tile.events?.some(e => e.description()?.providesFire || e.description()?.blocksTile) ?? false)
-        && !(tile.doodad?.isDangerous(player) ?? false);
+        && !(tile.events?.some(e => e.description()?.providesFire))
+        && !(tile.doodad?.isDangerous(player));
 }
 
 /**

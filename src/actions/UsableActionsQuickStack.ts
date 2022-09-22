@@ -40,7 +40,6 @@ export namespace QSSubmenu {
     //      Deposit all to nearby from top-level inv      -- Slottable
     // Held container
     //      Deposit all to nearby from container          -- Slottable for container item
-    //      Deposit all to nearby from similar containers -- Slottable for container item
     // Item in inventory
     //      Deposit type to nearby from full inv
     //      Deposit type to nearby from item's location
@@ -64,10 +63,8 @@ export namespace QSSubmenu {
                     ));
             },
             submenu: (subreg) => {
-                // Add subsubmenu for actions that function regardless of item selection.
-                QSSubmenu.DepositAll.register(subreg);
-                // Add subsubmenu for item-type actions. Requires Item.
-                QSSubmenu.DepositType.register(subreg);
+                QSSubmenu.DepositAll.register(subreg); // Add subsubmenu for actions that function regardless of item selection.
+                QSSubmenu.DepositType.register(subreg); // Add subsubmenu for item-type actions. Requires Item.
             }
         })
     ));
@@ -129,7 +126,7 @@ export namespace QSSubmenu {
                 );
             }),
             isUsable: (player, using) => {
-                if(GLOBALCONFIG.force_isusable) return true;
+                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
                 return StaticHelper.QSLSC.checkSelfNearby([...TransferHandler.groupifyFlatParameters([using.item.type])]);
                 // (StackTypeSelfNear.get(true).actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
                 //     .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType ?? using.item.type }).usable
