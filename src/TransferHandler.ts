@@ -43,7 +43,7 @@ export function validNearby(player: Player, overrideForbidTiles: boolean = false
         if(crt === ContainerReferenceType.Tile
             && (StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !overrideForbidTiles)
             || TileHelpers.getType(c as ITile) === TerrainType.Lava
-            || (c as ITile).events?.some(e => e.description()?.providesFire || e.description()?.blocksTile)
+            || (c as ITile).events?.some(e => e.description()?.providesFire)
             || (c as ITile).doodad?.isDangerous(player)
         ) adj.splice(idx, 1);
     });
