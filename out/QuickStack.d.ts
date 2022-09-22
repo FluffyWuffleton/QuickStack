@@ -23,6 +23,7 @@ export declare namespace GLOBALCONFIG {
     const pause_length: Delay.ShortPause;
     const pass_turn_success: false;
     const force_isusable: false;
+    const force_menus: true;
 }
 export declare enum QSTranslation {
     qsPrefix = 0,
@@ -123,7 +124,7 @@ export default class QuickStack extends Mod {
     private haveCache;
     private _localStorageCache;
     get localStorageCache(): LocalStorageCache;
-    protected localPlayerMoved(): void;
+    protected localPlayerPostMove(host: Player, fromX: number, fromY: number, fromZ: number, _fromTile: ITile, toX: number, toY: number, toZ: number, _toTile: ITile): void;
     protected localPlayerItemAdd(): void;
     protected localPlayerItemRemove(): void;
     protected localPlayerItemUpdate(): void;
@@ -131,7 +132,6 @@ export default class QuickStack extends Mod {
     protected islandTileUpdated(_host: Island, _tile: ITile, x: number, y: number, z: number, updtype: TileUpdateType): void;
     protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void;
     protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void;
-    protected initCache(): void;
     protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined): void;
     onInitialize(): void;
     onLoad(): void;

@@ -14,7 +14,6 @@ export declare const execSASeN: (p: Player) => boolean;
 export declare const StackAllMainNear: UsableActionGenerator<[isMainReg?: boolean | undefined]>;
 export declare const execSAMN: (p: Player) => boolean;
 export declare const StackAllSubNear: UsableActionGenerator<[isMainReg?: boolean | undefined]>;
-export declare const StackAllLikeNear: UsableActionGenerator<[isMainReg?: boolean | undefined]>;
 export declare const StackTypeSelfNear: UsableActionGenerator<[isMainReg?: boolean | undefined]>;
 export declare const StackTypeHereNear: UsableActionGenerator<[isMainReg?: boolean | undefined]>;
 export declare const StackAllNearSelf: UsableActionGenerator<[isMainReg?: boolean | undefined]>;

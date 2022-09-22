@@ -10,7 +10,7 @@ import { IInput } from "ui/input/IInput";
 import Log from "utilities/Log";
 import { EventBus } from "event/EventBuses";
 import { Priority } from "event/EventEmitter";
-import { EventHandler } from "event/EventManager";
+import EventManager, { EventHandler } from "event/EventManager";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
 import { TileUpdateType } from "game/IGame";
@@ -42,6 +42,7 @@ export namespace GLOBALCONFIG {
     export const pause_length = Delay.ShortPause as const;
     export const pass_turn_success = false as const;
     export const force_isusable = false as const;
+    export const force_menus = true as const;
 }
 
 export enum QSTranslation {
@@ -190,28 +191,28 @@ export default class QuickStack extends Mod {
     private _localStorageCache: LocalStorageCache; // initialized in onLoad
     public get localStorageCache() { return this._localStorageCache; }
 
-    @EventHandler(EventBus.LocalPlayer, "moveComplete")
-    protected localPlayerMoved(): void {
+    @EventHandler(EventBus.LocalPlayer, "postMove")
+    protected localPlayerPostMove(host:Player, fromX:number, fromY:number, fromZ: number, _fromTile: ITile, toX: number, toY: number, toZ:number,_toTile: ITile): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- localPlayer.moveComplete\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.postMove\n`);
         this._localStorageCache.setOutdated("nearby");
     }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemAdd")
     protected localPlayerItemAdd(): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- localPlayer.inventoryItemAdd\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemAdd\n`);
         this._localStorageCache.setOutdated("player");
     }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemRemove")
     protected localPlayerItemRemove(): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- localPlayer.inventoryItemRemove\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemRemove\n`);
         this._localStorageCache.setOutdated("player");
     }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemUpdate")
     protected localPlayerItemUpdate(): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- localPlayer.inventoryItemUpdate\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemUpdate\n`);
         this._localStorageCache.setOutdated("player");
     }
 
@@ -224,7 +225,7 @@ export default class QuickStack extends Mod {
     @EventHandler(EventBus.LocalIsland, "tileUpdate")
     protected islandTileUpdated(_host: Island, _tile: ITile, x: number, y: number, z: number, updtype: TileUpdateType): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- localIsland.tileUpdate\n\t${[x, y, z].toString()} type '${TileUpdateType[updtype]}'\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localIsland.tileUpdate\n\t${[x, y, z].toString()} type '${TileUpdateType[updtype]}'\n`);
         if(!isOnOrAdjacent(this._localStorageCache.playerNoUpdate.entity.getPoint(), new Vector3(x, y, z))) return;
         switch(updtype) {
             case TileUpdateType.Batch:
@@ -243,22 +244,22 @@ export default class QuickStack extends Mod {
     @EventHandler(EventBus.ItemManager, "containerItemAdd")
     protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- ItemManager.containerItemAdd\n\t'${_item.getName()}' to '${c ? host.hashContainer(c) : "undefined"}'\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- ItemManager.containerItemAdd\n\t'${_item.getName()}' to '${c ? host.hashContainer(c) : "undefined"}'\n`);
         this.containerUpdated(host, c, undefined);
     }
 
     @EventHandler(EventBus.ItemManager, "containerItemRemove")
     protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void {
         if(!this.haveCache) return;
-        QuickStack.MaybeLog?.info(`\n\t\tEVENT TRIGGERED -- ItemManager.containerItemRemove\n\t'${_item.getName()}' from '${c ? host.hashContainer(c) : "undefined"}'\n`);
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- ItemManager.containerItemRemove\n\t'${_item.getName()}' from '${c ? host.hashContainer(c) : "undefined"}'\n`);
         this.containerUpdated(host, c, cpos);
     }
 
-    @EventHandler(EventBus.LocalPlayer, "loadedOnIsland", Priority.High)
-    protected initCache() {
-        this._localStorageCache = new LocalStorageCache(localPlayer);
-        this.haveCache = true;
-    }
+    // @EventHandler(EventBus.LocalPlayer, "loadedOnIsland", Priority.High)
+    // protected initCache() {
+    //     this._localStorageCache = new LocalStorageCache(localPlayer);
+    //     this.haveCache = true;
+    // }
 
     // Shouldn't need to track this if we're accounting for both Add and Remove events already..
     // @EventHandler(EventBus.ItemManager, "containerItemUpdate")
@@ -308,8 +309,14 @@ export default class QuickStack extends Mod {
     public override onLoad(): void {
         console.log("ON LOAD");
         if(!steamworks.isDedicatedServer()) {
-            this["subscribedHandlers"] = false;
-            this.registerEventHandlers("unload");
+            EventManager.subscribe(EventBus.LocalPlayer, "loadedOnIsland", () => {
+                this._localStorageCache = new LocalStorageCache(localPlayer);
+                this.haveCache = true;
+                this["subscribedHandlers"] = false;
+                this.registerEventHandlers("unload");
+            }, Priority.High);
+            //this["subscribedHandlers"] = false;
+            //this.registerEventHandlers("unload");
         }
     }
     public override onUnload(): void {

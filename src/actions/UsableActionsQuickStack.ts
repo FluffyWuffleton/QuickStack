@@ -3,14 +3,13 @@ import UsableAction, { IUsableActionUsing } from "game/entity/action/usable/Usab
 import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
 import Player from "game/entity/player/Player";
 import { IContainer, ItemTypeGroup } from "game/item/IItem";
-import ItemManager from "game/item/ItemManager";
 import Dictionary from "language/Dictionary";
 import { TextContext } from "language/ITranslation";
 import Translation from "language/Translation";
 import { ItemDetailIconLocation } from "ui/screen/screens/game/component/Item";
 
 import StaticHelper, { GLOBALCONFIG } from "../StaticHelper";
-import TransferHandler, { isHeldContainer, isStorageType, playerHasItem, playerHasType, playerHeldContainers, validNearby } from "../TransferHandler";
+import TransferHandler, { isHeldContainer, isStorageType, playerHasItem, playerHeldContainers, validNearby } from "../TransferHandler";
 import { executeStackAction, executeStackAction_notify } from "./Actions";
 
 export const UsableActionsQuickStack = new UsableActionGenerator(reg => {
@@ -21,7 +20,7 @@ export const UsableActionsQuickStack = new UsableActionGenerator(reg => {
     StackAllSelfNear.register(reg, true);
     StackAllMainNear.register(reg, true);
     StackAllSubNear.register(reg, true);
-    StackAllLikeNear.register(reg, true);
+    //StackAllLikeNear.register(reg, true);
     StackTypeSelfNear.register(reg, true);
     StackTypeHereNear.register(reg, true);
     StackAllNearSelf.register(reg, true);
@@ -51,12 +50,14 @@ export namespace QSSubmenu {
             displayLevel: ActionDisplayLevel.Always,
             translate: (translator) => translator.name(StaticHelper.TLMain("deposit")),
             isUsable: (player, using): boolean => {
-                if(GLOBALCONFIG.force_isusable) return true;
+                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
                 return (
                     (
                         using.item
-                        && (QSSubmenu.DepositType.get().actions[0][1] as unknown as UsableAction<{ item: true }>)
-                            .isUsable(player, { creature: using.creature, doodad: using.doodad, npc: using.npc, item: using.item, itemType: using.itemType ?? using.item.type }).usable
+                        && playerHasItem(player, using.item)
+                        && (StaticHelper.QSLSC.checkSelfNearby([...TransferHandler.groupifyFlatParameters([using.item.type])]))
+                        // QSSubmenu.DepositType.get().actions[0][1] as unknown as UsableAction<{ item: true }>)
+                        //     .isUsable(player, { creature: using.creature, doodad: using.doodad, npc: using.npc, item: using.item, itemType: using.item.type }).usable
                     ) || (
                         (QSSubmenu.DepositAll.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>)
                             .isUsable(player, { creature: using.creature, doodad: using.doodad, npc: using.npc, item: using.item, itemType: using.itemType }).usable
@@ -80,15 +81,15 @@ export namespace QSSubmenu {
             translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
             icon: StaticHelper.QS_INSTANCE.UAPAll,
             isUsable: (player, using) => {
-                if(GLOBALCONFIG.force_isusable) return true;
+                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
                 if(using.item) {
                     if((StackAllSubNear.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
                         .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
                     ) return true;
                 } else if(using.itemType) {
-                    if((StackAllLikeNear.get().actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
-                        .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
-                    ) return true;
+                    // if((StackAllLikeNear.get().actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
+                    //     .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
+                    // ) return true;
                 } else {
                     if((StackAllSelfNear.get().actions[0][1] as UsableAction<{}>)
                         .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: undefined, itemType: undefined }).usable
@@ -100,7 +101,7 @@ export namespace QSSubmenu {
                 StackAllSelfNear.register(subreg);
                 StackAllMainNear.register(subreg);
                 StackAllSubNear.register(subreg);
-                StackAllLikeNear.register(subreg);
+                //StackAllLikeNear.register(subreg);
             }
         })
     ));
@@ -129,8 +130,9 @@ export namespace QSSubmenu {
             }),
             isUsable: (player, using) => {
                 if(GLOBALCONFIG.force_isusable) return true;
-                return (StackTypeSelfNear.get(true).actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
-                    .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType ?? using.item.type }).usable
+                return StaticHelper.QSLSC.checkSelfNearby([...TransferHandler.groupifyFlatParameters([using.item.type])]);
+                // (StackTypeSelfNear.get(true).actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
+                //     .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType ?? using.item.type }).usable
             },
             submenu: (subreg) => {
                 StackTypeSelfNear.register(subreg);
@@ -153,15 +155,16 @@ export namespace QSSubmenu {
     //      Collect all to here from nearby
     //      Collect all to here from inventory
     export const Collect = new UsableActionGenerator(reg => reg.add(StaticHelper.QS_INSTANCE.UAPCollectMenu, UsableAction
-        .requiring({ item: { allowNone: true } })
+        .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
             displayLevel: ActionDisplayLevel.Always,
             translate: (translator) => translator.name(StaticHelper.TLMain("collect")),
             isApplicable: () => true,
             isUsable: (player, using) => {
-                if(GLOBALCONFIG.force_isusable) return true;
-                return (QSSubmenu.CollectAll.get().actions[0][1] as UsableAction<{ item: { allowNone: true } }>).isUsable(player, using).usable
-                    || (QSSubmenu.CollectType.get().actions[0][1] as UsableAction<{ item: { allowNone: true } }>).isUsable(player, using).usable;
+                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
+                //return StaticHelper.QSLSC.checkSelfNearby(undefined, true);
+                return (QSSubmenu.CollectAll.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>).isUsable(player, using).usable
+                    || (QSSubmenu.CollectType.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>).isUsable(player, using).usable;
             },
             submenu: (subreg) => {
                 // Add subsubmenu for actions that function regardless of item selection.
@@ -181,18 +184,28 @@ export namespace QSSubmenu {
             translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
             icon: StaticHelper.QS_INSTANCE.UAPAll,
             isUsable: (player, { item }) => {
-                if(GLOBALCONFIG.force_isusable) return true;
-                if(item === undefined)
-                    return (StackAllNearSelf.get().actions[0][1] as UsableAction<{ item: { allowNone: true } }>)
-                        .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: undefined, npc: undefined }).usable
-                else return (StackAllNearHere.get().actions[0][1] as UsableAction<{ item: true }>)
-                    .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
-                    ||
-                    (StackAllSelfHere.get().actions[0][1] as UsableAction<{ item: true }>)
-                        .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
-                    ||
-                    (StackAllMainSub.get().actions[0][1] as UsableAction<{ item: true }>)
-                        .isUsable(player, { creature: undefined, doodad: undefined, item: item, itemType: item.type, npc: undefined }).usable
+                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
+                if(item && isHeldContainer(player, item)) {
+                    if(StaticHelper.QSLSC.checkSpecificNearby(item.island.items.hashContainer(item), undefined, true))
+                        return true; // allnearsub
+                    if(StaticHelper.QSLSC.checkSpecific(StaticHelper.QSLSC.player.cHash, item.island.items.hashContainer(item)))
+                        return true; // allmainsub
+                }
+                if(item?.containedWithin) {
+                    if(StaticHelper.QSLSC.checkSpecificNearby(item.island.items.hashContainer(item.containedWithin), undefined, true))
+                        return true; // allnearhere
+                    if(playerHasItem(player, item)) {
+                        if(item.containedWithin !== player.inventory && StaticHelper.QSLSC.checkSpecific(StaticHelper.QSLSC.player.cHash, item.island.items.hashContainer(item.containedWithin)))
+                            return true; // allmainhere
+                    } else {
+                        if(StaticHelper.QSLSC.checkSelfSpecific(item.island.items.hashContainer(item.containedWithin)))
+                            return true; // allselfhere
+                    }
+                }
+                if(!item || playerHasItem(player, item))
+                    if(StaticHelper.QSLSC.checkSelfNearby(undefined, true)) return true; // allnearself
+
+                return false;
             },
             submenu: (subreg) => {
                 StackAllNearSelf.register(subreg);
@@ -228,7 +241,7 @@ export namespace QSSubmenu {
                 );
             }),
             isUsable: (player, using) => {
-                if(GLOBALCONFIG.force_isusable) return true;
+                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
                 return (StackTypeNearHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
                     .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: () => boolean } }>).usable
                     || (StackTypeSelfHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
@@ -268,7 +281,9 @@ export const StackAllSelfNear = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            return StaticHelper.QSLSC.checkSelfNearby();
+            if(StaticHelper.QSLSC.checkSelfNearby()) return true;
+
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
             //return TransferHandler.canFitAny([player.inventory, ...playerHeldContainers(player)], validNearby(player), player);
         },
         execute: execSASeN
@@ -301,7 +316,8 @@ export const StackAllMainNear = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            return StaticHelper.QSLSC.checkSelfNearby();
+            if(StaticHelper.QSLSC.checkSelfNearby()) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
             //return TransferHandler.canFitAny([player.inventory], validNearby(player), player);
         },
         execute: execSAMN
@@ -342,13 +358,8 @@ export const StackAllSubNear = new UsableActionGenerator((reg, isMainReg: boolea
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
             if(!isHeldContainer(player, item)) return false;
-            switch(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item))) {
-                case undefined: StaticHelper.QS_LOG.warn(`LocalStorageCache Failed to locate hash for held container '${item.getName()}'`);
-                case false: return false;
-                case true: return true;
-            }
-            return isHeldContainer(player, item)
-                && TransferHandler.canFitAny([item as IContainer], validNearby(player), player);
+            if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item))) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: (player, { item }) => executeStackAction(player,
             [{ container: [item as IContainer] }],
@@ -368,46 +379,42 @@ export const StackAllSubNear = new UsableActionGenerator((reg, isMainReg: boolea
 * Usability:
 *      Held container(s) contain type match(es) nearby 
 */
-export const StackAllLikeNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllLikeNear, UsableAction
-    .requiring({
-        item: {
-            allowOnlyItemType: (_, type) => isStorageType(type),
-            validate: (_, item) => isStorageType(item.type)
-        }
-    })
-    .create({
-        slottable: true,
-        iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing.
-        displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
-        bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableLike,
-        icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPAlike,
-        translate: (translator) => translator.name(({ item, itemType }) => {
-            const itemStr = !!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : StaticHelper.TLMain("likeContainers");
-            return isMainReg
-                ? StaticHelper.TLMain("deposit").addArgs(
-                    StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
-                    StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("allX").addArgs(itemStr)))
-                : StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("allX").addArgs(itemStr));
-        }),
-        isUsable: (player, { item, itemType }) => {
-            if(GLOBALCONFIG.force_isusable) return true;
-            if(item && !isHeldContainer(player, item)) return false;
-            if(itemType && !playerHasType(player, itemType)) return false;
-            for(const container of playerHeldContainers(player, [(item?.type ?? itemType)!]))
-                switch(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(container))) {
-                    case undefined: StaticHelper.QS_LOG.warn(`LocalStorageCache Failed to locate hash for held container '${container}'`);
-                    case false: break;
-                    case true: return true;
-                }
-            return false;
-            //return TransferHandler.canFitAny(playerHeldContainers(player, [(item?.type ?? itemType)!]), validNearby(player), player);
-        },
-        execute: (player, { item, itemType }) => executeStackAction(player,
-            [{ container: playerHeldContainers(player, [(item?.type ?? itemType)!]) }],
-            [{ tiles: true }, { doodads: true }],
-            [])
-    })
-));
+// export const StackAllLikeNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllLikeNear, UsableAction
+//     .requiring({
+//         item: {
+//             allowOnlyItemType: (_, type) => isStorageType(type),
+//             validate: (_, item) => isStorageType(item.type)
+//         }
+//     })
+//     .create({
+//         slottable: true,
+//         iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing.
+//         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
+//         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableLike,
+//         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPAlike,
+//         translate: (translator) => translator.name(({ item, itemType }) => {
+//             const itemStr = !!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : StaticHelper.TLMain("likeContainers");
+//             return isMainReg
+//                 ? StaticHelper.TLMain("deposit").addArgs(
+//                     StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
+//                     StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("allX").addArgs(itemStr)))
+//                 : StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("allX").addArgs(itemStr));
+//         }),
+//         isUsable: (player, { item, itemType }) => {
+//             if(GLOBALCONFIG.force_isusable) return true;
+//             if(item && !isHeldContainer(player, item)) return false;
+//             if(itemType && !playerHasType(player, itemType)) return false;
+//             for(const container of playerHeldContainers(player, [(item?.type ?? itemType)!]))
+//                 if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(container))) return true;
+//             return false;
+//             //return TransferHandler.canFitAny(playerHeldContainers(player, [(item?.type ?? itemType)!]), validNearby(player), player);
+//         },
+//         execute: (player, { item, itemType }) => executeStackAction(player,
+//             [{ container: playerHeldContainers(player, [(item?.type ?? itemType)!]) }],
+//             [{ tiles: true }, { doodads: true }],
+//             [])
+//     })
+// ));
 
 /** 
  * Stack selected type from full inventory to nearby containers 
@@ -443,14 +450,12 @@ export const StackTypeSelfNear = new UsableActionGenerator((reg, isMainReg: bool
             if(GLOBALCONFIG.force_isusable) return true;
             if(item && item.containedWithin) { // exclude 'self->near' if 'here->near' would function identically.
                 const iHash = item.island.items.hashContainer(item.containedWithin);
-                return StaticHelper.QSLSC.checkSelfNearby([item.type!])
+                if(StaticHelper.QSLSC.checkSelfNearby([item.type!])
                     && [StaticHelper.QSLSC.player, ...StaticHelper.QSLSC.player.deepSubs()].some(c =>
-                        c.cHash !== iHash && TransferHandler.canMatch([{ containedItems: [item] }], [...c.main]));
-            }
-            return StaticHelper.QSLSC.checkSelfNearby([(item?.type ?? itemType)!]);
-
-            //return playerHasType(player, itemType)
-            //    && TransferHandler.canFitAny([player.inventory, ...playerHeldContainers(player)], validNearby(player), player, [{ type: itemType }]);
+                        c.cHash !== iHash && TransferHandler.canMatch([{ containedItems: [item] }], [...c.main]))
+                ) return true;
+            } else if(StaticHelper.QSLSC.checkSelfNearby([(item?.type ?? itemType)!])) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: (player, { item, itemType }) => executeStackAction(player,
             [{ self: true, recursive: true }],
@@ -489,9 +494,8 @@ export const StackTypeHereNear = new UsableActionGenerator((reg, isMainReg: bool
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
             if(!playerHasItem(player, item) || !item.containedWithin) return false;
-            const check = StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin));
-            if(check === undefined) StaticHelper.QS_LOG.warn(`LocalStorageCache failed to locate hash for location of item '${item.getName()}'`);
-            return !!check;
+            if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin))) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: (player, { item }, _context) => executeStackAction(player,
             [{ container: item.containedWithin! }],
@@ -511,7 +515,7 @@ export const StackTypeHereNear = new UsableActionGenerator((reg, isMainReg: bool
  *      Full inventory contents have type match(es) nearby
  */
 export const StackAllNearSelf = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllNearSelf, UsableAction
-    .requiring({ item: { allowNone: true, validate: (p, it) => playerHasItem(p, it) } })
+    .requiring(isMainReg ? {} : { item: { allowNone: true, validate: () => true } })
     .create({
         slottable: isMainReg,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableSelf,
@@ -525,9 +529,11 @@ export const StackAllNearSelf = new UsableActionGenerator((reg, isMainReg: boole
                     StaticHelper.TLFromTo("fullInventory", "nearby"))
                 : StaticHelper.TLFromTo("fullInventory", "nearby")
         ),
-        isUsable: (player) => {
+        isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            return StaticHelper.QSLSC.checkSelfNearby([], true);
+            if(item && !playerHasItem(player, item)) return false;
+            if(StaticHelper.QSLSC.checkSelfNearby(undefined, true)) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: execSANSe
     })
@@ -560,9 +566,8 @@ export const StackAllNearMain = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            const check = StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(player.inventory), [], true);
-            if(check === undefined) StaticHelper.QS_LOG.warn(`LocalStorageCache failed to locate hash for player inventory`);
-            return !!check;
+            if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(player.inventory), [], true)) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: execSANM
     })
@@ -572,7 +577,7 @@ export const execSANM = (p: Player): boolean => executeStackAction_notify(p, [{ 
 
 
 export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllMainSub, UsableAction
-    .requiring({ item: { validate: (_, item) => ItemManager.isInGroup(item.type, ItemTypeGroup.Storage) } })
+    .requiring({ item: { validate: () => true } })
     .create({
         slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
@@ -587,16 +592,10 @@ export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolea
                     StaticHelper.TLFromTo(itemStr, "mainInventory"))
                 : StaticHelper.TLFromTo(itemStr, "mainInventory");
         }),
-        // isApplicable: (player, { item }) => {
-        //     if(GLOBALCONFIG.force_isusable) return true;
-        //     ;
-        // },
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(!playerHasItem(player, item)) return false;
-            const check = StaticHelper.QSLSC.checkSpecific(player.island.items.hashContainer(player.inventory), player.island.items.hashContainer(item));
-            if(check === undefined) StaticHelper.QS_LOG.warn(`LocalStorageCache failed to locate hash for either player inventory or held container '${item.getName()}'`);
-            return !!check;
+            if(!isHeldContainer(player, item)) return false;
+            return !!StaticHelper.QSLSC.checkSpecific(player.island.items.hashContainer(player.inventory), player.island.items.hashContainer(item));
         },
         execute: (p, u) => executeStackAction(p, [{ self: true }], [{ container: u.item as IContainer }], [])
     })
@@ -621,9 +620,8 @@ export const StackAllNearSub = new UsableActionGenerator((reg, isMainReg: boolea
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
             if(!isHeldContainer(player, item)) return false;
-            const check = StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item), [], true);
-            if(check === undefined) StaticHelper.QS_LOG.warn(`LocalStorageCache failed to locate hash for held container '${item.getName()}'`);
-            return !!check;
+            if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item), undefined, true)) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: (p, u) => executeStackAction(p, [{ tiles: true }, { doodads: true }], [{ container: u.item as IContainer }], [])
     })
@@ -645,11 +643,9 @@ export const StackAllSelfHere = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(playerHasItem(player, item) || !item.containedWithin) return false; // NOT !playerHasItem. This action isn't available for player items.
-
-            const check = StaticHelper.QSLSC.checkSelfSpecific(player.island.items.hashContainer(item.containedWithin));
-            if(check === undefined) StaticHelper.QS_LOG.warn(`LocalStorageCache failed to locate hash for location of nearby item '${item.getName()}'`);
-            return !!check;
+            if(playerHasItem(player, item) || !item.containedWithin) return false; // This action isn't available for player items.
+            if(StaticHelper.QSLSC.checkSelfSpecific(player.island.items.hashContainer(item.containedWithin))) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: (player, { item }, _context) => executeStackAction(player,
             [{ self: true, recursive: true }],
@@ -675,9 +671,8 @@ export const StackAllNearHere = new UsableActionGenerator((reg, isMainReg: boole
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
             if(!item.containedWithin) return false;
-            const check = StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin), [], true);
-            if(check === undefined) StaticHelper.QS_LOG.warn(`LocalStorageCache failed to locate hash for location of item '${item.getName()}'`);
-            return !!check;
+            if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin), [], true)) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: (player, { item }, _context) => executeStackAction(player,
             [{ container: validNearby(player).filter(c => c !== item.containedWithin!) }],
@@ -705,11 +700,9 @@ export const StackTypeSelfHere = new UsableActionGenerator((reg, isMainReg: bool
         //isApplicable: () => true,
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(playerHasItem(player, item) || !item.containedWithin) return false; // NOT !playerHasItem. This action isn't available for player items.
-
-            const check = StaticHelper.QSLSC.checkSelfSpecific(player.island.items.hashContainer(item.containedWithin), [item.type]);
-            if(check === undefined) StaticHelper.QS_LOG.warn(`LocalStorageCache failed to locate hash for location of nearby item '${item.getName()}'`);
-            return !!check;
+            if(playerHasItem(player, item) || !item.containedWithin) return false; // Unusable if playerHasItem. This action isn't available for player items.
+            if(StaticHelper.QSLSC.checkSelfSpecific(player.island.items.hashContainer(item.containedWithin), [item.type])) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: (player, { item }, _context) => executeStackAction(player,
             playerHasItem(player, item)
@@ -739,10 +732,8 @@ export const StackTypeNearHere = new UsableActionGenerator((reg, isMainReg: bool
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
             if(!item.containedWithin) return false;
-            const check = StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin), [item.type], true);
-            if(check === undefined) StaticHelper.QS_LOG.warn(`LocalStorageCache failed to locate hash for location of item '${item.getName()}'`);
-            return !!check;
-
+            if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin), [item.type], true)) return true;
+            return { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
         execute: (player, { item }, _context) => executeStackAction(player,
             playerHasItem(player, item)

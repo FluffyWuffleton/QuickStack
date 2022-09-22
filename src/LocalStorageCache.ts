@@ -45,7 +45,6 @@ export class LocalStorageCache {
         if(!K || K === "nearby") {
             //this._nearby.forEach(n => this.purgeRelations(n));
             this._nearbyOutdated = true;
-            this._nearby.forEach(n => n.setOutdated(true));
         }
     }
     
@@ -199,8 +198,10 @@ export class LocalStorageCache {
     // Return undefined if AHash isn't found in the cache.
     // Return true if transfer possible.
     public checkSpecificNearby(AHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined {
-        if(!this.canFind(AHash)) return undefined; // hash wasn't found.
-
+        if(!this.canFind(AHash)) {
+            StaticHelper.QS_LOG.warn(`LocalStorageCache.checkSpecificNearby failed to locate hash '${AHash}'`);
+            return undefined; // hash wasn't found.
+        }
         for(const n of this.nearby) {
             if(n.iswhat === "ITile" && StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !reverse) continue; // This is a tile and a deposit operation, but tile deposit is forbidden.
             if(n.cHash === AHash) continue; // This is the same container...
@@ -215,7 +216,10 @@ export class LocalStorageCache {
     // Return undefined if AHash isn't found in the cache.
     // Return true if transfer possible.
     public checkSelfSpecific(BHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined {
-        if(!this.canFind(BHash)) return undefined; // hash wasn't found.
+        if(!this.canFind(BHash)) {
+            StaticHelper.QS_LOG.warn(`LocalStorageCache.checkSelfSpecific failed to locate hash '${BHash}'`);
+            return undefined; // hash wasn't found.
+        }
 
         for(const s of this.locationGroupMembers(locationGroup.self)) {
             if(s.cHash === BHash) continue; // This is the same container...
@@ -230,7 +234,12 @@ export class LocalStorageCache {
     // Return true if transfer possible. Returns false if no transfer possible or if hashes are equal.
     public checkSpecific(fromHash: ContainerHash, toHash: ContainerHash, filter?: MatchParamFlat[]): boolean | undefined {
         if(fromHash === toHash) return false;
-        [fromHash, toHash].forEach(h => { if(![this.player, ...this.nearby].some(c => c.findSub(h))) return undefined; }); // hash wasn't found.
+        [fromHash, toHash].forEach(h => { 
+            if(!this.canFind(h)) {
+                StaticHelper.QS_LOG.warn(`LocalStorageCache.checkSpecific failed to locate hash '${h}'`);
+                return undefined;
+            }
+        }); // hash wasn't found.
         const flip = this.flipHash(fromHash, toHash);
         return this.interrelation(fromHash, toHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip))
     }
