@@ -22,9 +22,8 @@ export function isOnOrAdjacent(A: IVector3, B: IVector3): boolean { return A.z =
 export class LocalStorageCache {
     private _player: StorageCachePlayer;
     private _nearby: (StorageCacheTile | StorageCacheDoodad)[] = [];
-    // private _nearbyUnrolled: Set<IMatchParam> = new Set<IMatchParam>;
     private _nearbyOutdated: boolean = true;
-
+    
     private _interrelations: { [ABHash: string]: ICheckedRelations } = {};
     public get player(): StorageCachePlayer { return this._player.refresh(); }
     public get playerNoUpdate(): StorageCachePlayer { return this._player; }
@@ -47,7 +46,7 @@ export class LocalStorageCache {
             this._nearbyOutdated = true;
         }
     }
-    
+
     // Set the outdated flag for a cache with specified container hash. Returns false if no such cache exists.
     public setOutdatedSpecific(Hash: ContainerHash, recursive?: true): boolean {
         const found = this._player.findSub(Hash) ?? this.findNearby(Hash);
@@ -234,7 +233,7 @@ export class LocalStorageCache {
     // Return true if transfer possible. Returns false if no transfer possible or if hashes are equal.
     public checkSpecific(fromHash: ContainerHash, toHash: ContainerHash, filter?: MatchParamFlat[]): boolean | undefined {
         if(fromHash === toHash) return false;
-        [fromHash, toHash].forEach(h => { 
+        [fromHash, toHash].forEach(h => {
             if(!this.canFind(h)) {
                 StaticHelper.QS_LOG.warn(`LocalStorageCache.checkSpecific failed to locate hash '${h}'`);
                 return undefined;
@@ -411,11 +410,11 @@ export class StorageCachePlayer extends StorageCacheBase<Player> {
     public readonly iswhat = "Player";
     public readonly cRef: IContainer;
     public override refresh(): this { return super.refresh(true); }
-    public updateHash(): this { 
+    public updateHash(): this {
         this.cHash.replace(this.cHash, this.entity.island.items.hashContainer(this.cRef)); //"readonly" lol yea sure.
         return this;
     }
-    
+
     constructor(e: Player) {
         super(e, e.island.items.hashContainer(e.inventory), true);
         this.cRef = this.entity.inventory;

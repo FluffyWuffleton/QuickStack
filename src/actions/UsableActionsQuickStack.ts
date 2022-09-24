@@ -12,6 +12,7 @@ import StaticHelper, { GLOBALCONFIG } from "../StaticHelper";
 import TransferHandler, { isHeldContainer, isStorageType, playerHasItem, playerHeldContainers, validNearby } from "../TransferHandler";
 import { executeStackAction, executeStackAction_notify } from "./Actions";
 import { getActiveGroups } from "../QSMatchGroups";
+import ItemManager from "game/item/ItemManager";
 
 export const UsableActionsQuickStack = new UsableActionGenerator(reg => {
     // 2nd-level submenus are registered by the parent. Visible submenu actions are registered by 2nd-level menus.
@@ -336,7 +337,7 @@ export const execSAMN = (p: Player): boolean => executeStackAction_notify(p, [{ 
  *      Selected container(s) contents have type match(es) nearby 
  */
 export const StackAllSubNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllSubNear, UsableAction
-    .requiring({ item: true })
+    .requiring({ item: { validate: (_, item) => ItemManager.isContainer(item) || isStorageType(item.type) } })
     .create({
         slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
@@ -424,15 +425,14 @@ export const StackAllSubNear = new UsableActionGenerator((reg, isMainReg: boolea
  *      [itemType] has a match nearby
  */
 export const StackTypeSelfNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPTypeSelfNear, UsableAction
-    .requiring({
-        item: { allowOnlyItemType: () => true, validate: () => true }
-    })
+    .requiring({ item: { allowOnlyItemType: () => true, validate: () => true } })
     .create({
-        slottable: true,
+        slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableSelf,
         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPSelf,
         iconLocationOnItem: ItemDetailIconLocation.TopLeft, // TL: Thing done to item. BR: Item does thing.
+        onlySlotItemType: isMainReg ? true : undefined,
         translate: (translator) => translator.name(({ item, itemType }) =>
             isMainReg
                 ? StaticHelper.TLMain("deposit").addArgs(
@@ -571,9 +571,8 @@ export const StackAllNearMain = new UsableActionGenerator((reg, isMainReg: boole
 // Extracted execute function for accessibility from this action's @Bind.
 export const execSANM = (p: Player): boolean => executeStackAction_notify(p, [{ tiles: true }, { doodads: true }], [{ self: true }], []);
 
-
 export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllMainSub, UsableAction
-    .requiring({ item: { validate: () => true } })
+    .requiring({ item: { validate: (_, item) => ItemManager.isContainer(item) || isStorageType(item.type) } })
     .create({
         slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
@@ -598,7 +597,7 @@ export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolea
 ));
 
 export const StackAllNearSub = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllNearSub, UsableAction
-    .requiring({ item: { validate: (_, item) => isStorageType(item.type) } })
+    .requiring({ item: { validate: (_, item) => ItemManager.isContainer(item) || isStorageType(item.type) } })
     .create({
         slottable: isMainReg,
         iconLocationOnItem: ItemDetailIconLocation.TopLeft, // TL: Thing done to item. BR: Item does thing.

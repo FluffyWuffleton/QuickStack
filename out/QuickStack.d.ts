@@ -10,7 +10,6 @@ import { Delay } from "game/entity/IHuman";
 import { IContainer } from "game/item/IItem";
 import Item from "game/item/Item";
 import ItemManager from "game/item/ItemManager";
-import { ITile } from "game/tile/ITerrain";
 import Dictionary from "language/Dictionary";
 import Component from "ui/component/Component";
 import { IVector3 } from "utilities/math/IVector";
@@ -21,7 +20,7 @@ export declare namespace GLOBALCONFIG {
     const pause_length: Delay.ShortPause;
     const pass_turn_success: false;
     const force_isusable: false;
-    const force_menus: true;
+    const force_menus: false;
 }
 export declare enum QSTranslation {
     qsPrefix = 0,
@@ -119,10 +118,12 @@ export default class QuickStack extends Mod {
     readonly bindableLike: Bindable;
     readonly bindableHere: Bindable;
     readonly bindableNear: Bindable;
-    private haveCache;
-    private _localStorageCache;
+    private _localStorageCache?;
     get localStorageCache(): LocalStorageCache;
-    protected localPlayerPostMove(host: Player, fromX: number, fromY: number, fromZ: number, _fromTile: ITile, toX: number, toY: number, toZ: number, _toTile: ITile): void;
+    private initCache;
+    onInitialize(): void;
+    onUnload(): void;
+    protected localPlayerPostMove(): void;
     protected localPlayerItemAdd(): void;
     protected localPlayerItemRemove(): void;
     protected localPlayerItemUpdate(): void;
@@ -130,9 +131,6 @@ export default class QuickStack extends Mod {
     protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void;
     protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void;
     protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined): void;
-    onInitialize(): void;
-    onLoad(): void;
-    onUnload(): void;
     globalData: IQSGlobalData;
     initializeGlobalData(data?: IQSGlobalData): IQSGlobalData;
     private _activeMatchGroupsFlattened;
