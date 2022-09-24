@@ -68,6 +68,8 @@
             "Rock": "Rock",
             "Metal": "Refined Metal",
             "Smelting": "Smelting",
+            "Glassblowing": "Glassblowing",
+            "ClayThrowing": "Clay Throwing",
             "Poles": "Pole",
             "Fastening": "Fastening",
             "Needlework": "Needlework",
@@ -143,41 +145,41 @@
 
 
             // Stack all from nearby to inventory
-            "modQuickStackAllNearbyMain": [
+            "modQuickStackAllNearMain": [
                 "Restock",
                 "Restock main inventory from nearby containers."
             ],
-            "modQuickStackAllNearbySub": [
+            "modQuickStackAllNearSub": [
                 "Restock {0}",
                 "Restock the contents of {0} from nearby containers."
             ],
-            "modQuickStackAllNearbySelf": [
+            "modQuickStackAllNearSelf": [
                 "Restock (+bags)",
                 "Restock all inventories (main, bags, quivers, etc) from nearby containers."
             ],
             // Stack type from nearby to inventory
-            "modQuickStackTypeNearbyMain": [
+            "modQuickStackTypeNearMain": [
                 "Restock inventory with {0}",
                 "Restock main inventory with {0} from nearby containers."
             ],
-            "modQuickStackTypeNearbySub": [
+            "modQuickStackTypeNearSub": [
                 "Restock {0} with {1}",
                 "Restock {0} with {1} from nearby containers."
             ]
         },
         "bindable": {
-            "modQuickStackStackAllMainNearby": "Deposit nearby from main inventory",
-            "modQuickStackStackAllSelfNearby": "Deposit nearby from inventory and bags",
-            "modQuickStackStackAllNearbyMain": "Restock main inventory from nearby",
-            "modQuickStackStackAllNearbySelf": "Restock main inventory and bags from nearby",
+            "modQuickStackStackAllMainNear": "Deposit nearby from main inventory",
+            "modQuickStackStackAllSelfNear": "Deposit nearby from inventory and bags",
+            "modQuickStackStackAllNearMain": "Restock main inventory from nearby",
+            "modQuickStackStackAllNearSelf": "Restock main inventory and bags from nearby",
             "modQuickStackAll": "Move all item types",
             "modQuickStackType": "Move only selected type",
             "modQuickStackSelf": "Target full inventory",
             "modQuickStackMain": "Target top-level inventory",
             "modQuickStackSub": "Target a held container",
-            "modQuickStackAlike": "Target all similar containers",
+            "modQuickStackLike": "Target all similar containers",
             "modQuickStackHere": "Target selected item's location",
-            "modQuickStackNearby": "Target nearby storage"
+            "modQuickStackNear": "Target nearby storage"
         }
     }
 }

@@ -1,19 +1,26 @@
 import { ActionType } from "game/entity/action/IAction";
+import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
+import Player from "game/entity/player/Player";
 import Message from "language/dictionary/Message";
 import Mod from "mod/Mod";
 import Bindable from "ui/input/Bindable";
-import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
 import Log from "utilities/Log";
-import Dictionary from "language/Dictionary";
-import Component from "ui/component/Component";
 import { UsableActionType } from "game/entity/action/usable/UsableActionType";
 import { Delay } from "game/entity/IHuman";
+import { IContainer } from "game/item/IItem";
+import Item from "game/item/Item";
+import ItemManager from "game/item/ItemManager";
+import Dictionary from "language/Dictionary";
+import Component from "ui/component/Component";
+import { IVector3 } from "utilities/math/IVector";
+import { LocalStorageCache } from "./LocalStorageCache";
 import { QSMatchableGroupKey, QSMatchableGroupsFlatType } from "./QSMatchGroups";
 export declare namespace GLOBALCONFIG {
     const log_info: false;
     const pause_length: Delay.ShortPause;
     const pass_turn_success: false;
     const force_isusable: false;
+    const force_menus: false;
 }
 export declare enum QSTranslation {
     qsPrefix = 0,
@@ -51,7 +58,6 @@ export declare enum QSTranslation {
 }
 export declare type QSTranslationKey = keyof typeof QSTranslation;
 declare type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionForbidTiles" | "optionKeepContainers" | "optionTopDown">;
-export declare const activeGroupKeyPrefix: "isActive_";
 export declare type IQSGlobalData = {
     [k in QSToggleOptionKey]: boolean;
 } & {
@@ -62,9 +68,10 @@ export declare type IQSGlobalData = {
 export default class QuickStack extends Mod {
     static readonly INSTANCE: QuickStack;
     static readonly LOG: Log;
+    static get MaybeLog(): Log | undefined;
     readonly dictMain: Dictionary;
-    private readonly TLGetMain;
     readonly dictGroups: Dictionary;
+    private readonly TLGetMain;
     private readonly TLGetGroup;
     readonly messageSearch: Message;
     readonly messageNoMatch: Message;
@@ -77,18 +84,21 @@ export default class QuickStack extends Mod {
     readonly UAPHere: UsableActionType;
     readonly UAPAlike: UsableActionType;
     readonly UAPNearby: UsableActionType;
+    readonly UAPAll: UsableActionType;
+    readonly UAPType: UsableActionType;
     readonly UAPDepositMenu: UsableActionType;
-    readonly UAPAllSelfNearby: UsableActionType;
-    readonly UAPAllMainNearby: UsableActionType;
-    readonly UAPAllSubNearby: UsableActionType;
-    readonly UAPAllAlikeSubNearby: UsableActionType;
-    readonly UAPTypeSelfNearby: UsableActionType;
-    readonly UAPTypeMainNearby: UsableActionType;
-    readonly UAPTypeHereNearby: UsableActionType;
-    readonly UAPAllNearbySelf: UsableActionType;
-    readonly UAPAllNearbyMain: UsableActionType;
+    readonly UAPCollectMenu: UsableActionType;
+    readonly UAPAllSelfNear: UsableActionType;
+    readonly UAPAllMainNear: UsableActionType;
+    readonly UAPAllSubNear: UsableActionType;
+    readonly UAPAllLikeNear: UsableActionType;
+    readonly UAPTypeSelfNear: UsableActionType;
+    readonly UAPTypeMainNear: UsableActionType;
+    readonly UAPTypeHereNear: UsableActionType;
+    readonly UAPAllNearSelf: UsableActionType;
+    readonly UAPAllNearMain: UsableActionType;
     readonly UAPAllMainSub: UsableActionType;
-    readonly UAPAllNearbySub: UsableActionType;
+    readonly UAPAllNearSub: UsableActionType;
     readonly UAPTypeToHere: UsableActionType;
     readonly UAPAllToHere: UsableActionType;
     readonly QSUsableActions: UsableActionGenerator;
@@ -105,13 +115,24 @@ export default class QuickStack extends Mod {
     readonly bindableSelf: Bindable;
     readonly bindableMain: Bindable;
     readonly bindableSub: Bindable;
-    readonly bindableAlike: Bindable;
+    readonly bindableLike: Bindable;
     readonly bindableHere: Bindable;
-    readonly bindableNearby: Bindable;
+    readonly bindableNear: Bindable;
+    private _localStorageCache?;
+    get localStorageCache(): LocalStorageCache;
+    private initCache;
+    onInitialize(): void;
+    onUnload(): void;
+    protected localPlayerPostMove(): void;
+    protected localPlayerItemAdd(): void;
+    protected localPlayerItemRemove(): void;
+    protected localPlayerItemUpdate(): void;
+    protected localPlayerIDChanged(host: Player, curID: number, newID: number, absent: boolean): any;
+    protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void;
+    protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void;
+    protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined): void;
     globalData: IQSGlobalData;
     initializeGlobalData(data?: IQSGlobalData): IQSGlobalData;
-    freshGlobalData(): IQSGlobalData;
-    onInitialize(): void;
     private _activeMatchGroupsFlattened;
     get activeMatchGroupsFlattened(): QSMatchableGroupsFlatType;
     private _activeMatchGroupsKeys;
