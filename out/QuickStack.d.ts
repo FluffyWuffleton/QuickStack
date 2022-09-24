@@ -16,7 +16,7 @@ import { IVector3 } from "utilities/math/IVector";
 import { LocalStorageCache } from "./LocalStorageCache";
 import { QSMatchableGroupKey, QSMatchableGroupsFlatType } from "./QSMatchGroups";
 export declare namespace GLOBALCONFIG {
-    const log_info: true;
+    const log_info: false;
     const pause_length: Delay.ShortPause;
     const pass_turn_success: false;
     const force_isusable: false;
