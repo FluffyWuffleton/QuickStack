@@ -31,7 +31,6 @@ import { execSAMN, execSANM, execSANSe, execSASeN, UsableActionsQuickStack } fro
 import { isOnOrAdjacent, LocalStorageCache } from "./LocalStorageCache";
 import { QSGroupsTranslation, QSGroupsTranslationKey, QSMatchableGroupKey, QSMatchableGroups, QSMatchableGroupsFlatType } from "./QSMatchGroups";
 
-
 export namespace GLOBALCONFIG {
     export const log_info = false as const;
     export const pause_length = Delay.ShortPause as const;
@@ -92,7 +91,15 @@ export default class QuickStack extends Mod {
     @Mod.log()
     public static readonly LOG: Log;
 
-    public static get MaybeLog(): Log | undefined { return GLOBALCONFIG.log_info ? QuickStack.LOG : undefined; }
+    private static _maybeLog?: Log;
+
+    public static get MaybeLog(): Log {
+        if(!this._maybeLog) {
+            this._maybeLog = this.LOG;
+            if(!GLOBALCONFIG.log_info) this._maybeLog.info = (..._) => void {};
+        }
+        return this._maybeLog;
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Dictionary
@@ -184,7 +191,6 @@ export default class QuickStack extends Mod {
 
     private _localStorageCache?: LocalStorageCache; // initialized in onLoad
     public get localStorageCache() { return this._localStorageCache ?? this.initCache(); }
-
     private initCache(): LocalStorageCache {
         this["subscribedHandlers"] = false;
         this.registerEventHandlers("unload");
@@ -196,7 +202,7 @@ export default class QuickStack extends Mod {
         this["subscribedHandlers"] = true;
     }
     public override onUnload(): void {
-        delete(this._localStorageCache);
+        delete (this._localStorageCache);
     }
 
     @EventHandler(EventBus.LocalPlayer, "postMove")
@@ -221,8 +227,10 @@ export default class QuickStack extends Mod {
     }
 
     @EventHandler(EventBus.LocalPlayer, "idChanged")
-    protected localPlayerIDChanged(host: Player, curID: number, newID: number, absent: boolean): any {
-        this._localStorageCache!.playerNoUpdate.updateHash();
+    protected localPlayerIDChanged(host: Player): void {
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.idChanged`);
+        if(host !== localPlayer)
+            this._localStorageCache!.playerNoUpdate.updateHash();
     }
 
     // @EventHandler(EventBus.LocalIsland, "tileUpdate") // Tile item events are handled through containerItem events.
@@ -249,7 +257,7 @@ export default class QuickStack extends Mod {
             if(items.hashContainer(topLevel(container)) === this._localStorageCache!.playerNoUpdate.cHash) {
                 // I'd prefer to just return in this case since it's mostly redundant with the localPlayer events, 
                 // but a localPlayer.InventoryItemRemove event is NOT emitted when consuming (eating) an item from a held container, so here we are.
-                this._localStorageCache!.playerNoUpdate.setOutdated(true); 
+                this._localStorageCache!.playerNoUpdate.setOutdated(true);
                 return;
             }
             container = findIVecValid(container);

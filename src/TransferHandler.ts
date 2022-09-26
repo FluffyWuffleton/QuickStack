@@ -187,7 +187,7 @@ export default class TransferHandler {
      * @returns {ITransferItemMatch[]} List of matches.
      */
     public static getMatches(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): IMatchParam[] {
-        //StaticHelper.MaybeLog?.info(`GET MATCHES:: ${A}  ${B}`);
+        //StaticHelper.MaybeLog.info(`GET MATCHES:: ${A}  ${B}`);
 
         // setOfParams will favor providing a group over a type if the group exists. If an item is present, it has no active group.
         const AParams = TransferHandler.setOfFlatParams(A);
@@ -213,7 +213,7 @@ export default class TransferHandler {
      * @returns {boolean}
      */
     public static hasMatch(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): boolean {
-        //StaticHelper.MaybeLog?.info(`HAS MATCH:: ${A}  ${B}`);
+        //StaticHelper.MaybeLog.info(`HAS MATCH:: ${A}  ${B}`);
 
         const AParams = TransferHandler.setOfFlatParams(A);
         const BParams = TransferHandler.setOfFlatParams(B);
