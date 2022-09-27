@@ -83,8 +83,8 @@ export default class QuickStack extends Mod {
     readonly UAPMain: UsableActionType;
     readonly UAPSub: UsableActionType;
     readonly UAPHere: UsableActionType;
-    readonly UAPAlike: UsableActionType;
-    readonly UAPNearby: UsableActionType;
+    readonly UAPNear: UsableActionType;
+    readonly UAPFace: UsableActionType;
     readonly UAPAll: UsableActionType;
     readonly UAPType: UsableActionType;
     readonly UAPDepositMenu: UsableActionType;
@@ -127,6 +127,7 @@ export default class QuickStack extends Mod {
     onInitialize(): void;
     onUnload(): void;
     protected localPlayerPostMove(): void;
+    protected localPlayerChangeZ(): void;
     protected localPlayerItemAdd(): void;
     protected localPlayerItemRemove(): void;
     protected localPlayerItemUpdate(): void;

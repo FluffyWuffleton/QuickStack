@@ -132,8 +132,8 @@ export default class QuickStack extends Mod {
     @Register.usableActionTypePlaceholder("Main") public readonly UAPMain: UsableActionType;
     @Register.usableActionTypePlaceholder("Sub") public readonly UAPSub: UsableActionType;
     @Register.usableActionTypePlaceholder("Here") public readonly UAPHere: UsableActionType;
-    @Register.usableActionTypePlaceholder("Alike") public readonly UAPAlike: UsableActionType;
-    @Register.usableActionTypePlaceholder("Nearby") public readonly UAPNearby: UsableActionType;
+    @Register.usableActionTypePlaceholder("Near") public readonly UAPNear: UsableActionType;
+    @Register.usableActionTypePlaceholder("Face") public readonly UAPFace: UsableActionType;
     @Register.usableActionTypePlaceholder("All") public readonly UAPAll: UsableActionType;
     @Register.usableActionTypePlaceholder("Type") public readonly UAPType: UsableActionType;
 
@@ -210,6 +210,11 @@ export default class QuickStack extends Mod {
     @EventHandler(EventBus.LocalPlayer, "postMove")
     protected localPlayerPostMove(): void {
         QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.postMove`);
+        this._localStorageCache!.setOutdated("nearby");
+    }
+    @EventHandler(EventBus.LocalPlayer, "changeZ")
+    protected localPlayerChangeZ(): void {
+        QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.changeZ`);
         this._localStorageCache!.setOutdated("nearby");
     }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemAdd")

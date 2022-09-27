@@ -290,54 +290,6 @@ export const StackAllSubNear = new UsableActionGenerator((reg, isMainReg: boolea
 ));
 
 /** 
-* Stack all types from a held container and all similar containers to nearby containers
-* Slottable in the context of a held container or container type.
-* Requires:
-*      [Item] or [ItemType]: A held container type.
-* Applicability:
-*      [Item] is a held container.
-* OR   [ItemType] is a container type present in inventory
-* Usability:
-*      Held container(s) contain type match(es) nearby 
-*/
-// export const StackAllLikeNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllLikeNear, UsableAction
-//     .requiring({
-//         item: {
-//             allowOnlyItemType: (_, type) => isStorageType(type),
-//             validate: (_, item) => isStorageType(item.type)
-//         }
-//     })
-//     .create({
-//         slottable: true,
-//         iconLocationOnItem: ItemDetailIconLocation.BottomRight, // TL: Thing done to item. BR: Item does thing.
-//         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
-//         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableLike,
-//         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPAlike,
-//         translate: (translator) => translator.name(({ item, itemType }) => {
-//             const itemStr = !!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : StaticHelper.TLMain("likeContainers");
-//             return isMainReg
-//                 ? StaticHelper.TLMain("deposit").addArgs(
-//                     StaticHelper.TLMain("allTypes").inContext(TextContext.Lowercase),
-//                     StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("allX").addArgs(itemStr)))
-//                 : StaticHelper.TLMain("fromX").addArgs(StaticHelper.TLMain("allX").addArgs(itemStr));
-//         }),
-//         isUsable: (player, { item, itemType }) => {
-//             if(GLOBALCONFIG.force_isusable) return true;
-//             if(item && !isHeldContainer(player, item)) return false;
-//             if(itemType && !playerHasType(player, itemType)) return false;
-//             for(const container of playerHeldContainers(player, [(item?.type ?? itemType)!]))
-//                 if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(container))) return true;
-//             return false;
-//             //return TransferHandler.canFitAny(playerHeldContainers(player, [(item?.type ?? itemType)!]), validNearby(player), player);
-//         },
-//         execute: (player, { item, itemType }) => executeStackAction(player,
-//             [{ container: playerHeldContainers(player, [(item?.type ?? itemType)!]) }],
-//             [{ tiles: true }, { doodads: true }],
-//             [])
-//     })
-// ));
-
-/** 
  * Stack selected type from full inventory to nearby containers 
  * Slottable in the context of a particular item type.
  * Requires:
@@ -528,7 +480,7 @@ export const StackAllNearSub = new UsableActionGenerator((reg, isMainReg: boolea
         iconLocationOnItem: ItemDetailIconLocation.TopLeft, // TL: Thing done to item. BR: Item does thing.
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableNear,
-        icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPNearby,
+        icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPNear,
         translate: (translator) => translator.name(({ item, itemType }) => {
             const itemStr = item ? item.getName(false) : itemType ? Translation.nameOf(Dictionary.Item, itemType, 999, false) : StaticHelper.TLMain("thisContainer");
             return isMainReg
@@ -639,7 +591,7 @@ export const StackTypeNearHere = new UsableActionGenerator((reg, isMainReg: bool
         slottable: false,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableNear,
-        icon: StaticHelper.QS_INSTANCE.UAPNearby,
+        icon: StaticHelper.QS_INSTANCE.UAPNear,
         translate: (translator) => translator.name(({ item, itemType }) =>
             isMainReg
                 ? StaticHelper.TLMain("collect").addArgs(
