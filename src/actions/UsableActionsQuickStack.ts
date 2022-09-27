@@ -22,7 +22,6 @@ export const UsableActionsQuickStack = new UsableActionGenerator(reg => {
     StackAllSelfNear.register(reg, true);
     StackAllMainNear.register(reg, true);
     StackAllSubNear.register(reg, true);
-    //StackAllLikeNear.register(reg, true);
     StackTypeSelfNear.register(reg, true);
     StackTypeHereNear.register(reg, true);
     StackAllNearSelf.register(reg, true);
@@ -49,22 +48,8 @@ export namespace QSSubmenu {
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
             displayLevel: ActionDisplayLevel.Always,
+            bindable: StaticHelper.QS_INSTANCE.bindableDeposit,
             translate: (translator) => translator.name(StaticHelper.TLMain("deposit")),
-            isUsable: (player, using): boolean => {
-                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-                return true;
-                // return (
-                //     (
-                //         using.item
-                //         && playerHasItem(player, using.item)
-                //         && (StaticHelper.QSLSC.checkSelfNearby([...TransferHandler.groupifyFlatParameters([using.item.type])]))
-                //         // QSSubmenu.DepositType.get().actions[0][1] as unknown as UsableAction<{ item: true }>)
-                //         //     .isUsable(player, { creature: using.creature, doodad: using.doodad, npc: using.npc, item: using.item, itemType: using.item.type }).usable
-                //     ) || (
-                //         (QSSubmenu.DepositAll.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>)
-                //             .isUsable(player, { creature: using.creature, doodad: using.doodad, npc: using.npc, item: using.item, itemType: using.itemType }).usable
-                //     ));
-            },
             submenu: (subreg) => {
                 QSSubmenu.DepositAll.register(subreg); // Add subsubmenu for actions that function regardless of item selection.
                 QSSubmenu.DepositType.register(subreg); // Add subsubmenu for item-type actions. Requires Item.
@@ -76,28 +61,10 @@ export namespace QSSubmenu {
     export const DepositAll = new UsableActionGenerator(reg => reg.add("DepositAllMenu", UsableAction
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
-            displayLevel: ActionDisplayLevel.Always,
-            bindable: StaticHelper.QS_INSTANCE.bindableAll,
-            translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
             icon: StaticHelper.QS_INSTANCE.UAPAll,
-            // isUsable: (player, using) => {
-            //     if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-            //     return true;
-            //     // if(using.item) {
-            //     //     if((StackAllSubNear.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
-            //     //         .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
-            //     //     ) return true;
-            //     // } else if(using.itemType) {
-            //     //     // if((StackAllLikeNear.get().actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
-            //     //     //     .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
-            //     //     // ) return true;
-            //     // } else {
-            //     //     if((StackAllSelfNear.get().actions[0][1] as UsableAction<{}>)
-            //     //         .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: undefined, itemType: undefined }).usable
-            //     //     ) return true;
-            //     // }
-            //     // return false;
-            // },
+            bindable: StaticHelper.QS_INSTANCE.bindableAll,
+            displayLevel: ActionDisplayLevel.Always,
+            translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
             submenu: (subreg) => {
                 StackAllSelfNear.register(subreg);
                 StackAllMainNear.register(subreg);
@@ -110,9 +77,9 @@ export namespace QSSubmenu {
     export const DepositType = new UsableActionGenerator(reg => reg.add("DepositTypeMenu", UsableAction
         .requiring({ item: true })
         .create({
-            displayLevel: ActionDisplayLevel.Always,
-            bindable: StaticHelper.QS_INSTANCE.bindableType,
             icon: StaticHelper.QS_INSTANCE.UAPType,
+            bindable: StaticHelper.QS_INSTANCE.bindableType,
+            displayLevel: ActionDisplayLevel.Always,
             translate: (translator) => translator.name(({ item, itemType }) => {
                 const grp = getActiveGroups(item?.type ?? itemType ?? ItemTypeGroup.Invalid);
                 return StaticHelper.TLMain("onlyXType").addArgs(...
@@ -128,10 +95,6 @@ export namespace QSSubmenu {
                         ])
                 );
             }),
-            // isUsable: (player, using) => {
-            //     if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-            //     return true; //StaticHelper.QSLSC.checkSelfNearby([...TransferHandler.groupifyFlatParameters([using.item.type])]);
-            // },
             submenu: (subreg) => {
                 StackTypeSelfNear.register(subreg);
                 StackTypeHereNear.register(subreg);
@@ -155,16 +118,9 @@ export namespace QSSubmenu {
     export const Collect = new UsableActionGenerator(reg => reg.add(StaticHelper.QS_INSTANCE.UAPCollectMenu, UsableAction
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
+            bindable: StaticHelper.QS_INSTANCE.bindableCollect,
             displayLevel: ActionDisplayLevel.Always,
             translate: (translator) => translator.name(StaticHelper.TLMain("collect")),
-            isApplicable: () => true,
-            // isUsable: (player, using) => {
-            //     if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-            //     return true;
-            //     //return StaticHelper.QSLSC.checkSelfNearby(undefined, true);
-            //     return (QSSubmenu.CollectAll.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>).isUsable(player, using).usable
-            //         || (QSSubmenu.CollectType.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>).isUsable(player, using).usable;
-            // },
             submenu: (subreg) => {
                 // Add subsubmenu for actions that function regardless of item selection.
                 QSSubmenu.CollectAll.register(subreg);
@@ -182,31 +138,6 @@ export namespace QSSubmenu {
             bindable: StaticHelper.QS_INSTANCE.bindableAll,
             translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
             icon: StaticHelper.QS_INSTANCE.UAPAll,
-            // isUsable: (player, { item }) => {
-            //     if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-            //     return true;
-            //     // if(item && isHeldContainer(player, item)) {
-            //     //     if(StaticHelper.QSLSC.checkSpecificNearby(item.island.items.hashContainer(item), undefined, true))
-            //     //         return true; // allnearsub
-            //     //     if(StaticHelper.QSLSC.checkSpecific(StaticHelper.QSLSC.player.cHash, item.island.items.hashContainer(item)))
-            //     //         return true; // allmainsub
-            //     // }
-            //     // if(item?.containedWithin) {
-            //     //     if(StaticHelper.QSLSC.checkSpecificNearby(item.island.items.hashContainer(item.containedWithin), undefined, true))
-            //     //         return true; // allnearhere
-            //     //     if(playerHasItem(player, item)) {
-            //     //         if(item.containedWithin !== player.inventory && StaticHelper.QSLSC.checkSpecific(StaticHelper.QSLSC.player.cHash, item.island.items.hashContainer(item.containedWithin)))
-            //     //             return true; // allmainhere
-            //     //     } else {
-            //     //         if(StaticHelper.QSLSC.checkSelfSpecific(item.island.items.hashContainer(item.containedWithin)))
-            //     //             return true; // allselfhere
-            //     //     }
-            //     // }
-            //     // if(!item || playerHasItem(player, item))
-            //     //     if(StaticHelper.QSLSC.checkSelfNearby(undefined, true)) return true; // allnearself
-
-            //     return false;
-            // },
             submenu: (subreg) => {
                 StackAllNearSelf.register(subreg);
                 StackAllNearMain.register(subreg);
@@ -240,21 +171,12 @@ export namespace QSSubmenu {
                         ])
                 );
             }),
-            // isUsable: (player, using) => {
-            //     if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-            //     return true;
-            //     // return (StackTypeNearHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
-            //     //     .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: () => boolean } }>).usable
-            //     //     || (StackTypeSelfHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
-            //     //         .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: () => boolean } }>).usable;
-            // },
             submenu: (subreg) => {
                 StackTypeSelfHere.register(subreg);
                 StackTypeNearHere.register(subreg);
             }
         })
     ));
-
 }
 
 /** 

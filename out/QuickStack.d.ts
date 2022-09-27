@@ -68,7 +68,8 @@ export declare type IQSGlobalData = {
 export default class QuickStack extends Mod {
     static readonly INSTANCE: QuickStack;
     static readonly LOG: Log;
-    static get MaybeLog(): Log | undefined;
+    private static _maybeLog?;
+    static get MaybeLog(): Log;
     readonly dictMain: Dictionary;
     readonly dictGroups: Dictionary;
     private readonly TLGetMain;
@@ -110,6 +111,8 @@ export default class QuickStack extends Mod {
     SAMNBind(): boolean;
     SANSeBind(): boolean;
     SANMBind(): boolean;
+    readonly bindableDeposit: Bindable;
+    readonly bindableCollect: Bindable;
     readonly bindableAll: Bindable;
     readonly bindableType: Bindable;
     readonly bindableSelf: Bindable;
@@ -127,7 +130,7 @@ export default class QuickStack extends Mod {
     protected localPlayerItemAdd(): void;
     protected localPlayerItemRemove(): void;
     protected localPlayerItemUpdate(): void;
-    protected localPlayerIDChanged(host: Player, curID: number, newID: number, absent: boolean): any;
+    protected localPlayerIDChanged(host: Player): void;
     protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void;
     protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void;
     protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined): void;

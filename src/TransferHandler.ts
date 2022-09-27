@@ -11,6 +11,7 @@ import { TextContext } from "language/ITranslation";
 import Translation from "language/Translation";
 import TileHelpers from "utilities/game/TileHelpers"
 import Log from "utilities/Log";
+import { Direction } from "utilities/math/Direction";
 
 import { ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
 import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups, MatchParamFlat, getActiveGroups, canMatchActiveGroup } from "./QSMatchGroups";
@@ -35,23 +36,66 @@ export function playerHeldContainers(player: Player, type?: ItemType[]): IContai
             .filter(i => type.some(t => t === (i as Item)?.type)) as IContainer[];
 }
 
+export function itemTransferAllowed(item: Item): boolean;
+export function itemTransferAllowed(items: Item[]): boolean[];
+export function itemTransferAllowed(i: Item | Item[]): boolean | boolean[] { return Array.isArray(i) ? i.map(ii => _itemTransferAllowed(ii)) : _itemTransferAllowed(i); }
+function _itemTransferAllowed(item: Item): boolean {
+    if(item.isProtected()) return false;
+    if(item.isEquipped(true)) return false;
+    if(StaticHelper.QS_INSTANCE.globalData.optionKeepContainers && isStorageType(item.type)) return false;
+    return true;
+};
+
 // getAdjacentContainers with respect for forbidTiles and open flame.
-export function validNearby(player: Player, overrideForbidTiles: boolean = false): IContainer[] {
+export function validNearby(player: Player, overrideForbidTiles: boolean = false, allowBlocked: boolean = true): IContainer[] {
     const adj = player.island.items.getAdjacentContainers(player, false);
     [...adj].entries().reverse().forEach(([idx, c]) => {
         if(player.island.items.getContainerReference(c, undefined).crt === ContainerReferenceType.Tile
-            && (overrideForbidTiles || !StaticHelper.QS_INSTANCE.globalData.optionForbidTiles)
-            && !isSafeTile(player, c as ITile)
-            && !(c as ITile).doodad?.description()?.blockMove
+            && !isValidTile(c as ITile, overrideForbidTiles, allowBlocked)
         ) adj.splice(idx, 1);
     });
     return adj;
 }
 
-export function isSafeTile(player: Player, tile: ITile): boolean {
+export function isValidTile(tile: ITile, overrideForbidTiles: boolean = false, allowBlocked: boolean = true): boolean {
+    return (overrideForbidTiles || !StaticHelper.QS_INSTANCE.globalData.optionForbidTiles)
+        && (allowBlocked || !tile.doodad?.description()?.blockMove)
+        && isSafeTile(tile)
+}
+
+export function isSafeTile(tile: ITile): boolean {
     return (TileHelpers.getType(tile) !== TerrainType.Lava)
         && !(tile.events?.some(e => e.description()?.providesFire))
-        && !(tile.doodad?.isDangerous(player));
+        && !(tile.doodad?.isDangerous(localPlayer));
+}
+
+export function TLContainer(c: IContainer, crt: ContainerReferenceType, toFrom: "to" | "from"): TranslationImpl {
+    const cache = StaticHelper.QSLSC?.findNearby(localPlayer.island.items.hashContainer(c));
+    switch(crt) {
+        case ContainerReferenceType.PlayerInventory:
+            return StaticHelper.TLMain(`${toFrom}X`).addArgs(StaticHelper.TLMain("yourInventory"));
+
+        case ContainerReferenceType.Item:
+            return StaticHelper.TLMain(`${toFrom}X`).addArgs((c as Item).getName("indefinite", 1, false, false, true, false));
+
+        case ContainerReferenceType.Doodad:
+            if(!cache || cache.iswhat === "Item" || cache.relation === Direction.None)
+                return StaticHelper.TLMain(`${toFrom}X`).addArgs((c as Doodad).getName("indefinite", 1));
+            else
+                return StaticHelper.TLMain(`${toFrom}X`).addArgs(
+                    StaticHelper.TLMain("concat").addArgs(
+                        (c as Doodad).getName("indefinite", 1),
+                        StaticHelper.TLMain("parenthetical").addArgs(Translation.get(Dictionary.Direction, cache.relation))));
+
+        case ContainerReferenceType.Tile:
+            if(!cache || cache.iswhat === "Item" || cache.relation === Direction.None) return StaticHelper.TLMain(`${toFrom}Tile`)
+            else return StaticHelper.TLMain("concat").addArgs(
+                StaticHelper.TLMain(`${toFrom}Tile`),
+                StaticHelper.TLMain("parenthetical").addArgs(Translation.get(Dictionary.Direction, cache.relation)));
+
+        default:
+            return StaticHelper.TLMain(`${toFrom}Unknown`);
+    }
 }
 
 /**
@@ -124,6 +168,7 @@ export default class TransferHandler {
     public static setOfTypes(X: ThingWithContents[]): Set<ItemType> {
         return new Set<ItemType>([...X.flatMap(x => (x.containedItems ?? X).map(it => it.type))]);
     }
+
     /**
      * Return set of unique active match-groups in which the given item types can be found. Might be empty.
      * @param {Set<ItemType>} Types 
@@ -142,7 +187,7 @@ export default class TransferHandler {
     /**
      * Return set of unique parameters (types and active groups) in then given containers
      * If a given type belongs to an active group, that specific type's parameter will be omitted in favor of the group parameter.
-     * @param {ThingWithContents[]|Item[]} X 
+     * @param {ThingWithContents[]} X 
      * @returns {Set<IMatchParam>}
      */
     public static setOfParams(X: ThingWithContents[]): Set<IMatchParam> {
@@ -285,7 +330,7 @@ export default class TransferHandler {
      * @param {boolean}[nested = false]
      * @returns {ITransferTarget[]}
      */
-    private resolveTargetting(target: THTargettingParam[] | IContainer[], nested: boolean = false, overrideForbidTiles: boolean = false): ITransferTarget[] {
+    private resolveTargetting(target: THTargettingParam[] | IContainer[], nested: boolean = false, overrideForbidTiles: boolean = false, allowBlockedTiles: boolean = true): ITransferTarget[] {
         // Empty input
         if(!target.length) { this._state |= THState.noTargetFlag; return []; }
 
@@ -515,32 +560,16 @@ export default class TransferHandler {
                     const str: { [key in sdKey]: TranslationImpl | "UNDEFINED"; } & { items: { [key in 'all' | 'some' | 'none']: TranslationImpl[]; }; } = {
                         source: "UNDEFINED", //  will hold TranslationImpl for the source string segment.
                         destination: "UNDEFINED", //  will hold TranslationImpl for the destination string segment.
-                        items: {
-                            all: new Array<TranslationImpl>, // separate arrays so they can be sorted in the output (full, then)
+                        items: { // separate arrays so they can be sorted in the output (full, then partial)
+                            all: new Array<TranslationImpl>,
                             some: new Array<TranslationImpl>,
                             none: new Array<TranslationImpl>
                         }
                     };
 
                     // Source and Destination strings...
-                    (["source", "destination"] as sdKey[]).forEach(k => {
-                        switch(pair[k].type) {
-                            case ContainerReferenceType.PlayerInventory:
-                                str[k] = StaticHelper.TLMain(k === "source" ? "fromX" : "toX").addArgs(StaticHelper.TLMain("yourInventory"));
-                                break;
-                            case ContainerReferenceType.Doodad:
-                                str[k] = StaticHelper.TLMain(k === "source" ? "fromX" : "toX").addArgs((pair[k].container as Doodad).getName("indefinite", 1));
-                                break;
-                            case ContainerReferenceType.Item:
-                                str[k] = StaticHelper.TLMain(k === "source" ? "fromX" : "toX").addArgs((pair[k].container as Item).getName("indefinite", 1, false, false, true, false));
-                                break;
-                            case ContainerReferenceType.Tile:
-                                str[k] = StaticHelper.TLMain(k === "source" ? "fromTile" : "toTile");
-                                break;
-                            default:
-                                str[k] = StaticHelper.TLMain(k === "source" ? "fromUnknown" : "toUnknown");
-                        }
-                    });
+                    str.source = TLContainer(pair.source.container, pair.source.type, "from");
+                    str.destination = TLContainer(pair.destination.container, pair.destination.type, "to");
 
                     // Transferred item fragment strings
                     let resultFlags: { [key in keyof typeof str.items]?: true } = {}; // Fields are set if any items fall into the category

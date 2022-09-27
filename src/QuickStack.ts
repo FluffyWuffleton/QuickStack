@@ -176,6 +176,8 @@ export default class QuickStack extends Mod {
     @Bind.onDown(Registry<QuickStack>().get("bindableSANM")) public SANMBind(): boolean { return !execSANM(localPlayer); }
 
     // Submenu bindings
+    @Register.bindable("Deposit", IInput.key("KeyD", "Shift")) public readonly bindableDeposit: Bindable;
+    @Register.bindable("Collect", IInput.key("KeyC", "Shift")) public readonly bindableCollect: Bindable;
     @Register.bindable("All", IInput.key("KeyA")) public readonly bindableAll: Bindable; // for actions on all types
     @Register.bindable("Type", IInput.key("KeyT")) public readonly bindableType: Bindable; // for actions on specific type
     @Register.bindable("Self", IInput.key("KeyF")) public readonly bindableSelf: Bindable; // for actions to/from full inventory
@@ -184,7 +186,7 @@ export default class QuickStack extends Mod {
     @Register.bindable("Like", IInput.key("KeyC", "Shift")) public readonly bindableLike: Bindable; // for actions to/from similar subcontainer
     @Register.bindable("Here", IInput.key("KeyH")) public readonly bindableHere: Bindable; // for actions to/from selected item's location
     @Register.bindable("Near", IInput.key("KeyN")) public readonly bindableNear: Bindable; // for actions to/from nearby
-
+    
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Events for storage cache maintenance
     //

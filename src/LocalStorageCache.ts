@@ -5,7 +5,7 @@ import { IVector3 } from "utilities/math/IVector";
 
 import { MatchParamFlat } from "./QSMatchGroups";
 import StaticHelper from "./StaticHelper";
-import { StorageCachePlayer, StorageCacheTile, StorageCacheDoodad, StorageCacheBase } from "./StorageCacheBase";
+import { StorageCachePlayer, StorageCacheTile, StorageCacheDoodad, StorageCacheBase, StorageCacheItem } from "./StorageCacheBase";
 import TransferHandler, { validNearby } from "./TransferHandler";
 
 export type ABCheckedMatch = [match: MatchParamFlat, fitAtoB: boolean, fitBtoA: boolean];
@@ -32,13 +32,11 @@ export class LocalStorageCache {
         return this._fullTreeFlat ??
             (this._fullTreeFlat = [this.player, ...this.nearby].flatMap(c => [c, ...c.deepSubs()]));
     }
-    
-    //public set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]) { this._nearby = value; }
+
     public interrelation(A: ContainerHash, B: ContainerHash, filter?: MatchParamFlat[]): ICheckedRelations | undefined {
         return this.updateRelation(A, B, filter) ? this._interrelations[this.ABHash(A, B)] : undefined;
     }
 
-    //public setOutdated(K?: "player" | "nearby") { if(K) this._outdated[K] = true; else { this._outdated.nearby = true; this._outdated.player = true; } }
     public setOutdated(K?: "player" | "nearby") {
         if(!K || K === "player") {
             this.purgeRelations(this._player);
@@ -98,8 +96,15 @@ export class LocalStorageCache {
         }
     }
 
+    // In the _interrelations interface, the 'A, B' designations ABCheckedMatches for a pairing is determined alphabetically based on the two hashes.
+    // flipHash(A,B) returns true if the provided hashes are backwards compared to their interrelation entry.
     public flipHash(A: ContainerHash, B: ContainerHash): boolean { return A > B; }
+
+    // Convert two container hashes into unique key for _interrelations
     public ABHash(A: ContainerHash, B: ContainerHash): string { return this.flipHash(A, B) ? `${B}::${A}` : `${A}::${B}` }
+
+    // Determine if any transferring can be done from A->B (if !reverse) or B->A (if reverse),
+    // based on the provided ABCheckedMatch entry and desired matches specified in the filter.
     public CheckedMatchCanTransfer(ABMatch: ABCheckedMatch, filter?: MatchParamFlat[], reverse?: boolean) {
         const f = (!filter || !filter.length || TransferHandler.groupifyFlatParameters(filter).has(ABMatch[0]));
         return ABMatch[reverse ? 2 : 1] && f;
@@ -118,8 +123,8 @@ export class LocalStorageCache {
     /**
      * @param {(ContainerHash | locationGroup)} A   The first hash or location to pair.
      * @param {(ContainerHash | locationGroup)} B   The second hash or location to pair.
-     * @param {(MatchParamFlat[])} [filter] Flattened parameter
-     * @returns {*}  {boolean}
+     * @param {(MatchParamFlat[]|undefined)} [filter] If specified, ignore any match parameters not included in the filter.
+     * @returns {boolean} // False if any hash couldn't be found. True otherwise.
      * @memberof LocalStorageCache
      */
     public updateRelation(A: ContainerHash, B: ContainerHash, filter?: MatchParamFlat[]): boolean {
@@ -173,18 +178,15 @@ export class LocalStorageCache {
         return true;
     }
 
-    public canFind(Hash: ContainerHash): boolean {
-        return this.fullTreeFlat.some(c => c.cHash === Hash);
-    }
-    public findNearby(Hash: ContainerHash): StorageCacheBase | undefined {
-        for(const n of this.nearby) {
-            const nGot = n.cHash === Hash ? n : n.findSub(Hash);
-            if(!!nGot) return nGot;
-        }
-        return undefined;
-    }
     public find(Hash: ContainerHash): StorageCacheBase | undefined {
         return this.fullTreeFlat.find(c => c.cHash === Hash);
+    }
+    public findNearby(Hash: ContainerHash): StorageCacheItem | StorageCacheDoodad | StorageCacheTile | undefined {
+        for(const n of this.nearby) {
+            const found = (n.fullTreeFlat as (StorageCacheItem|StorageCacheDoodad|StorageCacheTile)[]).find(s => s.cHash === Hash);
+            if(!!found) return found;
+        }
+        return undefined;
     }
 
     public checkSelfNearby(filter?: MatchParamFlat[], reverse?: true): boolean {
@@ -201,7 +203,7 @@ export class LocalStorageCache {
     // Return undefined if AHash isn't found in the cache.
     // Return true if transfer possible.
     public checkSpecificNearby(AHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined {
-        if(!this.canFind(AHash)) {
+        if(!this.find(AHash)) {
             StaticHelper.MaybeLog.warn(`LocalStorageCache.checkSpecificNearby failed to locate hash '${AHash}'`);
             return undefined; // hash wasn't found.
         }
@@ -216,10 +218,10 @@ export class LocalStorageCache {
         return false;
     }
 
-    // Return undefined if AHash isn't found in the cache.
+    // Return undefined if BHash isn't found in the cache.
     // Return true if transfer possible.
     public checkSelfSpecific(BHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined {
-        if(!this.canFind(BHash)) {
+        if(!this.find(BHash)) {
             StaticHelper.MaybeLog.warn(`LocalStorageCache.checkSelfSpecific failed to locate hash '${BHash}'`);
             return undefined; // hash wasn't found.
         }
@@ -234,15 +236,15 @@ export class LocalStorageCache {
     }
 
     // Return undefined if a hash isn't found in the cache.
-    // Return true if transfer possible. Returns false if no transfer possible or if hashes are equal.
+    // Return true if transfer possible. Returns false if no transfer possible or hashes are the same.
     public checkSpecific(fromHash: ContainerHash, toHash: ContainerHash, filter?: MatchParamFlat[]): boolean | undefined {
         if(fromHash === toHash) return false;
-        [fromHash, toHash].forEach(h => {
-            if(!this.canFind(h)) {
-                StaticHelper.MaybeLog.warn(`LocalStorageCache.checkSpecific failed to locate hash '${h}'`);
-                return undefined;
-            }
-        }); // hash wasn't found.
+
+        for(const h of [fromHash, toHash]) if(!this.find(h)) {
+            StaticHelper.MaybeLog.warn(`LocalStorageCache.checkSpecific failed to locate hash '${h}'`);
+            return undefined;
+        }
+
         const flip = this.flipHash(fromHash, toHash);
         return this.interrelation(fromHash, toHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip))
     }
