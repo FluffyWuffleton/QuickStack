@@ -5,7 +5,7 @@ import { IVector3 } from "utilities/math/IVector";
 
 import { MatchParamFlat } from "./QSMatchGroups";
 import StaticHelper from "./StaticHelper";
-import { StorageCachePlayer, StorageCacheTile, StorageCacheDoodad, StorageCacheBase, StorageCacheAny } from "./StorageCacheBase";
+import { StorageCachePlayer, StorageCacheTile, StorageCacheDoodad, StorageCacheBase } from "./StorageCacheBase";
 import TransferHandler, { validNearby } from "./TransferHandler";
 
 export type ABCheckedMatch = [match: MatchParamFlat, fitAtoB: boolean, fitBtoA: boolean];
@@ -32,7 +32,7 @@ export class LocalStorageCache {
         return this._fullTreeFlat ??
             (this._fullTreeFlat = [this.player, ...this.nearby].flatMap(c => [c, ...c.deepSubs()]));
     }
-
+    
     //public set nearby(value: (StorageCacheTile | StorageCacheDoodad)[]) { this._nearby = value; }
     public interrelation(A: ContainerHash, B: ContainerHash, filter?: MatchParamFlat[]): ICheckedRelations | undefined {
         return this.updateRelation(A, B, filter) ? this._interrelations[this.ABHash(A, B)] : undefined;
@@ -90,13 +90,6 @@ export class LocalStorageCache {
         this._nearbyOutdated = false;
         return this;
     }
-
-    /* public get nearbyUnrolled(): Set<IMatchParam> { return this._nearbyUnrolled; }
-    public unrollNearby() {
-        this._nearby.forEach(n => n.updateUnrolled());
-        this._nearbyUnrolled.clear();
-        this._nearby.forEach(n => this._nearbyUnrolled.addFrom(n.unrolled));
-    } */
 
     private locationGroupMembers(g: locationGroup): StorageCacheBase[] {
         switch(g) {

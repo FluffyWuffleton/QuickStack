@@ -1,5 +1,5 @@
 import { ActionDisplayLevel } from "game/entity/action/IAction";
-import UsableAction, { IUsableActionUsing } from "game/entity/action/usable/UsableAction";
+import UsableAction from "game/entity/action/usable/UsableAction";
 import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
 import Player from "game/entity/player/Player";
 import { IContainer, ItemTypeGroup } from "game/item/IItem";
@@ -80,24 +80,24 @@ export namespace QSSubmenu {
             bindable: StaticHelper.QS_INSTANCE.bindableAll,
             translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
             icon: StaticHelper.QS_INSTANCE.UAPAll,
-            isUsable: (player, using) => {
-                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-                return true;
-                // if(using.item) {
-                //     if((StackAllSubNear.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
-                //         .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
-                //     ) return true;
-                // } else if(using.itemType) {
-                //     // if((StackAllLikeNear.get().actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
-                //     //     .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
-                //     // ) return true;
-                // } else {
-                //     if((StackAllSelfNear.get().actions[0][1] as UsableAction<{}>)
-                //         .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: undefined, itemType: undefined }).usable
-                //     ) return true;
-                // }
-                // return false;
-            },
+            // isUsable: (player, using) => {
+            //     if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
+            //     return true;
+            //     // if(using.item) {
+            //     //     if((StackAllSubNear.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
+            //     //         .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
+            //     //     ) return true;
+            //     // } else if(using.itemType) {
+            //     //     // if((StackAllLikeNear.get().actions[0][1] as unknown as UsableAction<{ item: { allowOnlyItemType: () => boolean, validate: () => boolean } }>)
+            //     //     //     .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: using.item, itemType: using.itemType }).usable
+            //     //     // ) return true;
+            //     // } else {
+            //     //     if((StackAllSelfNear.get().actions[0][1] as UsableAction<{}>)
+            //     //         .isUsable(player, { creature: undefined, doodad: undefined, npc: undefined, item: undefined, itemType: undefined }).usable
+            //     //     ) return true;
+            //     // }
+            //     // return false;
+            // },
             submenu: (subreg) => {
                 StackAllSelfNear.register(subreg);
                 StackAllMainNear.register(subreg);
@@ -128,10 +128,10 @@ export namespace QSSubmenu {
                         ])
                 );
             }),
-            isUsable: (player, using) => {
-                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-                return true; //StaticHelper.QSLSC.checkSelfNearby([...TransferHandler.groupifyFlatParameters([using.item.type])]);
-            },
+            // isUsable: (player, using) => {
+            //     if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
+            //     return true; //StaticHelper.QSLSC.checkSelfNearby([...TransferHandler.groupifyFlatParameters([using.item.type])]);
+            // },
             submenu: (subreg) => {
                 StackTypeSelfNear.register(subreg);
                 StackTypeHereNear.register(subreg);
@@ -158,13 +158,13 @@ export namespace QSSubmenu {
             displayLevel: ActionDisplayLevel.Always,
             translate: (translator) => translator.name(StaticHelper.TLMain("collect")),
             isApplicable: () => true,
-            isUsable: (player, using) => {
-                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-                return true;
-                //return StaticHelper.QSLSC.checkSelfNearby(undefined, true);
-                return (QSSubmenu.CollectAll.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>).isUsable(player, using).usable
-                    || (QSSubmenu.CollectType.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>).isUsable(player, using).usable;
-            },
+            // isUsable: (player, using) => {
+            //     if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
+            //     return true;
+            //     //return StaticHelper.QSLSC.checkSelfNearby(undefined, true);
+            //     return (QSSubmenu.CollectAll.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>).isUsable(player, using).usable
+            //         || (QSSubmenu.CollectType.get().actions[0][1] as unknown as UsableAction<{ item: { allowNone: true, validate: () => true } }>).isUsable(player, using).usable;
+            // },
             submenu: (subreg) => {
                 // Add subsubmenu for actions that function regardless of item selection.
                 QSSubmenu.CollectAll.register(subreg);
@@ -182,31 +182,31 @@ export namespace QSSubmenu {
             bindable: StaticHelper.QS_INSTANCE.bindableAll,
             translate: (translator) => translator.name(StaticHelper.TLMain("allTypes")),
             icon: StaticHelper.QS_INSTANCE.UAPAll,
-            isUsable: (player, { item }) => {
-                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-                return true;
-                // if(item && isHeldContainer(player, item)) {
-                //     if(StaticHelper.QSLSC.checkSpecificNearby(item.island.items.hashContainer(item), undefined, true))
-                //         return true; // allnearsub
-                //     if(StaticHelper.QSLSC.checkSpecific(StaticHelper.QSLSC.player.cHash, item.island.items.hashContainer(item)))
-                //         return true; // allmainsub
-                // }
-                // if(item?.containedWithin) {
-                //     if(StaticHelper.QSLSC.checkSpecificNearby(item.island.items.hashContainer(item.containedWithin), undefined, true))
-                //         return true; // allnearhere
-                //     if(playerHasItem(player, item)) {
-                //         if(item.containedWithin !== player.inventory && StaticHelper.QSLSC.checkSpecific(StaticHelper.QSLSC.player.cHash, item.island.items.hashContainer(item.containedWithin)))
-                //             return true; // allmainhere
-                //     } else {
-                //         if(StaticHelper.QSLSC.checkSelfSpecific(item.island.items.hashContainer(item.containedWithin)))
-                //             return true; // allselfhere
-                //     }
-                // }
-                // if(!item || playerHasItem(player, item))
-                //     if(StaticHelper.QSLSC.checkSelfNearby(undefined, true)) return true; // allnearself
+            // isUsable: (player, { item }) => {
+            //     if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
+            //     return true;
+            //     // if(item && isHeldContainer(player, item)) {
+            //     //     if(StaticHelper.QSLSC.checkSpecificNearby(item.island.items.hashContainer(item), undefined, true))
+            //     //         return true; // allnearsub
+            //     //     if(StaticHelper.QSLSC.checkSpecific(StaticHelper.QSLSC.player.cHash, item.island.items.hashContainer(item)))
+            //     //         return true; // allmainsub
+            //     // }
+            //     // if(item?.containedWithin) {
+            //     //     if(StaticHelper.QSLSC.checkSpecificNearby(item.island.items.hashContainer(item.containedWithin), undefined, true))
+            //     //         return true; // allnearhere
+            //     //     if(playerHasItem(player, item)) {
+            //     //         if(item.containedWithin !== player.inventory && StaticHelper.QSLSC.checkSpecific(StaticHelper.QSLSC.player.cHash, item.island.items.hashContainer(item.containedWithin)))
+            //     //             return true; // allmainhere
+            //     //     } else {
+            //     //         if(StaticHelper.QSLSC.checkSelfSpecific(item.island.items.hashContainer(item.containedWithin)))
+            //     //             return true; // allselfhere
+            //     //     }
+            //     // }
+            //     // if(!item || playerHasItem(player, item))
+            //     //     if(StaticHelper.QSLSC.checkSelfNearby(undefined, true)) return true; // allnearself
 
-                return false;
-            },
+            //     return false;
+            // },
             submenu: (subreg) => {
                 StackAllNearSelf.register(subreg);
                 StackAllNearMain.register(subreg);
@@ -240,13 +240,14 @@ export namespace QSSubmenu {
                         ])
                 );
             }),
-            isUsable: (player, using) => {
-                if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
-                return (StackTypeNearHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
-                    .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: () => boolean } }>).usable
-                    || (StackTypeSelfHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
-                        .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: () => boolean } }>).usable;
-            },
+            // isUsable: (player, using) => {
+            //     if(GLOBALCONFIG.force_isusable || GLOBALCONFIG.force_menus) return true;
+            //     return true;
+            //     // return (StackTypeNearHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
+            //     //     .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: () => boolean } }>).usable
+            //     //     || (StackTypeSelfHere.get().actions[0][1] as unknown as UsableAction<{ item: { validate: () => boolean } }>)
+            //     //         .isUsable(player, using as unknown as IUsableActionUsing<{ item: { validate: () => boolean } }>).usable;
+            // },
             submenu: (subreg) => {
                 StackTypeSelfHere.register(subreg);
                 StackTypeNearHere.register(subreg);

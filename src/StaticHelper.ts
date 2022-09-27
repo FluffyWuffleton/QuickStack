@@ -12,11 +12,8 @@ export { GLOBALCONFIG, QSTranslation } from "./QuickStack";
 export default class StaticHelper {
     @Mod.instance<QuickStack>("Quick Stack")
     public static readonly QS_INSTANCE: QuickStack;
-    // @Mod.log("Quick Stack")
-    // public static readonly QS_LOG: Log;
 
     public static get MaybeLog(): Log { return QuickStack.MaybeLog; }
-
     public static get QSLSC() { return StaticHelper.QS_INSTANCE.localStorageCache; }
 
     public static TLMain(id: QSTranslationKey): Translation { return Translation.get(QuickStack.INSTANCE.dictMain, QSTranslation[id]); }
