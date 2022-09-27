@@ -18,7 +18,7 @@ import TransferHandler from "../TransferHandler";
 export function executeStackAction_notify(executor: Player, src: THTargettingParam[], dest: THTargettingParam[], filter: IMatchParam[]): boolean {
     const sFlag = { failed: false };
     executeStackAction(executor, src, dest, filter, sFlag);
-    StaticHelper.QS_LOG.info(`executeStackAction_notify: Flag ${sFlag.failed}`);
+    StaticHelper.MaybeLog.info(`executeStackAction_notify: Flag ${sFlag.failed}`);
     return !sFlag.failed;
 }
 /**
@@ -65,7 +65,7 @@ export const StackAction = new Action(ActionArgument.Array, ActionArgument.Array
         sFlag: { failed: boolean } | undefined,
         suppress: { report?: true, delay?: true } | undefined
     ) => {
-        if(TransferHandler.MakeAndRun(action.executor, src, dest, filter, GLOBALCONFIG.log_info ? StaticHelper.QS_LOG : undefined, sFlag, suppress)) {
+        if(TransferHandler.MakeAndRun(action.executor, src, dest, filter, StaticHelper.MaybeLog, sFlag, suppress)) {
             if(!suppress?.delay) action.setDelay(GLOBALCONFIG.pause_length);
             action.setUpdateTablesAndWeight();
             action.setUpdateView(false);

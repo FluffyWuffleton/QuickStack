@@ -198,7 +198,7 @@ export default class TransferHandler {
         }
         AParams.retainWhere(param => BParams.has(param));
         if(GLOBALCONFIG.log_info) {
-            StaticHelper.QS_LOG.info(`GET MATCHES:: REMAINING::`);
+            StaticHelper.MaybeLog.info(`GET MATCHES:: REMAINING::`);
             console.log(AParams);
         }
 
@@ -354,7 +354,7 @@ export default class TransferHandler {
     * Returns immediately if state has any error flag set, or if the 'complete' flag is already set. 
     * @returns {THState} The handler state. 
     */
-    private executeTransfer(log: Log | undefined = (GLOBALCONFIG.log_info ? StaticHelper.QS_LOG : undefined)): THState {
+    private executeTransfer(log: Log | undefined = StaticHelper.MaybeLog): THState {
         // Active error or already complete
         if(this._state & (THState.error | THState.complete)) return this._state;
 
@@ -499,7 +499,7 @@ export default class TransferHandler {
      * @param player 
      * @returns {boolean} Successfully sent messages?
      */
-    private reportMessages(player: Player = this.player, log: Log | undefined = GLOBALCONFIG.log_info ? StaticHelper.QS_LOG : undefined): boolean {
+    private reportMessages(player: Player = this.player, log: Log | undefined = StaticHelper.MaybeLog): boolean {
         // Active error or not yet complete
         if((this._state & THState.error) || !(this._state & THState.complete)) return false;
 
