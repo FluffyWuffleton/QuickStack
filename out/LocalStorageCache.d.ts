@@ -38,7 +38,8 @@ export declare class LocalStorageCache {
     checkSelfNearby(filter?: MatchParamFlat[], reverse?: true): boolean;
     checkSpecificNearby(AHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined;
     checkSelfSpecific(BHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined;
-    checkSpecific(fromHash: ContainerHash, toHash: ContainerHash, filter?: MatchParamFlat[]): boolean | undefined;
+    checkSpecific(from: ContainerHash | locationGroup, to: ContainerHash | locationGroup, filter?: MatchParamFlat[]): boolean | undefined;
+    private _checkSpecific;
     constructor(p: Player);
 }
 export {};

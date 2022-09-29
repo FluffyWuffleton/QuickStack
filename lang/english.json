@@ -1,49 +1,43 @@
 {
     "extends": "English",
     "dictionaries": {
-        "modQuickStackMainDictionary": {
+        "modQuickStackUtilities": {
             "qsPrefix": "QuickStack:", // Prepended to initial search message.
             "qsPrefixShort": ">", // Prepended to results messages.
             "parenthetical": "({0})",
             "underline": "{_{0}_}",
             "colorMatchGroup": "{#--COLOR-METALLIC:{0}}",
             "colorPrefix": "{#--COLOR-COMMAND:{0}}",
-            "concat": "{0}{ 1??}{ 2??}{ 3??}{ 4??}{ 5??}{ 6??}{ 7??}{ 8??}{ 9??}",
-
-            /*
-                Fragments used in result messages
-            */
-            "toX": "to{ 0??}",
-            "fromX": "from{ 0??}",
+            "colorGround": "{#--COLOR-BROWN:{0}}",
+            "concat": "{... }"
+        },
+        "modQuickStackMainDictionary": {
+            // Used in result messages.
             "yourInventory": "{#--COLOR-PEARL:your inventory}",
-
             "toTile": "onto {#--COLOR-BROWN:the ground}",
             "fromTile": "from {#--COLOR-BROWN:the ground}",
             "toUnknown": "to somewhere",
             "fromUnknown": "from somewhere",
-
             "XOutOfY": "{X}{Y?/}{Y??}{ name??}{ suffix??}", // Used in constructing a list of fully or partly moved item types ("5 arrows", "3/5 arrows")
 
-            "allX": "all {0}", // All <plural-thing>
-            "here": "here", // an item's immediate location
-            "nearby": "nearby",
+            "allX": "all {0}",  // All <plural-thing>
             
-            /*
-                Fragments used in action labels/descriptions
-            */
+            // Used in result messages and action labels
+            "toX": "to{ 0??}",
+            "fromX": "from{ 0??}",
+            "fromXtoY": "from {0} to {1}",
+
+            // Used in action labels
             "onlyXType": "Only {0??similar items}{ 1??}",
             "allTypes": "All types",
             "mainInventory": "top-level inventory",
             "fullInventory": "full inventory",
-            "deposit": "Deposit{ 0??} nearby{ 1??}", // "Deposit [optional: ITEM TYPE fragment] nearby [optional: TO/FROM LOCATION fragment]
-            "collect": "Collect{ 0??}{ 1??}", // "Collect [optional: ITEM TYPE fragment] [optional: TO LOCATION fragment]
-
-            /*
-                Used in the slottable tooltips for certain item-actions, since tooltips aren't given context of the specific item being used
-            */
-            "thisContainer": "this container", // transfer from a particular container
-            "likeContainers": "similar containers", // transfer from all held containers of the same type
-
+            "facingTile": "facing tile",
+            "here": "here",
+            "nearby": "nearby",
+            "thisContainer": "this container", // Used as a fallback for to-subcontainer transfers when item context is unavailable
+            "deposit": "Deposit{ 0??} nearby{ 1??}", // "Deposit [optional: ITEM TYPE] nearby [optional: TO LOCATION]
+            "collect": "Collect{ 0??}{ 1??}", // "Collect [optional: ITEM TYPE] [optional: TO LOCATION]
 
             /*
                 Options
@@ -91,11 +85,11 @@
 
             // If there are no nearby containers with items matching your inventory. 
             // This should only happen when using a keybind, as none of the actions should be usable from menu/hotbar in this case.
-            "modQuickStackNoMatch": "{#--TEXT-SECONDARY:{prefix??}{prefix? }None of {searchtarget??the nearby containers} are a good match.}",
+            "modQuickStackNoMatch": "{#--TEXT-SECONDARY:{prefix ??}None of {searchtarget??the nearby containers} are a good match.}",
             
             // If there are no nearby containers with items matching the selected type.
             //    {type}: Item type name.
-            "modQuickStackNoTypeMatch": "{#--TEXT-SECONDARY:{prefix??}{prefix? }None of {searchtarget??the nearby containers} have any }{type??UNDEFINED}.",
+            "modQuickStackNoTypeMatch": "{#--TEXT-SECONDARY:{prefix ??}None of {searchtarget??the nearby containers} have any }{type??UNDEFINED}.",
 
             // Valid destination was found, and transfer was attempted...
             /*  Argument structure:

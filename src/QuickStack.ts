@@ -39,17 +39,22 @@ export namespace GLOBALCONFIG {
     export const force_menus = false as const;
 }
 
-export enum QSTranslation {
+export enum QSTLUtilies {
     qsPrefix = 0,
     qsPrefixShort,
     parenthetical,
     colorPrefix,
     colorMatchGroup,
+    colorGround,
     underline,
-    concat,
+    concat
+};
+export type QSTLUtilitiesKey = keyof typeof QSTLUtilies;
 
+export enum QSTranslation {
     toX,
     fromX,
+    fromXtoY,
     allX,
     here,
     nearby,
@@ -61,6 +66,7 @@ export enum QSTranslation {
     XOutOfY,
     mainInventory,
     fullInventory,
+    facingTile,
     deposit,
     collect,
     onlyXType,
@@ -107,6 +113,8 @@ export default class QuickStack extends Mod {
     public readonly dictMain: Dictionary;
     @Register.dictionary("GroupsDictionary", QSGroupsTranslation)
     public readonly dictGroups: Dictionary
+    @Register.dictionary("Utilities", QSTLUtilies)
+    public readonly dictUtil: Dictionary
 
     private readonly TLGetMain = (id: QSTranslationKey) => Translation.get(this.dictMain, QSTranslation[id]);
     private readonly TLGetGroup = (id: QSGroupsTranslationKey) => Translation.get(this.dictGroups, QSGroupsTranslation[id]);

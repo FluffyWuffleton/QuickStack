@@ -183,7 +183,7 @@ export class LocalStorageCache {
     }
     public findNearby(Hash: ContainerHash): StorageCacheItem | StorageCacheDoodad | StorageCacheTile | undefined {
         for(const n of this.nearby) {
-            const found = (n.fullTreeFlat as (StorageCacheItem|StorageCacheDoodad|StorageCacheTile)[]).find(s => s.cHash === Hash);
+            const found = (n.fullTreeFlat as (StorageCacheItem | StorageCacheDoodad | StorageCacheTile)[]).find(s => s.cHash === Hash);
             if(!!found) return found;
         }
         return undefined;
@@ -237,16 +237,26 @@ export class LocalStorageCache {
 
     // Return undefined if a hash isn't found in the cache.
     // Return true if transfer possible. Returns false if no transfer possible or hashes are the same.
-    public checkSpecific(fromHash: ContainerHash, toHash: ContainerHash, filter?: MatchParamFlat[]): boolean | undefined {
+    public checkSpecific(from: ContainerHash | locationGroup, to: ContainerHash | locationGroup, filter?: MatchParamFlat[]): boolean | undefined {
+        let fList: string[];
+        if(typeof from === "string") {
+            if(!this.find(from)) { StaticHelper.MaybeLog.warn(`LocalStorageCache.checkSpecific failed to locate hash '${from}'`); return undefined; }
+            fList = [from];
+        } else fList = this.locationGroupMembers(from).map(f => f.cHash);
+
+        let tList: string[];
+        if(typeof to === "string") {
+            if(!this.find(to)) { StaticHelper.MaybeLog.warn(`LocalStorageCache.checkSpecific failed to locate hash '${to}'`); return undefined; }
+            tList = [to];
+        } else tList = this.locationGroupMembers(to).map(t => t.cHash);
+
+        return fList.some(f => tList.some(t => this._checkSpecific(f, t, filter)));
+    }
+
+    private _checkSpecific(fromHash: ContainerHash, toHash: ContainerHash, filter?: MatchParamFlat[]): boolean | undefined {
         if(fromHash === toHash) return false;
-
-        for(const h of [fromHash, toHash]) if(!this.find(h)) {
-            StaticHelper.MaybeLog.warn(`LocalStorageCache.checkSpecific failed to locate hash '${h}'`);
-            return undefined;
-        }
-
         const flip = this.flipHash(fromHash, toHash);
-        return this.interrelation(fromHash, toHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip))
+        return this.interrelation(fromHash, toHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip));
     }
 
     constructor(p: Player) {

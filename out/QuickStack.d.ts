@@ -22,39 +22,45 @@ export declare namespace GLOBALCONFIG {
     const force_isusable: false;
     const force_menus: false;
 }
-export declare enum QSTranslation {
+export declare enum QSTLUtilies {
     qsPrefix = 0,
     qsPrefixShort = 1,
     parenthetical = 2,
     colorPrefix = 3,
     colorMatchGroup = 4,
-    underline = 5,
-    concat = 6,
-    toX = 7,
-    fromX = 8,
-    allX = 9,
-    here = 10,
-    nearby = 11,
-    yourInventory = 12,
-    toTile = 13,
-    fromTile = 14,
-    toUnknown = 15,
-    fromUnknown = 16,
-    XOutOfY = 17,
-    mainInventory = 18,
-    fullInventory = 19,
-    deposit = 20,
-    collect = 21,
-    onlyXType = 22,
-    allTypes = 23,
-    thisContainer = 24,
-    likeContainers = 25,
-    optionTopDown = 26,
-    optionTopDown_desc = 27,
-    optionKeepContainers = 28,
-    optionForbidTiles = 29,
-    optionMatchSimilar = 30,
-    optionMatchSimilar_desc = 31
+    colorGround = 5,
+    underline = 6,
+    concat = 7
+}
+export declare type QSTLUtilitiesKey = keyof typeof QSTLUtilies;
+export declare enum QSTranslation {
+    toX = 0,
+    fromX = 1,
+    fromXtoY = 2,
+    allX = 3,
+    here = 4,
+    nearby = 5,
+    yourInventory = 6,
+    toTile = 7,
+    fromTile = 8,
+    toUnknown = 9,
+    fromUnknown = 10,
+    XOutOfY = 11,
+    mainInventory = 12,
+    fullInventory = 13,
+    facingTile = 14,
+    deposit = 15,
+    collect = 16,
+    onlyXType = 17,
+    allTypes = 18,
+    thisContainer = 19,
+    likeContainers = 20,
+    optionTopDown = 21,
+    optionTopDown_desc = 22,
+    optionKeepContainers = 23,
+    optionForbidTiles = 24,
+    optionMatchSimilar = 25,
+    optionMatchSimilar_desc = 26
 }
 export declare type QSTranslationKey = keyof typeof QSTranslation;
 declare type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionForbidTiles" | "optionKeepContainers" | "optionTopDown">;
@@ -72,6 +78,7 @@ export default class QuickStack extends Mod {
     static get MaybeLog(): Log;
     readonly dictMain: Dictionary;
     readonly dictGroups: Dictionary;
+    readonly dictUtil: Dictionary;
     private readonly TLGetMain;
     private readonly TLGetGroup;
     readonly messageSearch: Message;

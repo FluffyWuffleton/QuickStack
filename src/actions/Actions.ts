@@ -8,7 +8,7 @@ import Translation from "language/Translation";
 
 import { THTargettingParam } from "../ITransferHandler";
 import { IMatchParam } from "../QSMatchGroups";
-import StaticHelper, { GLOBALCONFIG } from "../StaticHelper";
+import StaticHelper, { GLOBALCONFIG, TLUtil } from "../StaticHelper";
 import TransferHandler from "../TransferHandler";
 
 
@@ -39,8 +39,8 @@ export function executeStackAction(
 ): void {
     executor.asLocalPlayer?.messages.send(
         Translation.message(StaticHelper.QS_INSTANCE.messageSearch)
-            .addArgs({ prefix: StaticHelper.TLMain("qsPrefix").passTo(StaticHelper.TLMain("colorPrefix")) })
-            .passTo(StaticHelper.TLMain("underline")));
+            .addArgs({ prefix: TLUtil("qsPrefix").passTo(TLUtil("colorPrefix")) })
+            .passTo(TLUtil("underline")));
     ActionExecutor.get(StackAction).execute(executor, src, dest, filter, successFlag, suppress);
 }
 

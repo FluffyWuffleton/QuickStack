@@ -15,7 +15,7 @@ import { Direction } from "utilities/math/Direction";
 
 import { ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
 import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups, MatchParamFlat, getActiveGroups, canMatchActiveGroup } from "./QSMatchGroups";
-import StaticHelper, { GLOBALCONFIG } from "./StaticHelper";
+import StaticHelper, { GLOBALCONFIG, TLGroup, TLMain, TLUtil } from "./StaticHelper";
 
 export type ThingWithContents = Pick<IContainer, "containedItems">;
 
@@ -73,28 +73,28 @@ export function TLContainer(c: IContainer, crt: ContainerReferenceType, toFrom: 
     const cache = StaticHelper.QSLSC?.findNearby(localPlayer.island.items.hashContainer(c));
     switch(crt) {
         case ContainerReferenceType.PlayerInventory:
-            return StaticHelper.TLMain(`${toFrom}X`).addArgs(StaticHelper.TLMain("yourInventory"));
+            return TLMain(`${toFrom}X`).addArgs(TLMain("yourInventory"));
 
         case ContainerReferenceType.Item:
-            return StaticHelper.TLMain(`${toFrom}X`).addArgs((c as Item).getName("indefinite", 1, false, false, true, false));
+            return TLMain(`${toFrom}X`).addArgs((c as Item).getName("indefinite", 1, false, false, true, false));
 
         case ContainerReferenceType.Doodad:
             if(!cache || cache.iswhat === "Item" || cache.relation === Direction.None)
-                return StaticHelper.TLMain(`${toFrom}X`).addArgs((c as Doodad).getName("indefinite", 1));
+                return TLMain(`${toFrom}X`).addArgs((c as Doodad).getName("indefinite", 1));
             else
-                return StaticHelper.TLMain(`${toFrom}X`).addArgs(
-                    StaticHelper.TLMain("concat").addArgs(
+                return TLMain(`${toFrom}X`).addArgs(
+                    TLUtil("concat").addArgs(
                         (c as Doodad).getName("indefinite", 1),
-                        StaticHelper.TLMain("parenthetical").addArgs(Translation.get(Dictionary.Direction, cache.relation))));
+                        TLUtil("parenthetical").addArgs(Translation.get(Dictionary.Direction, cache.relation))));
 
         case ContainerReferenceType.Tile:
-            if(!cache || cache.iswhat === "Item" || cache.relation === Direction.None) return StaticHelper.TLMain(`${toFrom}Tile`)
-            else return StaticHelper.TLMain("concat").addArgs(
-                StaticHelper.TLMain(`${toFrom}Tile`),
-                StaticHelper.TLMain("parenthetical").addArgs(Translation.get(Dictionary.Direction, cache.relation)));
+            if(!cache || cache.iswhat === "Item" || cache.relation === Direction.None) return TLMain(`${toFrom}Tile`)
+            else return TLUtil("concat").addArgs(
+                TLMain(`${toFrom}Tile`),
+                TLUtil("parenthetical").addArgs(Translation.get(Dictionary.Direction, cache.relation)));
 
         default:
-            return StaticHelper.TLMain(`${toFrom}Unknown`);
+            return TLMain(`${toFrom}Unknown`);
     }
 }
 
@@ -457,7 +457,7 @@ export default class TransferHandler {
 
                     log?.info(`executeTransfer: Match #${k} (${!isGroupMatch
                         ? `TYPE: '${Translation.nameOf(Dictionary.Item, match.matched.type!, false).toString()}'`
-                        : `GROUP: '${StaticHelper.TLGroup(match.matched.group!).toString()}'`
+                        : `GROUP: '${TLGroup(match.matched.group!).toString()}'`
                         }) :: Had ${match.had}`);
 
                     // Track weight capacity as we go.
@@ -577,38 +577,38 @@ export default class TransferHandler {
                     pair.matches.forEach(match => {
                         if(match.sent === match.had) { // Complete transfer
                             resultFlags.all = true;
-                            str.items.all.push(StaticHelper.TLMain("XOutOfY").addArgs({
+                            str.items.all.push(TLMain("XOutOfY").addArgs({
                                 X: match.sent,
                                 name: match.matched.type !== undefined
                                     ? Translation.nameOf(Dictionary.Item, match.matched.type, match.sent, match.sent > 1 ? "indefinite" : false, true)
-                                    : StaticHelper.TLMain("concat").addArgs(
-                                        StaticHelper.TLGroup(match.matched.group)
+                                    : TLUtil("concat").addArgs(
+                                        TLGroup(match.matched.group)
                                             .inContext(TextContext.None)
-                                            .passTo(StaticHelper.TLMain("colorMatchGroup")),
-                                        StaticHelper.TLGroup("Item").passTo(Translation.reformatSingularNoun(match.sent, false)))
+                                            .passTo(TLUtil("colorMatchGroup")),
+                                        TLGroup("Item").passTo(Translation.reformatSingularNoun(match.sent, false)))
                             }));
                         } else if(match.sent > 0) { // Partial transfer
                             resultFlags.some = true;
-                            str.items.all.push(StaticHelper.TLMain("XOutOfY").addArgs({
+                            str.items.all.push(TLMain("XOutOfY").addArgs({
                                 X: match.sent,
                                 Y: match.had,
                                 name: match.matched.type !== undefined
                                     ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, false, true)
-                                    : StaticHelper.TLMain("concat").addArgs(
-                                        StaticHelper.TLGroup(match.matched.group)
+                                    : TLUtil("concat").addArgs(
+                                        TLGroup(match.matched.group)
                                             .inContext(TextContext.None)
-                                            .passTo(StaticHelper.TLMain("colorMatchGroup")),
-                                        StaticHelper.TLGroup("Item").passTo(Translation.reformatSingularNoun(match.had, false)))
+                                            .passTo(TLUtil("colorMatchGroup")),
+                                        TLGroup("Item").passTo(Translation.reformatSingularNoun(match.had, false)))
                             }));
                         } else { // Failed transfer
                             resultFlags.none = true;
                             str.items.none.push(match.matched.type !== undefined
                                 ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, match.had > 1 ? "indefinite" : false, true)
-                                : StaticHelper.TLMain("concat").addArgs(
-                                    StaticHelper.TLGroup(match.matched.group)
+                                : TLUtil("concat").addArgs(
+                                    TLGroup(match.matched.group)
                                         .inContext(TextContext.None)
-                                        .passTo(StaticHelper.TLMain("colorMatchGroup")),
-                                    StaticHelper.TLGroup("Item").passTo(Translation.reformatSingularNoun(999, false)))
+                                        .passTo(TLUtil("colorMatchGroup")),
+                                    TLGroup("Item").passTo(Translation.reformatSingularNoun(999, false)))
                             );
                         }
                     });
@@ -635,7 +635,7 @@ export default class TransferHandler {
                             some: resultFlags.some || (resultFlags.all && resultFlags.none) ? true : undefined,
                             all: resultFlags.none && !resultFlags.all && !resultFlags.some ? true : undefined
                         },
-                        prefix: StaticHelper.TLMain("qsPrefixShort")//.passTo(StaticHelper.TLget("colorPrefix")),
+                        prefix: TLUtil("qsPrefixShort")//.passTo(StaticHelper.TLget("colorPrefix")),
                     });
 
                 } // if pair.matches.length
@@ -644,7 +644,7 @@ export default class TransferHandler {
 
 
         if(!(this._anySuccess || this._anyPartial || this._anyFailed))
-            player.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageNoMatch, { prefix: StaticHelper.TLMain("qsPrefixShort").passTo(Translation.colorizeImportance("secondary")) });
+            player.asLocalPlayer?.messages.send(StaticHelper.QS_INSTANCE.messageNoMatch, { prefix: TLUtil("qsPrefixShort").passTo(Translation.colorizeImportance("secondary")) });
 
         return true;
     }

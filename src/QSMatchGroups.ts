@@ -2,7 +2,7 @@ import { ItemType, ItemTypeGroup } from "game/item/IItem";
 import ItemManager from "game/item/ItemManager";
 import StaticHelper from "./StaticHelper";
 
-// A generic item-matching parameters based on either ItemType or itemTypeGroup (vanilla groups, not custom groups)
+// A generic item-matching parameter based on either ItemType or QSMatchableGroup
 interface IMatchByType { type: ItemType; group?: never; };
 interface IMatchByGroup { type?: never; group: QSMatchableGroupKey; };
 export type IMatchParam = IMatchByType | IMatchByGroup; // Will contain exactly one defined property, 'type' or 'group'
@@ -10,7 +10,7 @@ export type MatchParamFlat = ItemType | QSMatchableGroupKey;
 export type Matchable = ItemType | ItemTypeGroup;
 
 /**
- * Returns the matchable group key in which the provided ItemType or ItemTypeGroup can be found, if any such group is active. 
+ * Returns the keys of the matchable groups in which the provided ItemType or ItemTypeGroup can be found, if any such groups are active. 
  * @param {(ItemType|ItemTypeGroup)} type
  * @returns {QSMatchableGroupKey[]}
  */
