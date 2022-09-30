@@ -199,22 +199,21 @@ export default class QuickStack extends Mod {
     // Events for storage cache maintenance
     //
 
-    private _localStorageCache?: LocalStorageCache; // initialized in onLoad
+    private _localStorageCache?: LocalStorageCache; // initialized w/ handlers when accessed by an action.
     public get localStorageCache() { return this._localStorageCache ?? this.initCache(); }
     private initCache(): LocalStorageCache {
         this["subscribedHandlers"] = false;
         this.registerEventHandlers("unload");
         return (this._localStorageCache = new LocalStorageCache(localPlayer));
     }
-
     public override onInitialize(): void {
         this.refreshMatchGroupsArray();
         this["subscribedHandlers"] = true;
     }
     public override onUnload(): void {
-        delete (this._localStorageCache);
+        delete this._localStorageCache;
     }
-
+    
     @EventHandler(EventBus.LocalPlayer, "postMove")
     protected localPlayerPostMove(): void {
         QuickStack.MaybeLog?.info(`\t\tEVENT TRIGGERED -- localPlayer.postMove`);

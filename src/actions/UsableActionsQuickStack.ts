@@ -398,8 +398,8 @@ export const StackAllNearSelf = new UsableActionGenerator((reg, isMainReg: boole
             isMainReg
                 ? TLMain("collect").addArgs(
                     TLMain("allTypes").inContext(TextContext.Lowercase),
-                    TLMain("fromXtoY").addArgs(TLMain("fullInventory"), TLMain("nearby")))
-                : TLMain("fromXtoY").addArgs(TLMain("fullInventory"), TLMain("nearby"))
+                    TLMain("fromXtoY").addArgs(TLMain("nearby"), (TLMain("fullInventory"))))
+                : TLMain("fromXtoY").addArgs(TLMain("nearby"),TLMain("fullInventory"))
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -433,8 +433,8 @@ export const StackAllNearMain = new UsableActionGenerator((reg, isMainReg: boole
             isMainReg
                 ? TLMain("collect").addArgs(
                     TLMain("allTypes").inContext(TextContext.Lowercase),
-                    TLMain("fromXtoY").addArgs(TLMain("mainInventory"), TLMain("nearby")))
-                : TLMain("fromXtoY").addArgs(TLMain("mainInventory"), TLMain("nearby"))
+                    TLMain("fromXtoY").addArgs(TLMain("nearby"),TLMain("mainInventory")))
+                : TLMain("fromXtoY").addArgs(TLMain("nearby"), TLMain("mainInventory"))
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -455,13 +455,13 @@ export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolea
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableMain,
         icon: isMainReg ? undefined : StaticHelper.QS_INSTANCE.UAPMain,
         iconLocationOnItem: ItemDetailIconLocation.TopLeft, // TL: Thing done to item. BR: Item does thing.
-        translate: (translator) => translator.name(({ item, itemType }) => {
-            const itemStr = item ? item.getName(false) : itemType ? Translation.nameOf(Dictionary.Item, itemType, 999, false) : TLMain("thisContainer");
+        translate: (translator) => translator.name(({ item }) => {
+            const itemStr = item?.getName(false) ?? TLMain("thisContainer");
             return isMainReg
                 ? TLMain("collect").addArgs(
                     TLMain("allTypes").inContext(TextContext.Lowercase),
-                    TLMain("fromXtoY").addArgs(itemStr, TLMain("mainInventory")))
-                : TLMain("fromXtoY").addArgs(itemStr, TLMain("mainInventory"));
+                    TLMain("fromXtoY").addArgs(TLMain("mainInventory"), itemStr))
+                : TLMain("fromXtoY").addArgs(TLMain("mainInventory"), itemStr);
         }),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -486,8 +486,8 @@ export const StackAllNearSub = new UsableActionGenerator((reg, isMainReg: boolea
             return isMainReg
                 ? TLMain("collect").addArgs(
                     TLMain("allTypes").inContext(TextContext.Lowercase),
-                    TLMain("fromXtoY").addArgs(itemStr, TLMain("nearby")))
-                : TLMain("fromXtoY").addArgs(itemStr, TLMain("nearby"));
+                    TLMain("fromXtoY").addArgs(TLMain("nearby"), itemStr))
+                : TLMain("fromXtoY").addArgs(TLMain("nearby"), itemStr);
         }),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -510,8 +510,8 @@ export const StackAllSelfHere = new UsableActionGenerator((reg, isMainReg: boole
             isMainReg
                 ? TLMain("collect").addArgs(
                     TLMain("allTypes").inContext(TextContext.Lowercase),
-                    TLMain("fromXtoY").addArgs(TLMain("here"), TLMain("fullInventory")))
-                : TLMain("fromXtoY").addArgs(TLMain("here"), TLMain("fullInventory"))
+                    TLMain("fromXtoY").addArgs(TLMain("fullInventory"), TLMain("here")))
+                : TLMain("fromXtoY").addArgs(TLMain("fullInventory"), TLMain("here"))
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -537,8 +537,8 @@ export const StackAllNearHere = new UsableActionGenerator((reg, isMainReg: boole
             isMainReg
                 ? TLMain("collect").addArgs(
                     TLMain("allTypes").inContext(TextContext.Lowercase),
-                    TLMain("fromXtoY").addArgs(TLMain("here"), TLMain("nearby")))
-                : TLMain("fromXtoY").addArgs(TLMain("here"), TLMain("nearby"))
+                    TLMain("fromXtoY").addArgs(TLMain("nearby"), TLMain("here")))
+                : TLMain("fromXtoY").addArgs(TLMain("nearby"), TLMain("here"))
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
@@ -565,8 +565,8 @@ export const StackTypeSelfHere = new UsableActionGenerator((reg, isMainReg: bool
                 ? TLMain("collect").addArgs(
                     TLMain("onlyXType").inContext(TextContext.Lowercase)
                         .addArgs(!!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : undefined),
-                        TLMain("fromXtoY").addArgs(TLMain("here"), TLMain("fullInventory")))
-                : TLMain("fromXtoY").addArgs(TLMain("here"), TLMain("fullInventory"))
+                    TLMain("fromXtoY").addArgs(TLMain("fullInventory"), TLMain("here")))
+                : TLMain("fromXtoY").addArgs(TLMain("fullInventory"), TLMain("here"))
         ),
         //isApplicable: () => true,
         isUsable: (player, { item }) => {
@@ -596,8 +596,8 @@ export const StackTypeNearHere = new UsableActionGenerator((reg, isMainReg: bool
                 ? TLMain("collect").addArgs(
                     TLMain("onlyXType").inContext(TextContext.Lowercase)
                         .addArgs(!!(item ?? itemType) ? Translation.nameOf(Dictionary.Item, (item?.type ?? itemType)!, 999, false) : undefined),
-                    TLMain("fromXtoY").addArgs(TLMain("nearby"), TLMain("here")))
-                : TLMain("fromXtoY").addArgs(TLMain("nearby"), TLMain("here"))
+                    TLMain("fromXtoY").addArgs(TLMain("here"), TLMain("nearby")))
+                : TLMain("fromXtoY").addArgs(TLMain("here"), TLMain("nearby"))
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;

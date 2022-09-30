@@ -1,6 +1,6 @@
 {
 	"name": "Quick Stack",
-	"description": "Automatically deposit matching items into nearby containers and tiles.",
+	"description": "Automatically transfer matching items between locations.",
 	"version": "1.1.6",
 	"author": "Fluffy",
 	"file": "out/QuickStack",
