@@ -14,10 +14,12 @@ import Log from "utilities/Log";
 import { Direction } from "utilities/math/Direction";
 
 import { ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
-import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups, MatchParamFlat, getActiveGroups, canMatchActiveGroup } from "./QSMatchGroups";
-import StaticHelper, { GLOBALCONFIG, TLGroup, TLMain, TLUtil } from "./StaticHelper";
+import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups, MatchParamFlat, getActiveGroups, canMatchActiveGroup, unflattenMatchParams, ThingWithContents, groupifyParameters, flattenMatchParams } from "./QSMatchGroups";
+import StaticHelper, { TLGroup, TLMain, TLUtil } from "./StaticHelper";
 
-export type ThingWithContents = Pick<IContainer, "containedItems">;
+export interface ITileTargettingOptions { ignoreForbidTiles?: boolean, allowBlockedTiles?: boolean };
+export const SourceTileOptions: ITileTargettingOptions = { ignoreForbidTiles: true } as const; // Always allow using tiles as a source, if safe. The ForbidTiles option only blocks using them as a destination.
+export const DestinationTileOptions: ITileTargettingOptions = { allowBlockedTiles: false } as const; // Don't allow depositing onto tiles blocked by a doodad.
 
 // Utility functions for item and inventory fetching/checking. Pretty self-explanatory.
 export function isHeldContainer(player: Player, item: Item): boolean { return player.island.items.isContainer(item) && player === item.getCurrentOwner(); }
@@ -47,19 +49,19 @@ function _itemTransferAllowed(item: Item): boolean {
 };
 
 // getAdjacentContainers with respect for forbidTiles and open flame.
-export function validNearby(player: Player, overrideForbidTiles: boolean = false, allowBlocked: boolean = true): IContainer[] {
+export function validNearby(player: Player, tileOptions?: ITileTargettingOptions): IContainer[] {
     const adj = player.island.items.getAdjacentContainers(player, false);
     [...adj].entries().reverse().forEach(([idx, c]) => {
         if(player.island.items.getContainerReference(c, undefined).crt === ContainerReferenceType.Tile
-            && !isValidTile(c as ITile, overrideForbidTiles, allowBlocked)
+            && !isValidTile(c as ITile, tileOptions)
         ) adj.splice(idx, 1);
     });
     return adj;
 }
 
-export function isValidTile(tile: ITile, overrideForbidTiles: boolean = false, allowBlocked: boolean = true): boolean {
-    return (overrideForbidTiles || !StaticHelper.QS_INSTANCE.globalData.optionForbidTiles)
-        && (allowBlocked || !tile.doodad?.description()?.blockMove)
+export function isValidTile(tile: ITile, tileOptions?: ITileTargettingOptions): boolean {
+    return (!!(tileOptions?.ignoreForbidTiles) || !StaticHelper.QS_INSTANCE.globalData.optionForbidTiles)
+        && (!!(tileOptions?.allowBlockedTiles) || !tile.doodad?.description()?.blockMove)
         && isSafeTile(tile)
 }
 
@@ -119,6 +121,7 @@ export default class TransferHandler {
     private _anyFailed: boolean = false;
     private _anySuccess: boolean = false;
     private _anyPartial: boolean = false;
+
     public get state(): THState { return this._state; }
     public get executionResults(): ITransferPairing[][] { return this._executionResults; }
     public get anySuccess(): boolean { return this._anySuccess; } // If any given source->dest transfer of a single ItemType was successfully completed.
@@ -129,35 +132,6 @@ export default class TransferHandler {
         Static helper functions
     */
 
-    // Take a list of match parameters. 
-    // If any item parameters can be represented by an enabled match-group, use the group parameter instead.
-    // Returns a set of flattened parameters.
-    public static groupifyParameters(P: IMatchParam[] | Set<IMatchParam>): Set<MatchParamFlat> {
-        const pSet = new Set<MatchParamFlat>;
-        P.forEach(param => {
-            if(param.group) pSet.add(param.group);
-            else {
-                const grps = getActiveGroups(param.type);
-                if(grps.length) pSet.addFrom(grps);
-                else pSet.add(param.type);
-            }
-        });
-        return pSet;
-    }
-    public static groupifyFlatParameters(P: MatchParamFlat[] | Set<MatchParamFlat>): Set<MatchParamFlat> {
-        const pSet = new Set<MatchParamFlat>;
-        P.forEach(param => {
-            if(typeof param === "string") pSet.add(param);
-            else {
-                const grps = getActiveGroups(param);
-                if(grps.length) pSet.addFrom(grps);
-                else pSet.add(param);
-            }
-        });
-        return pSet;
-    }
-
-    //private static flattenParameters(P: IMatchParam[]): MatchParamFlat[] { return P.map(p => p.type ?? p.group); }
 
     /**
      * Return set of unique Item types in a given Container or Item array.
@@ -193,14 +167,9 @@ export default class TransferHandler {
     public static setOfParams(X: ThingWithContents[]): Set<IMatchParam> {
         const types = this.setOfTypes(X);               // Set of all types present in the thing.
         const groups = this.setOfActiveGroups(types);   // Set of all active groups comprised by those types
-
         // Remove type params for types encompassed by an active group.
         groups.forEach(g => types.deleteWhere(t => StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[g]?.includes(t) ?? false));
-
-        return new Set<IMatchParam>([
-            ...[...types].map(t => ({ type: t })),
-            ...[...groups].map(g => ({ group: g }))
-        ]);
+        return new Set<IMatchParam>(unflattenMatchParams([...types, ...groups]));
     }
     /**
      * Return set of unique parameters (types and active groups) in then given containers, type-union style
@@ -212,15 +181,7 @@ export default class TransferHandler {
         const types = this.setOfTypes(X);               // Set of all types present in the thing.
         const groups = this.setOfActiveGroups(types);   // Set of all active groups comprised by those types
         // Remove type params for types encompassed by an active group.
-        groups.forEach(g =>
-            types.deleteWhere(t =>
-                StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[g]?.includes(t) ?? false));
-
-
-        // if(GLOBALCONFIG.log_info) {
-        //     StaticHelper.QS_LOG.info(`Resolved params: (Flat) [TYPES, GROUPS]`);
-        //     console.log([[...types], [...groups]]);
-        // }
+        groups.forEach(g => types.deleteWhere(t => StaticHelper.QS_INSTANCE.activeMatchGroupsFlattened[g]?.includes(t) ?? false));
         return new Set<MatchParamFlat>([...types, ...groups]);
     }
 
@@ -232,22 +193,15 @@ export default class TransferHandler {
      * @returns {ITransferItemMatch[]} List of matches.
      */
     public static getMatches(A: ThingWithContents[], B: ThingWithContents[], filter: IMatchParam[] = []): IMatchParam[] {
-        //StaticHelper.MaybeLog.info(`GET MATCHES:: ${A}  ${B}`);
-
         // setOfParams will favor providing a group over a type if the group exists. If an item is present, it has no active group.
         const AParams = TransferHandler.setOfFlatParams(A);
         const BParams = TransferHandler.setOfFlatParams(B);
         if(filter.length) {
-            const fgrp = this.groupifyParameters(filter);
+            const fgrp = groupifyParameters(filter);
             AParams.retainWhere(param => fgrp.has(param));
         }
         AParams.retainWhere(param => BParams.has(param));
-        if(GLOBALCONFIG.log_info) {
-            StaticHelper.MaybeLog.info(`GET MATCHES:: REMAINING::`);
-            console.log(AParams);
-        }
-
-        return [...AParams].map(p => (typeof p === "string") ? { group: p } : { type: p });
+        return unflattenMatchParams([...AParams]);
     }
 
     /**
@@ -263,7 +217,7 @@ export default class TransferHandler {
         const AParams = TransferHandler.setOfFlatParams(A);
         const BParams = TransferHandler.setOfFlatParams(B);
         if(filter.length) {
-            const fgrouped = this.groupifyParameters(filter);
+            const fgrouped = groupifyParameters(filter);
             return [...AParams].some(param => fgrouped.has(param) && BParams.has(param));
         }
         return [...AParams].some(param => BParams.has(param));
@@ -277,7 +231,7 @@ export default class TransferHandler {
      */
     public static canMatch(X: ThingWithContents[], params: IMatchParam[]): boolean {
         const xFlat = this.setOfFlatParams(X);
-        return [...this.groupifyParameters(params)].some(p => xFlat.has(p));
+        return [...groupifyParameters(params)].some(p => xFlat.has(p));
     }
 
     public static canFitAny(src: ThingWithContents[], dest: IContainer[], player: Player, filter: IMatchParam[] = []) {
@@ -291,10 +245,10 @@ export default class TransferHandler {
             srcParams.retainWhere(t => t.type === undefined ? true : !ItemManager.isInGroup(t.type, ItemTypeGroup.Storage));
 
         if(filter.length) {
-            const fgrp = this.groupifyParameters(filter);
-            srcParams.retainWhere(p => fgrp.has(p.type ?? p.group));
+            const fgrp = groupifyParameters(filter);
+            srcParams.retainWhere(p => fgrp.has(flattenMatchParams(p)));
         }
-        const srcParamsFlat = [...srcParams].map(p => p.group ?? p.type);
+        const srcParamsFlat = flattenMatchParams([...srcParams]);
 
         // for each destination
         for(const d of dest) {
@@ -302,7 +256,7 @@ export default class TransferHandler {
                 player.island.items.getWeightCapacity(d, undefined) ?? (player.island.isTileFull(d as ITile) ? 0 : Infinity)
             ) - player.island.items.computeContainerWeight(d);
             const matchParams = TransferHandler.setOfParams([d]);
-            matchParams.retainWhere(p => srcParamsFlat.includes(p.group ?? p.type));
+            matchParams.retainWhere(p => srcParamsFlat.includes(flattenMatchParams(p)));
             if([...matchParams].some(param =>
                 remaining > srcItems.reduce((w, it) => // reduce => LightestMatchedItemWeight | Infinity
                     (param.type !== undefined
@@ -330,7 +284,11 @@ export default class TransferHandler {
      * @param {boolean}[nested = false]
      * @returns {ITransferTarget[]}
      */
-    private resolveTargetting(target: THTargettingParam[] | IContainer[], nested: boolean = false, overrideForbidTiles: boolean = false, allowBlockedTiles: boolean = true): ITransferTarget[] {
+    private resolveTargetting(
+        target: THTargettingParam[] | IContainer[],
+        nested: boolean = false,
+        tileOptions?: ITileTargettingOptions
+    ): ITransferTarget[] {
         // Empty input
         if(!target.length) { this._state |= THState.noTargetFlag; return []; }
 
@@ -345,7 +303,7 @@ export default class TransferHandler {
 
             // If a call to getAdjacentContainers will be needed, get it out of the way.
             const nearby: ITransferTarget[] = (target as THTargettingParam[]).some(p => ('doodads' in p || 'tiles' in p))
-                ? validNearby(this.player, overrideForbidTiles)
+                ? validNearby(this.player, tileOptions)
                     .map(c => ({ container: c, type: this.island.items.getContainerReference(c, undefined).crt }))
                 : [];
 
@@ -676,8 +634,8 @@ export default class TransferHandler {
         this.bottomUp = (!!params.bottomUp);
 
         // Resolve target containers.
-        this.sources = this.resolveTargetting(source, true, true);
-        this.destinations = this.resolveTargetting(dest);
+        this.sources = this.resolveTargetting(source, true, SourceTileOptions); 
+        this.destinations = this.resolveTargetting(dest, false, DestinationTileOptions);
 
         // Check collision
         this.sources.forEach(s => {

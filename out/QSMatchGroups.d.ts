@@ -1,4 +1,5 @@
-import { ItemType, ItemTypeGroup } from "game/item/IItem";
+import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
+export declare type ThingWithContents = Pick<IContainer, "containedItems">;
 interface IMatchByType {
     type: ItemType;
     group?: never;
@@ -10,6 +11,13 @@ interface IMatchByGroup {
 export declare type IMatchParam = IMatchByType | IMatchByGroup;
 export declare type MatchParamFlat = ItemType | QSMatchableGroupKey;
 export declare type Matchable = ItemType | ItemTypeGroup;
+export declare function flattenMatchParams(p: IMatchParam): MatchParamFlat;
+export declare function flattenMatchParams(p: IMatchParam[]): MatchParamFlat[];
+export declare function flattenMatchParams(p: Set<IMatchParam>): Set<MatchParamFlat>;
+export declare function unflattenMatchParams(p: MatchParamFlat): IMatchParam;
+export declare function unflattenMatchParams(p: MatchParamFlat[]): IMatchParam[];
+export declare function unflattenMatchParams(p: Set<MatchParamFlat>): Set<IMatchParam>;
+export declare function groupifyParameters(P: IMatchParam[] | Set<IMatchParam> | MatchParamFlat[] | Set<MatchParamFlat>): Set<MatchParamFlat>;
 export declare function getActiveGroups(type: Matchable): QSMatchableGroupKey[];
 export declare function canMatchActiveGroup(type: ItemType, group: QSMatchableGroupKey): boolean;
 export declare enum QSGroupsTranslation {

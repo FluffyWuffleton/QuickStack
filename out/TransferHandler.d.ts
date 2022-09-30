@@ -6,8 +6,13 @@ import { ITile } from "game/tile/ITerrain";
 import TranslationImpl from "language/impl/TranslationImpl";
 import Log from "utilities/Log";
 import { ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
-import { IMatchParam, QSMatchableGroupKey, MatchParamFlat } from "./QSMatchGroups";
-export declare type ThingWithContents = Pick<IContainer, "containedItems">;
+import { IMatchParam, QSMatchableGroupKey, MatchParamFlat, ThingWithContents } from "./QSMatchGroups";
+export interface ITileTargettingOptions {
+    ignoreForbidTiles?: boolean;
+    allowBlockedTiles?: boolean;
+}
+export declare const SourceTileOptions: ITileTargettingOptions;
+export declare const DestinationTileOptions: ITileTargettingOptions;
 export declare function isHeldContainer(player: Player, item: Item): boolean;
 export declare function isStorageType(type: ItemType): boolean;
 export declare function isInHeldContainer(player: Player, item: Item): boolean;
@@ -16,8 +21,8 @@ export declare function playerHasType(player: Player, type: ItemType): boolean;
 export declare function playerHeldContainers(player: Player, type?: ItemType[]): IContainer[];
 export declare function itemTransferAllowed(item: Item): boolean;
 export declare function itemTransferAllowed(items: Item[]): boolean[];
-export declare function validNearby(player: Player, overrideForbidTiles?: boolean, allowBlocked?: boolean): IContainer[];
-export declare function isValidTile(tile: ITile, overrideForbidTiles?: boolean, allowBlocked?: boolean): boolean;
+export declare function validNearby(player: Player, tileOptions?: ITileTargettingOptions): IContainer[];
+export declare function isValidTile(tile: ITile, tileOptions?: ITileTargettingOptions): boolean;
 export declare function isSafeTile(tile: ITile): boolean;
 export declare function TLContainer(c: IContainer, crt: ContainerReferenceType, toFrom: "to" | "from"): TranslationImpl;
 export default class TransferHandler {
@@ -38,8 +43,6 @@ export default class TransferHandler {
     get anySuccess(): boolean;
     get anyPartial(): boolean;
     get anyFailed(): boolean;
-    static groupifyParameters(P: IMatchParam[] | Set<IMatchParam>): Set<MatchParamFlat>;
-    static groupifyFlatParameters(P: MatchParamFlat[] | Set<MatchParamFlat>): Set<MatchParamFlat>;
     static setOfTypes(X: ThingWithContents[]): Set<ItemType>;
     static setOfActiveGroups(Types: Set<ItemType> | ItemType[]): Set<QSMatchableGroupKey>;
     static setOfParams(X: ThingWithContents[]): Set<IMatchParam>;

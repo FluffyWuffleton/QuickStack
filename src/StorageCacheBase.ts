@@ -9,7 +9,7 @@ import { IVector3 } from "utilities/math/IVector";
 import Vector3 from "utilities/math/Vector3";
 import { IMatchParam } from "./QSMatchGroups";
 import StaticHelper from "./StaticHelper";
-import TransferHandler, { isValidTile, itemTransferAllowed } from "./TransferHandler";
+import TransferHandler, { DestinationTileOptions, isValidTile, itemTransferAllowed, SourceTileOptions } from "./TransferHandler";
 import { ContainerHash, isOnOrAdjacent } from "./LocalStorageCache";
 
 type StorageCacheEntityType = Item | Player | Doodad | ITile;
@@ -185,8 +185,8 @@ export class StorageCacheTile extends StorageCacheNearby<ITile> {
     public readonly cRef: IContainer;
     public get fullTreeFlat(): (StorageCacheTile|StorageCacheItem)[] { return this._fullTreeFlat ?? (this._fullTreeFlat = [this, ...this.deepSubs()]) }
 
-    public override isValidSource(): boolean { return isValidTile(this.entity, true, true); }
-    public override isValidDestination(): boolean { return isValidTile(this.entity, false, false); }
+    public override isValidSource(): boolean { return isValidTile(this.entity, SourceTileOptions); }
+    public override isValidDestination(): boolean { return isValidTile(this.entity, DestinationTileOptions); }
     
     public thisPos(): IVector3 { return !('x' in this.entity && 'y' in this.entity && 'z' in this.entity) ? { x: NaN, y: NaN, z: NaN } : this.entity as IVector3; }
     constructor(e: ITile, p: Player) {

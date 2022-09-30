@@ -1,6 +1,8 @@
-import { ItemType, ItemTypeGroup } from "game/item/IItem";
+import { IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
 import ItemManager from "game/item/ItemManager";
 import StaticHelper from "./StaticHelper";
+
+export type ThingWithContents = Pick<IContainer, "containedItems">;
 
 // A generic item-matching parameter based on either ItemType or QSMatchableGroup
 interface IMatchByType { type: ItemType; group?: never; };
@@ -8,6 +10,63 @@ interface IMatchByGroup { type?: never; group: QSMatchableGroupKey; };
 export type IMatchParam = IMatchByType | IMatchByGroup; // Will contain exactly one defined property, 'type' or 'group'
 export type MatchParamFlat = ItemType | QSMatchableGroupKey;
 export type Matchable = ItemType | ItemTypeGroup;
+
+export function flattenMatchParams(p: IMatchParam): MatchParamFlat;
+export function flattenMatchParams(p: IMatchParam[]): MatchParamFlat[];
+export function flattenMatchParams(p: Set<IMatchParam>): Set<MatchParamFlat>;
+export function flattenMatchParams(p: IMatchParam | IMatchParam[] | Set<IMatchParam>): MatchParamFlat | MatchParamFlat[] | Set<MatchParamFlat> {
+    const fMapFcn = (pp: IMatchParam) => pp.group ?? pp.type;
+    if("length" in p) return p.map(fMapFcn);
+    if("size" in p) return p.values().map(fMapFcn).toSet();
+    return fMapFcn(p);
+}
+
+export function unflattenMatchParams(p: MatchParamFlat): IMatchParam;
+export function unflattenMatchParams(p: MatchParamFlat[]): IMatchParam[];
+export function unflattenMatchParams(p: Set<MatchParamFlat>): Set<IMatchParam>;
+export function unflattenMatchParams(p: MatchParamFlat | MatchParamFlat[] | Set<MatchParamFlat>): IMatchParam | IMatchParam[] | Set<IMatchParam> {
+    const ufMapFcn = (pp: MatchParamFlat) => (typeof pp === "string" ? { group: pp } : { type: pp });
+    if(typeof p === "object")
+        if("length" in p) return p.map(ufMapFcn);
+        else return p.values().map(ufMapFcn).toSet();
+    else return ufMapFcn(p);
+}
+
+
+/** 
+ * Take a list of match parameters.
+ * If any item params in the list are member of an active match-group, use the group parameter instead.
+ * Returns a set of flattened parameters.
+ */
+export function groupifyParameters(P: IMatchParam[] | Set<IMatchParam> | MatchParamFlat[] | Set<MatchParamFlat>): Set<MatchParamFlat> {
+    const pSet = new Set<MatchParamFlat>;
+    if(typeof (Array.isArray(P) ? P[0] : P.values().first()) !== "object") // Flat input
+        (P as MatchParamFlat[] | Set<MatchParamFlat>).forEach(param => {
+            if(typeof param === "string") pSet.add(param);
+            else {
+                const grps = getActiveGroups(param);
+                if(grps.length) pSet.addFrom(grps);
+                else pSet.add(param);
+            }
+        });
+    else // Structured input
+        (P as IMatchParam[] | Set<IMatchParam>).forEach(param => {
+            if(param.group) pSet.add(param.group);
+            else {
+                const grps = getActiveGroups(param.type);
+                if(grps.length) pSet.addFrom(grps);
+                else pSet.add(param.type);
+            }
+        });
+    return pSet;
+}
+
+
+
+
+
+
+
 
 /**
  * Returns the keys of the matchable groups in which the provided ItemType or ItemTypeGroup can be found, if any such groups are active. 

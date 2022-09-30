@@ -3,10 +3,10 @@ import Player from "game/entity/player/Player";
 import { ITile } from "game/tile/ITerrain";
 import { IVector3 } from "utilities/math/IVector";
 
-import { MatchParamFlat } from "./QSMatchGroups";
+import { groupifyParameters, MatchParamFlat } from "./QSMatchGroups";
 import StaticHelper from "./StaticHelper";
 import { StorageCachePlayer, StorageCacheTile, StorageCacheDoodad, StorageCacheBase, StorageCacheItem } from "./StorageCacheBase";
-import TransferHandler, { validNearby } from "./TransferHandler";
+import TransferHandler, { DestinationTileOptions, isValidTile, SourceTileOptions, validNearby } from "./TransferHandler";
 
 export type ABCheckedMatch = [match: MatchParamFlat, fitAtoB: boolean, fitBtoA: boolean];
 interface ICheckedRelations { checked: MatchParamFlat[], found: ABCheckedMatch[] };
@@ -75,7 +75,7 @@ export class LocalStorageCache {
             this._nearby.splice(removeIdx, 1); // containers reported by refresh() to no longer be adjacent. Remove.
         });
 
-        validNearby(this._player.entity, true).forEach(adj => {
+        validNearby(this._player.entity, { ignoreForbidTiles: true, allowBlockedTiles: true }).forEach(adj => {
             const adjHash = itemMgr.hashContainer(adj);
             if(!hashes.includes(adjHash)) { // New container. Add it.
                 StaticHelper.MaybeLog.info(`Appending new cache for nearby entity '${this._player.entity.island.items.hashContainer(adj)}'`);
@@ -89,7 +89,10 @@ export class LocalStorageCache {
         return this;
     }
 
-    private locationGroupMembers(g: locationGroup): StorageCacheBase[] {
+    private locationGroupMembers(g: locationGroup.nearby): (StorageCacheDoodad | StorageCacheTile)[];
+    private locationGroupMembers(g: locationGroup.self): (StorageCachePlayer | StorageCacheItem)[];
+    private locationGroupMembers(g: locationGroup): (StorageCacheDoodad | StorageCacheTile)[] | (StorageCachePlayer | StorageCacheItem)[];
+    private locationGroupMembers(g: locationGroup): (StorageCacheDoodad | StorageCacheTile)[] | (StorageCacheItem | StorageCachePlayer)[] {
         switch(g) {
             case locationGroup.nearby: return this._nearby;
             case locationGroup.self: return [this._player, ...this._player.deepSubs()];
@@ -106,7 +109,7 @@ export class LocalStorageCache {
     // Determine if any transferring can be done from A->B (if !reverse) or B->A (if reverse),
     // based on the provided ABCheckedMatch entry and desired matches specified in the filter.
     public CheckedMatchCanTransfer(ABMatch: ABCheckedMatch, filter?: MatchParamFlat[], reverse?: boolean) {
-        const f = (!filter || !filter.length || TransferHandler.groupifyFlatParameters(filter).has(ABMatch[0]));
+        const f = (!filter || !filter.length || groupifyParameters(filter).has(ABMatch[0]));
         return ABMatch[reverse ? 2 : 1] && f;
     }
 
@@ -137,7 +140,7 @@ export class LocalStorageCache {
         const ABHash = this.ABHash(A, B);
 
         // Groupify filter params.
-        if(filter) filter = [...TransferHandler.groupifyFlatParameters(filter)];
+        if(filter) filter = [...groupifyParameters(filter)];
 
 
         // Identify previously checked parameters in this AB pairing, if it exists in the array.
@@ -189,10 +192,15 @@ export class LocalStorageCache {
         return undefined;
     }
 
+    /** 
+     * Return true if transfer possible. Otherwise false.
+     * Input 'reverse' specifies the intended direction of transfer
+     *      Default: Self -> Nearby        Reverse: Nearby -> Self
+     */
     public checkSelfNearby(filter?: MatchParamFlat[], reverse?: true): boolean {
         for(const s of this.locationGroupMembers(locationGroup.self))
             for(const n of this.locationGroupMembers(locationGroup.nearby)) {
-                if(n.iswhat === "ITile" && StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !reverse) continue; // This is a tile and a deposit operation, but tile deposit is forbidden.
+                if(n.iswhat === "ITile" && !isValidTile(n.entity, reverse ? SourceTileOptions : DestinationTileOptions)) continue; // This nearby container is a tile which isn't a valid target under the circumstances.
                 const flip = this.flipHash(s.cHash, n.cHash) ? !reverse : !!reverse;
                 if(this.interrelation(s.cHash, n.cHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip)))
                     return true;
@@ -200,16 +208,21 @@ export class LocalStorageCache {
         return false;
     }
 
-    // Return undefined if AHash isn't found in the cache.
-    // Return true if transfer possible.
+    /** 
+     * Return undefined if AHash isn't found in the cache.
+     * Return true if transfer possible.
+     * Input 'reverse' specifies the intended direction of transfer
+     *      Default: Input -> Nearby        Reverse: Nearby -> Input
+     */
     public checkSpecificNearby(AHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined {
         if(!this.find(AHash)) {
             StaticHelper.MaybeLog.warn(`LocalStorageCache.checkSpecificNearby failed to locate hash '${AHash}'`);
             return undefined; // hash wasn't found.
         }
         for(const n of this.nearby) {
-            if(n.iswhat === "ITile" && StaticHelper.QS_INSTANCE.globalData.optionForbidTiles && !reverse) continue; // This is a tile and a deposit operation, but tile deposit is forbidden.
+            if(n.iswhat === "ITile" && !isValidTile(n.entity, reverse ? SourceTileOptions : DestinationTileOptions)) continue; // This nearby container is a tile which isn't a valid target under the circumstances.
             if(n.cHash === AHash) continue; // This is the same container...
+
 
             const flip = this.flipHash(AHash, n.cHash) ? !reverse : !!reverse;
             if(this.interrelation(AHash, n.cHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip)))
@@ -218,8 +231,12 @@ export class LocalStorageCache {
         return false;
     }
 
-    // Return undefined if BHash isn't found in the cache.
-    // Return true if transfer possible.
+    /** 
+     * Return undefined if BHash isn't found in the cache.
+     * Return true if transfer possible.
+     * Input 'reverse' specifies the intended direction of transfer
+     *      Default: Self -> Input        Reverse: Input -> Self
+     */
     public checkSelfSpecific(BHash: ContainerHash, filter?: MatchParamFlat[], reverse?: true): boolean | undefined {
         if(!this.find(BHash)) {
             StaticHelper.MaybeLog.warn(`LocalStorageCache.checkSelfSpecific failed to locate hash '${BHash}'`);
@@ -235,8 +252,11 @@ export class LocalStorageCache {
         return false;
     }
 
-    // Return undefined if a hash isn't found in the cache.
-    // Return true if transfer possible. Returns false if no transfer possible or hashes are the same.
+    /** 
+     * Return undefined if a hash isn't found in the cache.
+     * Return true if transfer possible. Returns false if no transfer possible or hashes are the same.
+     * Intended direction of transfer is 'from' -> 'to'
+     */
     public checkSpecific(from: ContainerHash | locationGroup, to: ContainerHash | locationGroup, filter?: MatchParamFlat[]): boolean | undefined {
         let fList: string[];
         if(typeof from === "string") {
