@@ -16,7 +16,7 @@ import { IVector3 } from "utilities/math/IVector";
 import { LocalStorageCache } from "./LocalStorageCache";
 import { QSMatchableGroupKey, QSMatchableGroupsFlatType } from "./QSMatchGroups";
 export declare namespace GLOBALCONFIG {
-    const log_info: false;
+    const log_info: true;
     const pause_length: Delay.ShortPause;
     const pass_turn_success: false;
     const force_isusable: false;
@@ -131,6 +131,7 @@ export default class QuickStack extends Mod {
     private _localStorageCache?;
     get localStorageCache(): LocalStorageCache;
     private initCache;
+    protected preLoadHandler(): void;
     onInitialize(): void;
     onUnload(): void;
     protected localPlayerPostMove(): void;
