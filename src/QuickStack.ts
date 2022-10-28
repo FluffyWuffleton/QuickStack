@@ -203,15 +203,13 @@ export default class QuickStack extends Mod {
     private _localStorageCache?: LocalStorageCache; // initialized w/ handlers when accessed by an action.
     public get localStorageCache() { return this._localStorageCache ?? this.initCache(); }
     private initCache(): LocalStorageCache {
-        this["subscribedHandlers"] = false;
         this.registerEventHandlers("unload");
         return this._localStorageCache = new LocalStorageCache(localPlayer);
     }
     
-    //protected override registerEventHandlersOnPreLoad = false;
+    protected override registerEventHandlersOnPreLoad = false;
     @OwnEventHandler(QuickStack, "preLoad", Priority.High)
     protected preLoadHandler() {
-        this["subscribedHandlers"] = true;
         Bind.registerHandlers(this);
     }
     

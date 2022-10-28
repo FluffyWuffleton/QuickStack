@@ -131,6 +131,7 @@ export default class QuickStack extends Mod {
     private _localStorageCache?;
     get localStorageCache(): LocalStorageCache;
     private initCache;
+    protected registerEventHandlersOnPreLoad: boolean;
     protected preLoadHandler(): void;
     onInitialize(): void;
     onUnload(): void;
