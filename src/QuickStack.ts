@@ -33,7 +33,7 @@ import { Priority } from "event/EventEmitter";
 import { IMoveItemOptions } from "game/item/IItemManager";
 
 export namespace GLOBALCONFIG {
-    export const log_info = true as const;
+    export const log_info = false as const;
     export const pause_length = Delay.ShortPause as const;
     export const pass_turn_success = false as const;
     export const force_isusable = false as const;

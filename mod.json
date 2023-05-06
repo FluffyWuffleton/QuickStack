@@ -1,10 +1,10 @@
 {
 	"name": "Quick Stack",
 	"description": "Automatically transfer matching items between locations.",
-	"version": "1.1.7",
+	"version": "1.1.8",
 	"author": "Fluffy",
 	"file": "out/QuickStack",
-	"waywardVersion": "2.13.0-beta",
+	"waywardVersion": "2.13.0",
 	"allowUnlockingMilestones": true,
 	"unloadable": true,
 	"tags": [
