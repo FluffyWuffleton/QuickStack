@@ -146,7 +146,6 @@ export default class QuickStack extends Mod {
     @Register.usableActionTypePlaceholder("All") public readonly UAPAll: UsableActionType;
     @Register.usableActionTypePlaceholder("Type") public readonly UAPType: UsableActionType;
 
-
     // Placeholder types for all UAs that have an associated icon separate from the ones above.
     @Register.usableActionTypePlaceholder("DepositMenu") public readonly UAPDepositMenu: UsableActionType;
     @Register.usableActionTypePlaceholder("CollectMenu") public readonly UAPCollectMenu: UsableActionType;
@@ -209,14 +208,13 @@ export default class QuickStack extends Mod {
 
     protected override registerEventHandlersOnPreLoad = false;
     @OwnEventHandler(QuickStack, "preLoad", Priority.High)
-    protected preLoadHandler() {
-        Bind.registerHandlers(this);
-    }
+    protected preLoadHandler() { Bind.registerHandlers(this); }
 
-    public override onInitialize(): void {
+    @EventHandler(EventBus.Game, "postFieldOfView")
+    protected postFieldOfView(): void {
         this.refreshMatchGroupsArray();
     }
-
+    
     public override onUnload(): void {
         delete this._localStorageCache;
         this._localStorageCache = undefined;
@@ -284,7 +282,7 @@ export default class QuickStack extends Mod {
     @Mod.globalData<QuickStack>("Quick Stack") public globalData: IQSGlobalData;
 
     public override initializeGlobalData(data?: IQSGlobalData): IQSGlobalData {
-        const retData: IQSGlobalData = { // Blank slate, fully initialized, to be updated according to data where present.
+        const retData: IQSGlobalData = { // Blank slate, fully initialized, to be updated from to 'data' where it's defined.
             optionTopDown: false,
             optionForbidTiles: false,
             optionKeepContainers: false,
@@ -322,7 +320,7 @@ export default class QuickStack extends Mod {
         this._activeMatchGroupsKeys = [];
         this._activeMatchGroupsFlattened = {};
         this._anyMatchgroupsActive = false;
-            (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[]).forEach(KEY => {
+        (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[]).forEach(KEY => {
                 if(this.globalData.activeMatchGroups[KEY]) {
                     this._anyMatchgroupsActive = true;
                     this._activeMatchGroupsKeys.push(KEY);
@@ -335,6 +333,7 @@ export default class QuickStack extends Mod {
                 }
             });
 
+
         if(GLOBALCONFIG.log_info) {
             QuickStack.LOG.info(`Updated match groups.`);
             console.log(this._activeMatchGroupsKeys);
@@ -342,6 +341,7 @@ export default class QuickStack extends Mod {
         }
 
         this._localStorageCache?.setOutdated();
+
     }
 
     // Option section

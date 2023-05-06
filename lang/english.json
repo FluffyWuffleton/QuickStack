@@ -162,6 +162,8 @@
             ]
         },
         "bindable": {
+            "modQuickStackDeposit": "Deposit submenu",
+            "modQuickStackCollect": "Collect submenu",
             "modQuickStackStackAllMainNear": "Deposit nearby from main inventory",
             "modQuickStackStackAllSelfNear": "Deposit nearby from inventory and bags",
             "modQuickStackStackAllNearMain": "Restock main inventory from nearby",

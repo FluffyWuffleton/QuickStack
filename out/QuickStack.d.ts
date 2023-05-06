@@ -133,8 +133,7 @@ export default class QuickStack extends Mod {
     private initCache;
     protected registerEventHandlersOnPreLoad: boolean;
     protected preLoadHandler(): void;
-    onInitialize(): void;
-    onLoad(): void;
+    protected postFieldOfView(): void;
     onUnload(): void;
     protected outdatedNearby(): void;
     protected outdatedPlayer(): void;
@@ -150,7 +149,7 @@ export default class QuickStack extends Mod {
     get activeMatchGroupsKeys(): QSMatchableGroupKey[];
     private _anyMatchgroupsActive;
     get anyMatchgroupsActive(): boolean;
-    refreshMatchGroupsArray(initOnly?: boolean): void;
+    refreshMatchGroupsArray(): void;
     constructOptionsSection(section: Component): void;
 }
 export {};
