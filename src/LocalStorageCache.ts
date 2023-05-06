@@ -1,12 +1,12 @@
 import Doodad from "game/doodad/Doodad";
 import Player from "game/entity/player/Player";
-import { ITile } from "game/tile/ITerrain";
 import { IVector3 } from "utilities/math/IVector";
 
 import { groupifyParameters, MatchParamFlat } from "./QSMatchGroups";
 import StaticHelper from "./StaticHelper";
 import { StorageCachePlayer, StorageCacheTile, StorageCacheDoodad, StorageCacheBase, StorageCacheItem } from "./StorageCacheBase";
 import TransferHandler, { DestinationTileOptions, isValidTile, SourceTileOptions, validNearby } from "./TransferHandler";
+import { ITileContainer } from "game/tile/ITerrain";
 
 export type ABCheckedMatch = [match: MatchParamFlat, fitAtoB: boolean, fitBtoA: boolean];
 interface ICheckedRelations { checked: MatchParamFlat[], found: ABCheckedMatch[] };
@@ -20,6 +20,7 @@ export class LocalStorageCache {
     private _player: StorageCachePlayer;
     private _nearby: (StorageCacheTile | StorageCacheDoodad)[] = [];
     private _nearbyOutdated: boolean = true;
+    private _freeze: boolean = false;
 
     private _interrelations: { [ABHash: string]: ICheckedRelations } = {};
     private _fullTreeFlat?: StorageCacheBase[];
@@ -27,6 +28,18 @@ export class LocalStorageCache {
     public get player(): StorageCachePlayer { return this._player.refresh(); }
     public get playerNoUpdate(): StorageCachePlayer { return this._player; }
     public get nearby(): (StorageCacheTile | StorageCacheDoodad)[] { return this.refreshNearby()._nearby; }
+
+    public get frozen(): boolean { return this._freeze; }
+    public freeze(updateFirst: boolean = true) {
+        if(updateFirst) this.refreshNearby();
+        for(const c of [this._player, ...this._nearby]) c.freeze(updateFirst);
+        this._freeze = true;
+    }
+    public thaw() {
+        for(const c of [this._player, ...this._nearby]) c.thaw(true);
+        this._freeze = false;
+    }
+
 
     private get fullTreeFlat(): StorageCacheBase[] {
         return this._fullTreeFlat ??
@@ -64,23 +77,27 @@ export class LocalStorageCache {
 
     // Update the list of nearby entities: remove out-of-range entities, and flag the caches for new/remaining entities as outdated.
     private refreshNearby(): this {
-        if(!this._nearbyOutdated) return this;
+        if(!this._nearbyOutdated || this._freeze) return this;
 
         const hashes: string[] = this._nearby.map(n => n.cHash);
         const itemMgr = this._player.entity.island.items;
 
-        this._nearby.map((n, i) => n.refreshIfNear() ? undefined : i).filterNullish().reverse().forEach(removeIdx => {
-            StaticHelper.MaybeLog.info(`Removing cache for distant entity '${this._nearby[removeIdx].cHash}' at index ${removeIdx}.`);
-            this.purgeRelations(this._nearby[removeIdx]);
-            this._nearby.splice(removeIdx, 1); // containers reported by refresh() to no longer be adjacent. Remove.
-        });
+        this._nearby // update near, remove distant
+            .map((n, i) => n.refreshIfNear() ? undefined : i)
+            .filterNullish().reverse()
+            .forEach(removeIdx => {
+                StaticHelper.MaybeLog.info(`Removing cache for distant entity '${this._nearby[removeIdx].cHash}' at index ${removeIdx}.`);
+                this.purgeRelations(this._nearby[removeIdx]);
+                this._nearby.splice(removeIdx, 1); // containers reported by refresh() to no longer be adjacent. Remove.
+            });
 
+        // Append new near
         validNearby(this._player.entity, { ignoreForbidTiles: true, allowBlockedTiles: true }).forEach(adj => {
             const adjHash = itemMgr.hashContainer(adj);
-            if(!hashes.includes(adjHash)) { // New container. Add it.
+            if(!hashes.includes(adjHash)) {
                 StaticHelper.MaybeLog.info(`Appending new cache for nearby entity '${this._player.entity.island.items.hashContainer(adj)}'`);
                 if(Doodad.is(adj)) this._nearby.push(new StorageCacheDoodad(adj, this._player.entity));
-                else if(itemMgr.isTileContainer(adj) && "data" in adj) this._nearby.push(new StorageCacheTile(adj as ITile, this._player.entity));
+                else if(itemMgr.isTileContainer(adj)) this._nearby.push(new StorageCacheTile(this._player.entity.island.getTileFromPoint(adj as ITileContainer), this._player.entity));
                 else StaticHelper.MaybeLog.warn(`FAILED TO HANDLE ADJACENT CONTAINER: ${adj}'`);
             }
         });
@@ -200,7 +217,7 @@ export class LocalStorageCache {
     public checkSelfNearby(filter?: MatchParamFlat[], reverse?: true): boolean {
         for(const s of this.locationGroupMembers(locationGroup.self))
             for(const n of this.locationGroupMembers(locationGroup.nearby)) {
-                if(n.iswhat === "ITile" && !isValidTile(n.entity, reverse ? SourceTileOptions : DestinationTileOptions)) continue; // This nearby container is a tile which isn't a valid target under the circumstances.
+                if(n.iswhat === "Tile" && !isValidTile(n.entity, reverse ? SourceTileOptions : DestinationTileOptions)) continue; // This nearby container is a tile which isn't a valid target under the circumstances.
                 const flip = this.flipHash(s.cHash, n.cHash) ? !reverse : !!reverse;
                 if(this.interrelation(s.cHash, n.cHash, filter)?.found.some(checkedMatch => this.CheckedMatchCanTransfer(checkedMatch, filter, flip)))
                     return true;
@@ -220,7 +237,7 @@ export class LocalStorageCache {
             return undefined; // hash wasn't found.
         }
         for(const n of this.nearby) {
-            if(n.iswhat === "ITile" && !isValidTile(n.entity, reverse ? SourceTileOptions : DestinationTileOptions)) continue; // This nearby container is a tile which isn't a valid target under the circumstances.
+            if(n.iswhat === "Tile" && !isValidTile(n.entity, reverse ? SourceTileOptions : DestinationTileOptions)) continue; // This nearby container is a tile which isn't a valid target under the circumstances.
             if(n.cHash === AHash) continue; // This is the same container...
 
 

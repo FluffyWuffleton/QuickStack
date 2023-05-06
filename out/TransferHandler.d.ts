@@ -1,8 +1,8 @@
 import Player from "game/entity/player/Player";
 import Island from "game/island/Island";
-import { ContainerReferenceType, IContainer, ItemType } from "game/item/IItem";
+import { IContainer, ItemType } from "game/item/IItem";
 import Item from "game/item/Item";
-import { ITile } from "game/tile/ITerrain";
+import Tile from "game/tile/Tile";
 import TranslationImpl from "language/impl/TranslationImpl";
 import Log from "utilities/Log";
 import { ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
@@ -22,9 +22,9 @@ export declare function playerHeldContainers(player: Player, type?: ItemType[]):
 export declare function itemTransferAllowed(item: Item): boolean;
 export declare function itemTransferAllowed(items: Item[]): boolean[];
 export declare function validNearby(player: Player, tileOptions?: ITileTargettingOptions): IContainer[];
-export declare function isValidTile(tile: ITile, tileOptions?: ITileTargettingOptions): boolean;
-export declare function isSafeTile(tile: ITile): boolean;
-export declare function TLContainer(c: IContainer, crt: ContainerReferenceType, toFrom: "to" | "from"): TranslationImpl;
+export declare function isValidTile(tile: Tile, tileOptions?: ITileTargettingOptions): boolean;
+export declare function isSafeTile(tile: Tile): boolean;
+export declare function TLContainer(tgt: ITransferTarget, toFrom: "to" | "from"): TranslationImpl;
 export default class TransferHandler {
     readonly player: Player;
     readonly sources: ITransferTarget[];

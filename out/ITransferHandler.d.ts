@@ -1,4 +1,5 @@
 import { ContainerReferenceType, IContainer } from "game/item/IItem";
+import { ContainerHash } from "./LocalStorageCache";
 import { IMatchParam } from "./QSMatchGroups";
 export declare enum THState {
     idle = 0,
@@ -33,6 +34,7 @@ export interface ITHTargetSpecific extends ITHTargetRecursive {
 export declare type THTargettingParam = (ITHTargetSelf) | (ITHTargetTiles) | (ITHTargetDoodads) | (ITHTargetSpecific);
 export interface ITransferTarget {
     container: IContainer;
+    cHash: ContainerHash;
     type: ContainerReferenceType;
     children?: ITransferTarget[];
     parent?: ITransferTarget;

@@ -17,11 +17,15 @@ export declare class LocalStorageCache {
     private _player;
     private _nearby;
     private _nearbyOutdated;
+    private _freeze;
     private _interrelations;
     private _fullTreeFlat?;
     get player(): StorageCachePlayer;
     get playerNoUpdate(): StorageCachePlayer;
     get nearby(): (StorageCacheTile | StorageCacheDoodad)[];
+    get frozen(): boolean;
+    freeze(updateFirst?: boolean): void;
+    thaw(): void;
     private get fullTreeFlat();
     interrelation(A: ContainerHash, B: ContainerHash, filter?: MatchParamFlat[]): ICheckedRelations | undefined;
     setOutdated(K?: "player" | "nearby"): void;

@@ -1,6 +1,5 @@
 import { ActionType } from "game/entity/action/IAction";
 import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
-import Player from "game/entity/player/Player";
 import Message from "language/dictionary/Message";
 import Mod from "mod/Mod";
 import Bindable from "ui/input/Bindable";
@@ -15,6 +14,7 @@ import Component from "ui/component/Component";
 import { IVector3 } from "utilities/math/IVector";
 import { LocalStorageCache } from "./LocalStorageCache";
 import { QSMatchableGroupKey, QSMatchableGroupsFlatType } from "./QSMatchGroups";
+import { IMoveItemOptions } from "game/item/IItemManager";
 export declare namespace GLOBALCONFIG {
     const log_info: true;
     const pause_length: Delay.ShortPause;
@@ -134,15 +134,13 @@ export default class QuickStack extends Mod {
     protected registerEventHandlersOnPreLoad: boolean;
     protected preLoadHandler(): void;
     onInitialize(): void;
+    onLoad(): void;
     onUnload(): void;
-    protected localPlayerPostMove(): void;
-    protected localPlayerChangeZ(): void;
-    protected localPlayerItemAdd(): void;
-    protected localPlayerItemRemove(): void;
-    protected localPlayerItemUpdate(): void;
-    protected localPlayerIDChanged(host: Player): void;
-    protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void;
-    protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void;
+    protected outdatedNearby(): void;
+    protected outdatedPlayer(): void;
+    protected localPlayerIDChanged(): void;
+    protected itemsContainerItemAdd(host: ItemManager, _item: Item[], c: IContainer, opt?: IMoveItemOptions): void;
+    protected itemsContainerItemRemove(host: ItemManager, _item: Item[], c: IContainer | undefined, cpos: IVector3 | undefined): void;
     protected containerUpdated(items: ItemManager, container: IContainer | undefined, cpos: IVector3 | undefined): void;
     globalData: IQSGlobalData;
     initializeGlobalData(data?: IQSGlobalData): IQSGlobalData;
@@ -152,7 +150,7 @@ export default class QuickStack extends Mod {
     get activeMatchGroupsKeys(): QSMatchableGroupKey[];
     private _anyMatchgroupsActive;
     get anyMatchgroupsActive(): boolean;
-    refreshMatchGroupsArray(): void;
+    refreshMatchGroupsArray(initOnly?: boolean): void;
     constructOptionsSection(section: Component): void;
 }
 export {};

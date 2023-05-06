@@ -1,7 +1,6 @@
 import { ActionType } from "game/entity/action/IAction";
 import { UsableActionSet } from "game/entity/action/usable/actions/UsableActionsMain";
 import { UsableActionGenerator } from "game/entity/action/usable/UsableActionRegistrar";
-import Player from "game/entity/player/Player";
 import Message from "language/dictionary/Message";
 import Mod from "mod/Mod";
 import Register, { Registry } from "mod/ModRegistry";
@@ -17,11 +16,11 @@ import Item from "game/item/Item";
 import ItemManager from "game/item/ItemManager";
 import Dictionary from "language/Dictionary";
 import listSegment from "language/segment/ListSegment";
-import Translation from "language/Translation";
+import Translation, { Article } from "language/Translation";
 import { CheckButton } from "ui/component/CheckButton";
 import Component from "ui/component/Component";
 import Details from "ui/component/Details";
-import { TooltipLocation } from "ui/component/IComponent";
+//import { TooltipLocation } from "ui/component/IComponent";
 import Text from "ui/component/Text";
 import Bind from "ui/input/Bind";
 import { IVector3 } from "utilities/math/IVector";
@@ -31,6 +30,7 @@ import { execSAMN, execSANM, execSANSe, execSASeN, UsableActionsQuickStack } fro
 import { isOnOrAdjacent, LocalStorageCache } from "./LocalStorageCache";
 import { QSGroupsTranslation, QSGroupsTranslationKey, QSMatchableGroupKey, QSMatchableGroups, QSMatchableGroupsFlatType } from "./QSMatchGroups";
 import { Priority } from "event/EventEmitter";
+import { IMoveItemOptions } from "game/item/IItemManager";
 
 export namespace GLOBALCONFIG {
     export const log_info = true as const;
@@ -195,7 +195,7 @@ export default class QuickStack extends Mod {
     @Register.bindable("Like", IInput.key("KeyC", "Shift")) public readonly bindableLike: Bindable; // for actions to/from similar subcontainer
     @Register.bindable("Here", IInput.key("KeyH")) public readonly bindableHere: Bindable; // for actions to/from selected item's location
     @Register.bindable("Near", IInput.key("KeyN")) public readonly bindableNear: Bindable; // for actions to/from nearby
-    
+
     //////////////////////////////////////////////////////////////////////////////////////////////
     // Events for storage cache maintenance
     //
@@ -206,66 +206,43 @@ export default class QuickStack extends Mod {
         this.registerEventHandlers("unload");
         return this._localStorageCache = new LocalStorageCache(localPlayer);
     }
-    
+
     protected override registerEventHandlersOnPreLoad = false;
     @OwnEventHandler(QuickStack, "preLoad", Priority.High)
     protected preLoadHandler() {
         Bind.registerHandlers(this);
     }
-    
+
     public override onInitialize(): void {
         this.refreshMatchGroupsArray();
     }
-    
+
     public override onUnload(): void {
         delete this._localStorageCache;
         this._localStorageCache = undefined;
     }
-    
+
     @EventHandler(EventBus.LocalPlayer, "postMove")
-    protected localPlayerPostMove(): void {
-        QuickStack.MaybeLog.info(`\t\tEVENT TRIGGERED -- localPlayer.postMove`);
-        this._localStorageCache!.setOutdated("nearby");
-    }
     @EventHandler(EventBus.LocalPlayer, "changeZ")
-    protected localPlayerChangeZ(): void {
-        QuickStack.MaybeLog.info(`\t\tEVENT TRIGGERED -- localPlayer.changeZ`);
-        this._localStorageCache!.setOutdated("nearby");
-    }
+    protected outdatedNearby(): void { this._localStorageCache!.setOutdated("nearby"); }
+
     @EventHandler(EventBus.LocalPlayer, "inventoryItemAdd")
-    protected localPlayerItemAdd(): void {
-        QuickStack.MaybeLog.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemAdd`);
-        this._localStorageCache!.setOutdated("player");
-    }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemRemove")
-    protected localPlayerItemRemove(): void {
-        QuickStack.MaybeLog.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemRemove`);
-        this._localStorageCache!.setOutdated("player");
-    }
     @EventHandler(EventBus.LocalPlayer, "inventoryItemUpdate")
-    protected localPlayerItemUpdate(): void {
-        QuickStack.MaybeLog.info(`\t\tEVENT TRIGGERED -- localPlayer.inventoryItemUpdate`);
-        this._localStorageCache!.setOutdated("player");
-    }
+    protected outdatedPlayer(): void { this._localStorageCache!.setOutdated("player"); }
 
     @EventHandler(EventBus.LocalPlayer, "idChanged")
-    protected localPlayerIDChanged(host: Player): void {
-        QuickStack.MaybeLog.info(`\t\tEVENT TRIGGERED -- localPlayer.idChanged`);
-        if(host !== localPlayer)
-            this._localStorageCache!.playerNoUpdate.updateHash();
-    }
+    protected localPlayerIDChanged(): void { this._localStorageCache!.playerNoUpdate.updateHash(); }
 
     // @EventHandler(EventBus.LocalIsland, "tileUpdate") // Tile item events are handled through containerItem events.
 
     @EventHandler(EventBus.ItemManager, "containerItemAdd")
-    protected itemsContainerItemAdd(host: ItemManager, _item: Item, c: IContainer): void {
-        QuickStack.MaybeLog.info(`\t\tEVENT TRIGGERED -- ItemManager.containerItemAdd\t\t'${_item.getName()}' to '${c ? host.hashContainer(c) : "undefined"}'`);
+    protected itemsContainerItemAdd(host: ItemManager, _item: Item[], c: IContainer, opt?: IMoveItemOptions): void {
         this.containerUpdated(host, c, undefined);
     }
 
     @EventHandler(EventBus.ItemManager, "containerItemRemove")
-    protected itemsContainerItemRemove(host: ItemManager, _item: Item, c: IContainer | undefined, cpos: IVector3 | undefined): void {
-        QuickStack.MaybeLog.info(`\t\tEVENT TRIGGERED -- ItemManager.containerItemRemove\t\t'${_item.getName()}' from '${c ? host.hashContainer(c) : "undefined"}'`);
+    protected itemsContainerItemRemove(host: ItemManager, _item: Item[], c: IContainer | undefined, cpos: IVector3 | undefined): void {
         this.containerUpdated(host, c, cpos);
     }
 
@@ -286,7 +263,7 @@ export default class QuickStack extends Mod {
             cpos = container as unknown as IVector3;
         }
         if(cpos !== undefined) {
-            if(isOnOrAdjacent(cpos, this._localStorageCache!.playerNoUpdate.entity.getPoint())) {
+            if(isOnOrAdjacent(cpos, this._localStorageCache!.playerNoUpdate.entity.point)) {
                 const found = container ? this._localStorageCache!.findNearby(items.hashContainer(container)) : undefined;
                 if(!!found) {
                     QuickStack.MaybeLog.info(`QuickStack.containerUpdated: Updated container '${found.cHash}' identified in cache. Flagging.`);
@@ -345,18 +322,19 @@ export default class QuickStack extends Mod {
         this._activeMatchGroupsKeys = [];
         this._activeMatchGroupsFlattened = {};
         this._anyMatchgroupsActive = false;
-        (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[]).forEach(KEY => {
-            if(this.globalData.activeMatchGroups[KEY]) {
-                this._anyMatchgroupsActive = true;
-                this._activeMatchGroupsKeys.push(KEY);
-                this._activeMatchGroupsFlattened[KEY] = [...
-                    QSMatchableGroups[KEY].flatMap(matchable =>
-                        matchable in ItemTypeGroup
-                            ? [...ItemManager.getGroupItems(matchable as ItemTypeGroup)]
-                            : matchable as ItemType
-                    )];
-            }
-        });
+            (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[]).forEach(KEY => {
+                if(this.globalData.activeMatchGroups[KEY]) {
+                    this._anyMatchgroupsActive = true;
+                    this._activeMatchGroupsKeys.push(KEY);
+                    this._activeMatchGroupsFlattened[KEY] = [...
+                        QSMatchableGroups[KEY].flatMap(matchable =>
+                            matchable in ItemTypeGroup
+                                ? [...ItemManager.getGroupItems(matchable as ItemTypeGroup)]
+                                : matchable as ItemType
+                        )];
+                }
+            });
+
         if(GLOBALCONFIG.log_info) {
             QuickStack.LOG.info(`Updated match groups.`);
             console.log(this._activeMatchGroupsKeys);
@@ -374,7 +352,7 @@ export default class QuickStack extends Mod {
             const descKey = `${KEY}_desc` as const;
             new CheckButton()
                 .setTooltip(!(descKey in QSTranslation) ? undefined : ttip => ttip
-                    .setLocation(TooltipLocation.CenterRight)
+                    .setLocation("aligned right", "center")
                     .setText(this.TLGetMain(descKey as keyof typeof QSTranslation)
                         .withSegments(listSegment)))
                 .setText(this.TLGetMain(KEY))
@@ -388,14 +366,14 @@ export default class QuickStack extends Mod {
             .setSummary(btn => btn
                 .setText(this.TLGetMain("optionMatchSimilar"))
                 .setTooltip(ttip => ttip
-                    .setLocation(TooltipLocation.CenterRight)
+                    .setLocation("aligned right", "center")
                     .setText(this.TLGetMain("optionMatchSimilar_desc"))))
             .setBlock(true)
             .append([...
                 (Object.keys(QSMatchableGroups) as QSMatchableGroupKey[]).map(KEY => new CheckButton()
                     .setText(this.TLGetGroup(KEY))
                     .setTooltip(ttip => ttip
-                        .setLocation(TooltipLocation.Mouse)
+                        .setLocation("mouse")
                         .addBlock(ttblock => ttblock
                             .setTitle(t => t.setText(this.TLGetGroup("MatchGroupIncludes")))
                             .append([...QSMatchableGroups[KEY]
@@ -404,7 +382,7 @@ export default class QuickStack extends Mod {
                                     .setStyle("text-indent", "-5ch")
                                     .append(new Text()
                                         .setText((matchable in ItemType ? this.TLGetGroup("ItemTypeX") : this.TLGetGroup("ItemGroupX"))
-                                            .addArgs(ItemManager.getItemTypeGroupName(matchable, false, 1)))))
+                                            .addArgs(ItemManager.getItemTypeGroupName(matchable, Article.None, 1)))))
                             ])
                         ))
                     .setRefreshMethod(() => !!this.globalData.activeMatchGroups[KEY])

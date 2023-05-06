@@ -3,7 +3,8 @@ import Player from "game/entity/player/Player";
 import { IContainer } from "game/item/IItem";
 import Item from "game/item/Item";
 import ItemManager from "game/item/ItemManager";
-import { ITile, ITileContainer } from "game/tile/ITerrain";
+import { ITileContainer } from "game/tile/ITerrain";
+import Tile from "game/tile/Tile";
 import { Direction } from "utilities/math/Direction";
 import { IVector3 } from "utilities/math/IVector";
 import Vector3 from "utilities/math/Vector3";
@@ -12,8 +13,8 @@ import StaticHelper from "./StaticHelper";
 import TransferHandler, { DestinationTileOptions, isValidTile, itemTransferAllowed, SourceTileOptions } from "./TransferHandler";
 import { ContainerHash, isOnOrAdjacent } from "./LocalStorageCache";
 
-type StorageCacheEntityType = Item | Player | Doodad | ITile;
-type StorageCacheEntityTypeString = "Item" | "Player" | "Doodad" | "ITile";
+type StorageCacheEntityType = Item | Player | Doodad | Tile;
+type StorageCacheEntityTypeString = "Item" | "Player" | "Doodad" | "Tile";
 
 export type StorageCacheAny = StorageCacheItem | StorageCachePlayer | StorageCacheDoodad | StorageCacheTile;
 
@@ -25,19 +26,31 @@ export abstract class StorageCacheBase<T extends StorageCacheEntityType = Storag
 
     private _main: Set<IMatchParam>;            // Matchable content parameters for this entity's top-level inventory.
     private _subs: StorageCacheItem[];          // Array of subcaches for any subcontainers found in this entity's inventory.
+    private _freeze: boolean = false;           // Outdatedness is ignored when frozen. Used when transferring to forcibly preserve tile references.
     protected _outdated: boolean = true;        // Update parameters on next get?
+    
     protected _fullTreeFlat?: (this|StorageCacheItem)[];  // Flat array containing this cache and all recursively nested subcaches.
     
     public isValidSource(): boolean { return true; }      // Does this cache represent a valid transfer source? (nothing on fire, not a forbidden tile, etc)
     public isValidDestination(): boolean { return true;}  // Does this cache represent a valid transfer destination? (valid source && not a tile with blocking doodads)
-
+    
     public get main(): Set<IMatchParam> { return this.refresh()._main; }
     public get subs(): StorageCacheItem[] { return this.refresh()._subs; }
+    public get frozen(): boolean { return this._freeze; }
     public get subsNoUpdate(): StorageCacheItem[] { return this._subs; }
     public abstract get fullTreeFlat(): (this|StorageCacheAny)[];
-
-    //public get unrolled(): Set<IMatchParam> { this.updateUnrolled(); return this._unrolled; }
     public get outdated(): boolean { return this._outdated; }
+    
+    public freeze(updateFirst: boolean = true) { 
+        if(updateFirst) this.refresh();
+        for(const s of this._subs) s.freeze(updateFirst);
+        this._freeze = true;
+    }
+    public thaw(updateNow?: boolean) {
+        for(const s of this._subs) s.thaw(updateNow);
+        this._freeze = false;
+        if(updateNow) this.refresh()
+    }
 
     // Returns true if any target caches were not already flagged as outdated
     public setOutdated(recursive?: true): boolean {
@@ -68,7 +81,7 @@ export abstract class StorageCacheBase<T extends StorageCacheEntityType = Storag
     }
 
     /**
-     * If 'outdated' flag is set..
+     * If 'outdated' flag is set and cache is not frozen..
      *      Update the top-level contents of this cache (_main).
      *      Update its list of subcaches, and mark them as outdated.
      *      Clear top-level outdated flag.
@@ -76,7 +89,7 @@ export abstract class StorageCacheBase<T extends StorageCacheEntityType = Storag
      * @return {this}
      **/
     protected refresh(protect?: true): this {
-        if(!this._outdated) return this;
+        if(!this._outdated || this._freeze) return this;
 
         StaticHelper.MaybeLog.info(`StorageCacheBase.refresh(): Updating outdated cache for '${this.cHash}'`);
         if(!this.cRef.containedItems) this._main.clear()
@@ -116,7 +129,7 @@ export abstract class StorageCacheBase<T extends StorageCacheEntityType = Storag
  * Superclass for storage cache of nearby doodad or tile, with information about its relation to the player.
  */
 
-abstract class StorageCacheNearby<T extends ITile | Doodad> extends StorageCacheBase<T> {
+abstract class StorageCacheNearby<T extends Tile | Doodad> extends StorageCacheBase<T> {
     readonly nearWhom: Player; // The player adjacent to this object, for whom the cache was generated 
     private _relation: Direction.Cardinal | Direction.None = Direction.None; // Relative position to the player for whom this cache was generated 
     public get relation(): Direction.Cardinal | Direction.None { this.refreshRelation(); return this._relation; }
@@ -126,7 +139,7 @@ abstract class StorageCacheNearby<T extends ITile | Doodad> extends StorageCache
      * Returns true if the object is still adjacent to the player, false otherwise.
      */
     protected refreshRelation(): boolean {
-        const ppos = this.nearWhom.getPoint();
+        const ppos = this.nearWhom.point;
         const thisPos = this.thisPos();
 
         const diff = { x: thisPos.x - ppos.x, y: thisPos.y - ppos.y, z: thisPos.z - ppos.z };
@@ -180,8 +193,8 @@ export class StorageCachePlayer extends StorageCacheBase<Player> {
     }
 }
 
-export class StorageCacheTile extends StorageCacheNearby<ITile> {
-    public readonly iswhat = "ITile";
+export class StorageCacheTile extends StorageCacheNearby<Tile> {
+    public readonly iswhat = "Tile";
     public readonly cRef: IContainer;
     public get fullTreeFlat(): (StorageCacheTile|StorageCacheItem)[] { return this._fullTreeFlat ?? (this._fullTreeFlat = [this, ...this.deepSubs()]) }
 
@@ -189,8 +202,8 @@ export class StorageCacheTile extends StorageCacheNearby<ITile> {
     public override isValidDestination(): boolean { return isValidTile(this.entity, DestinationTileOptions); }
     
     public thisPos(): IVector3 { return !('x' in this.entity && 'y' in this.entity && 'z' in this.entity) ? { x: NaN, y: NaN, z: NaN } : this.entity as IVector3; }
-    constructor(e: ITile, p: Player) {
-        super(e, p, p.island.items.hashContainer(e));
+    constructor(e: Tile, p: Player) {
+        super(e, p, p.island.items.hashContainer(e.tileContainer));
         this.cRef = e as ITileContainer;
     }
 }
@@ -202,6 +215,6 @@ export class StorageCacheDoodad extends StorageCacheNearby<Doodad> {
     public thisPos(): IVector3 { return this.entity as IVector3; }
     constructor(e: Doodad, p: Player) {
         super(e, p, p.island.items.hashContainer(e as IContainer));
-        this.cRef = e;
+        this.cRef = (e as IContainer);
     }
 }

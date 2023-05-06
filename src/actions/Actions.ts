@@ -65,7 +65,10 @@ export const StackAction = new Action(ActionArgument.Array, ActionArgument.Array
         sFlag: { failed: boolean } | undefined,
         suppress: { report?: true, delay?: true } | undefined
     ) => {
-        if(TransferHandler.MakeAndRun(action.executor, src, dest, filter, StaticHelper.MaybeLog, sFlag, suppress)) {
+        StaticHelper.QSLSC.freeze();
+        const didSomething = TransferHandler.MakeAndRun(action.executor, src, dest, filter, StaticHelper.MaybeLog, sFlag, suppress)
+        StaticHelper.QSLSC.thaw();
+        if(didSomething) {
             if(!suppress?.delay) action.setDelay(GLOBALCONFIG.pause_length);
             action.setUpdateTablesAndWeight();
             action.setUpdateView(false);

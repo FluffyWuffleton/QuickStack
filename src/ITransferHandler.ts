@@ -1,4 +1,5 @@
 import { ContainerReferenceType, IContainer } from "game/item/IItem";
+import { ContainerHash } from "./LocalStorageCache";
 import { IMatchParam } from "./QSMatchGroups";
 
 
@@ -37,6 +38,7 @@ export type THTargettingParam = (ITHTargetSelf) | (ITHTargetTiles) | (ITHTargetD
  */
 export interface ITransferTarget {
     container: IContainer;
+    cHash: ContainerHash;
     type: ContainerReferenceType;
     children?: ITransferTarget[];
     parent?: ITransferTarget;

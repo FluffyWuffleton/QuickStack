@@ -1,21 +1,26 @@
 import Doodad from "game/doodad/Doodad";
+import Entity from "game/entity/Entity";
 import Player from "game/entity/player/Player";
 import Island from "game/island/Island";
-import { ContainerReferenceType, IContainer, ItemType, ItemTypeGroup } from "game/item/IItem";
+import { ContainerReferenceType, IContainer, IMoveToTileOptions, ItemType, ItemTypeGroup } from "game/item/IItem";
 import Item from "game/item/Item";
 import ItemManager from "game/item/ItemManager";
-import { ITile, TerrainType } from "game/tile/ITerrain";
+import { ITileContainer, TerrainType } from "game/tile/ITerrain";
+import Tile from "game/tile/Tile";
 import Dictionary from "language/Dictionary";
 import TranslationImpl from "language/impl/TranslationImpl";
 import { TextContext } from "language/ITranslation";
 import Translation from "language/Translation";
-import TileHelpers from "utilities/game/TileHelpers"
 import Log from "utilities/Log";
 import { Direction } from "utilities/math/Direction";
+import { IVector3 } from "utilities/math/IVector";
+import Vector3 from "utilities/math/Vector3";
+import { Article } from "language/Translation";
 
 import { ITransferPairing, ITransferTarget, THState, THTargettingParam } from "./ITransferHandler";
 import { IMatchParam, Matchable, QSMatchableGroupKey, QSMatchableGroups, MatchParamFlat, getActiveGroups, canMatchActiveGroup, unflattenMatchParams, ThingWithContents, groupifyParameters, flattenMatchParams } from "./QSMatchGroups";
 import StaticHelper, { TLGroup, TLMain, TLUtil } from "./StaticHelper";
+import TileEvent from "game/tile/TileEvent";
 
 export interface ITileTargettingOptions { ignoreForbidTiles?: boolean, allowBlockedTiles?: boolean };
 export const SourceTileOptions: ITileTargettingOptions = { ignoreForbidTiles: true } as const; // Always allow using tiles as a source, if safe. The ForbidTiles option only blocks using them as a destination.
@@ -53,50 +58,66 @@ export function validNearby(player: Player, tileOptions?: ITileTargettingOptions
     const adj = player.island.items.getAdjacentContainers(player, false);
     [...adj].entries().reverse().forEach(([idx, c]) => {
         if(player.island.items.getContainerReference(c, undefined).crt === ContainerReferenceType.Tile
-            && !isValidTile(c as ITile, tileOptions)
+            && !isValidTile(c as Tile, tileOptions)
         ) adj.splice(idx, 1);
     });
     return adj;
 }
 
-export function isValidTile(tile: ITile, tileOptions?: ITileTargettingOptions): boolean {
+export function isValidTile(tile: Tile, tileOptions?: ITileTargettingOptions): boolean {
     return (!!(tileOptions?.ignoreForbidTiles) || !StaticHelper.QS_INSTANCE.globalData.optionForbidTiles)
-        && (!!(tileOptions?.allowBlockedTiles) || !tile.doodad?.description()?.blockMove)
+        && (!!(tileOptions?.allowBlockedTiles) || !tile.doodad?.description?.blockMove)
         && isSafeTile(tile)
 }
 
-export function isSafeTile(tile: ITile): boolean {
-    return (TileHelpers.getType(tile) !== TerrainType.Lava)
-        && !(tile.events?.some(e => e.description()?.providesFire))
+export function isSafeTile(tile: Tile): boolean {
+    return (tile.type !== TerrainType.Lava)
+        && !(tile.events?.some((e: TileEvent) => e.description?.providesFire))
         && !(tile.doodad?.isDangerous(localPlayer));
 }
 
-export function TLContainer(c: IContainer, crt: ContainerReferenceType, toFrom: "to" | "from"): TranslationImpl {
-    const cache = StaticHelper.QSLSC?.findNearby(localPlayer.island.items.hashContainer(c));
-    switch(crt) {
+export function TLContainer(tgt: ITransferTarget, toFrom: "to" | "from"): TranslationImpl {
+    const cached = StaticHelper.QSLSC?.findNearby(tgt.cHash);
+    switch(tgt.type) {
         case ContainerReferenceType.PlayerInventory:
             return TLMain(`${toFrom}X`).addArgs(TLMain("yourInventory"));
 
         case ContainerReferenceType.Item:
-            return TLMain(`${toFrom}X`).addArgs((c as Item).getName("indefinite", 1, false, false, true, false));
+            return TLMain(`${toFrom}X`).addArgs((tgt.container as Item).getName(Article.Indefinite, 1, false, false, true, false));
 
         case ContainerReferenceType.Doodad:
-            if(!cache || cache.iswhat === "Item" || cache.relation === Direction.None)
-                return TLMain(`${toFrom}X`).addArgs((c as Doodad).getName("indefinite", 1));
+            if(!cached || cached.iswhat === "Item" || cached.relation === Direction.None)
+                return TLMain(`${toFrom}X`).addArgs((tgt.container as Doodad).getName(Article.Indefinite, 1));
             else
                 return TLMain(`${toFrom}X`).addArgs(
                     TLUtil("concat").addArgs(
-                        (c as Doodad).getName("indefinite", 1),
-                        TLUtil("parenthetical").addArgs(Translation.get(Dictionary.Direction, cache.relation))));
+                        (tgt.container as Doodad).getName(Article.Indefinite, 1),
+                        TLUtil("parenthetical").addArgs(Translation.get(Dictionary.Direction, cached.relation))));
 
         case ContainerReferenceType.Tile:
-            if(!cache || cache.iswhat === "Item" || cache.relation === Direction.None) return TLMain(`${toFrom}Tile`)
+            if(!cached || cached.iswhat === "Item" || cached.relation === Direction.None) return TLMain(`${toFrom}Tile`)
             else return TLUtil("concat").addArgs(
                 TLMain(`${toFrom}Tile`),
-                TLUtil("parenthetical").addArgs(Translation.get(Dictionary.Direction, cache.relation)));
+                TLUtil("parenthetical").addArgs(Translation.get(Dictionary.Direction, cached.relation)));
 
         default:
             return TLMain(`${toFrom}Unknown`);
+    }
+}
+
+function locateTransferTarget(IM: ItemManager, T: ITransferTarget): IVector3 {
+    switch(T.type) {
+        case ContainerReferenceType.Doodad:
+            return (IM.resolveContainer(T.container) as Doodad).point;
+        case ContainerReferenceType.Item:
+            return (IM.resolveContainer(T.container) as Item).point ?? { x: 0, y: 0, z: 0 };
+        case ContainerReferenceType.PlayerInventory:
+        case ContainerReferenceType.NPCInventory:
+            return (IM.resolveContainer(T.container) as Entity).point ?? { x: 0, y: 0, z: 0 };
+        case ContainerReferenceType.Tile:
+            return (IM.resolveContainer(T.container) as Tile).point;
+        default:
+            return { x: 0, y: 0, z: 0 };
     }
 }
 
@@ -253,7 +274,8 @@ export default class TransferHandler {
         // for each destination
         for(const d of dest) {
             const remaining = ( // remaining weight capacity of this destination.
-                player.island.items.getWeightCapacity(d, undefined) ?? (player.island.isTileFull(d as ITile) ? 0 : Infinity)
+                player.island.items.getWeightCapacity(d, undefined) 
+                ?? (player.island.items.isTileContainer(d) && !player.island.getTileFromPoint(d as ITileContainer).isFull) ? Infinity : 0
             ) - player.island.items.computeContainerWeight(d);
             const matchParams = TransferHandler.setOfParams([d]);
             matchParams.retainWhere(p => srcParamsFlat.includes(flattenMatchParams(p)));
@@ -296,7 +318,7 @@ export default class TransferHandler {
 
         if('containedItems' in target[0]) {  // IContainer[] input. Easy flat map.
             // Ensure no repetition via the magic of Sets    
-            targetsFlat = [... new Set<ITransferTarget>([...(target as IContainer[]).map(t => ({ container: t, type: this.island.items.getContainerReference(t, undefined).crt }))])];
+            targetsFlat = [... new Set<ITransferTarget>([...(target as IContainer[]).map(t => ({ container: t, cHash: this.island.items.hashContainer(t), type: this.island.items.getContainerReference(t, undefined).crt }))])];
 
         } else { // THTargettingParam[] input. Parse stuff. Maybe recursively.
             const targetSet = new Set<ITransferTarget>();
@@ -304,7 +326,7 @@ export default class TransferHandler {
             // If a call to getAdjacentContainers will be needed, get it out of the way.
             const nearby: ITransferTarget[] = (target as THTargettingParam[]).some(p => ('doodads' in p || 'tiles' in p))
                 ? validNearby(this.player, tileOptions)
-                    .map(c => ({ container: c, type: this.island.items.getContainerReference(c, undefined).crt }))
+                    .map(c => ({ container: c, cHash: this.island.items.hashContainer(c), type: this.island.items.getContainerReference(c, undefined).crt }))
                 : [];
 
             // Callback function taking an individual parameter and adding a list of matching targets onto targetSet. 
@@ -313,10 +335,10 @@ export default class TransferHandler {
                 let adding: ITransferTarget[];
 
                 // Identify target containers
-                if('self' in p) adding = [{ container: this.player.inventory, type: ContainerReferenceType.PlayerInventory }];
+                if('self' in p) adding = [{ container: this.player.inventory, cHash: this.island.items.hashContainer(this.player.inventory), type: ContainerReferenceType.PlayerInventory }];
                 else if('tiles' in p) adding = nearby.filter(near => near.type === ContainerReferenceType.Tile);
                 else if('doodads' in p) adding = nearby.filter(near => near.type === ContainerReferenceType.Doodad);
-                else adding = (Array.isArray(p.container) ? p.container : [p.container]).map(c => ({ container: c, type: this.island.items.getContainerReference(c, undefined).crt }));
+                else adding = (Array.isArray(p.container) ? p.container : [p.container]).map(c => ({ container: c, cHash: this.island.items.hashContainer(c), type: this.island.items.getContainerReference(c, undefined).crt }));
 
                 // Filter existing targets
                 adding = adding.filter(t => !targetSet.has(t));
@@ -396,9 +418,34 @@ export default class TransferHandler {
                 // No action will be taken for these matches, and we'll want to remove the pairing from executionResults before returning.
                 let badMatches: number[] = [];
 
+
+                const srcPoint = locateTransferTarget(itemMgr, thisPairing.source);
+                const destPoint = locateTransferTarget(itemMgr, thisPairing.destination);
+                const pairingAnimParams: IMoveToTileOptions | undefined =
+                    srcPoint === destPoint
+                        ? undefined
+                        :
+                        {
+                            fromTile: this.island.getTileFromPoint(srcPoint),
+                            fromTileApplyPlayerOffset: thisPairing.source.type === ContainerReferenceType.PlayerInventory
+                                || (thisPairing.source.type === ContainerReferenceType.Item && !!(itemMgr.resolveContainer(thisPairing.source.container) as Item).getCurrentOwner()),
+                            toTile: this.island.getTileFromPoint(destPoint),
+                            toTileApplyPlayerOffset: thisPairing.destination.type === ContainerReferenceType.PlayerInventory
+                                || (thisPairing.destination.type === ContainerReferenceType.Item && !!(itemMgr.resolveContainer(thisPairing.destination.container) as Item).getCurrentOwner()),
+                            toContainer: (thisPairing.destination.type === ContainerReferenceType.Tile || thisPairing.destination.type === ContainerReferenceType.World)
+                                ? undefined
+                                : thisPairing.destination.container,
+                            toContainerOptions: { skipTileUpdate: true, skipMessage: true }
+                        };
+
                 log?.info(`executeTransfer: PAIRING:`
                     + `\n ${itemMgr.resolveContainer(thisPairing.destination.container)} from ${itemMgr.resolveContainer(thisPairing.source.container)}`
-                    + `\n Found ${thisPairing.matches.length} matches.`);
+                    + `\n Found ${thisPairing.matches.length} matches.`
+                    + (!pairingAnimParams ? '' : (
+                        `\n FROM: ${Vector3.xyz(pairingAnimParams!.fromTile!)}${pairingAnimParams!.fromTileApplyPlayerOffset ? ' (+)' : ''}`
+                        + `\n   TO: ${Vector3.xyz(pairingAnimParams!.toTile!)}${pairingAnimParams!.toTileApplyPlayerOffset ? ' (+)' : ''}`)
+                    )
+                );
 
                 // For each matched parameter
                 thisPairing.matches.forEach((match, k) => {
@@ -414,24 +461,25 @@ export default class TransferHandler {
                     match.had = validItems.length;
 
                     log?.info(`executeTransfer: Match #${k} (${!isGroupMatch
-                        ? `TYPE: '${Translation.nameOf(Dictionary.Item, match.matched.type!, false).toString()}'`
+                        ? `TYPE: '${Translation.nameOf(Dictionary.Item, match.matched.type!, Article.None).toString()}'`
                         : `GROUP: '${TLGroup(match.matched.group!).toString()}'`
                         }) :: Had ${match.had}`);
 
                     // Track weight capacity as we go.
                     const weightCap = itemMgr.getWeightCapacity(dest.container, true) ?? Infinity;
                     let update = true; // has destination capacity changed?
-                    let remaining: number; // Remaining weight capacity if destination is a doodad, (!isFull ? infinity : -Infinity) if destination is a tile.
+                    let remaining: number; // Remaining weight capacity if destination is a doodad. (!isFull ? infinity : -Infinity) if destination is a tile.
+
 
                     // itMoved will contain the list of items that were successfully transferred.
                     const itMoved: Item[] = validItems.filter(it => {
                         // Attempt to deposit. Check weights as we go to avoid 'no room in container' spam.
                         if(update) remaining = dest.type === ContainerReferenceType.Tile
-                            ? (this.island.isTileFull(dest.container as ITile) ? -Infinity : Infinity)
+                            ? (this.player.island.getTileFromPoint(dest.container as ITileContainer).isFull ? -Infinity : Infinity)
                             : (weightCap - itemMgr.computeContainerWeight(dest.container));
                         update = false;
 
-                        if(remaining > it.weight) update = itemMgr.moveToContainer(this.player, it, dest.container);
+                        if(remaining > it.weight) update = !!itemMgr.moveItemToContainer(this.player, it, dest.container, { moveToTileOptions: pairingAnimParams }).itemsMoved.length;
                         return update;
                     }, this);
 
@@ -506,13 +554,13 @@ export default class TransferHandler {
         // Active error or not yet complete
         if((this._state & THState.error) || !(this._state & THState.complete)) return false;
 
-        const itemMgr = this.island.items;
+        //const itemMgr = this.island.items;
 
         // For each unique source->destination pair observed in this transfer... 
         this._executionResults.forEach(pairList => {
             pairList.forEach(pair => {
                 if(pair.matches.length) {
-                    log?.info(`ReportMessage:\nPAIRING: Length ${pair.matches.length} :: ${itemMgr.resolveContainer(pair.destination.container)}(${pair.destination.type}) from ${itemMgr.resolveContainer(pair.source.container)}`);
+                    //log?.info(`ReportMessage:\nPAIRING: Length ${pair.matches.length} :: ${itemMgr.resolveContainer(pair.destination.container)}(${pair.destination.type}) from ${itemMgr.resolveContainer(pair.source.container)}`);
 
                     type sdKey = keyof Pick<typeof pair, "source" | "destination">;
                     const str: { [key in sdKey]: TranslationImpl | "UNDEFINED"; } & { items: { [key in 'all' | 'some' | 'none']: TranslationImpl[]; }; } = {
@@ -526,8 +574,8 @@ export default class TransferHandler {
                     };
 
                     // Source and Destination strings...
-                    str.source = TLContainer(pair.source.container, pair.source.type, "from");
-                    str.destination = TLContainer(pair.destination.container, pair.destination.type, "to");
+                    str.source = TLContainer(pair.source, "from");
+                    str.destination = TLContainer(pair.destination, "to");
 
                     // Transferred item fragment strings
                     let resultFlags: { [key in keyof typeof str.items]?: true } = {}; // Fields are set if any items fall into the category
@@ -538,12 +586,12 @@ export default class TransferHandler {
                             str.items.all.push(TLMain("XOutOfY").addArgs({
                                 X: match.sent,
                                 name: match.matched.type !== undefined
-                                    ? Translation.nameOf(Dictionary.Item, match.matched.type, match.sent, match.sent > 1 ? "indefinite" : false, true)
+                                    ? Translation.nameOf(Dictionary.Item, match.matched.type, match.sent, match.sent > 1 ? Article.Indefinite : Article.None, true)
                                     : TLUtil("concat").addArgs(
                                         TLGroup(match.matched.group)
                                             .inContext(TextContext.None)
                                             .passTo(TLUtil("colorMatchGroup")),
-                                        TLGroup("Item").passTo(Translation.reformatSingularNoun(match.sent, false)))
+                                        TLGroup("Item").passTo(Translation.reformatSingularNoun(match.sent, Article.None)))
                             }));
                         } else if(match.sent > 0) { // Partial transfer
                             resultFlags.some = true;
@@ -551,22 +599,22 @@ export default class TransferHandler {
                                 X: match.sent,
                                 Y: match.had,
                                 name: match.matched.type !== undefined
-                                    ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, false, true)
+                                    ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, Article.None, true)
                                     : TLUtil("concat").addArgs(
                                         TLGroup(match.matched.group)
                                             .inContext(TextContext.None)
                                             .passTo(TLUtil("colorMatchGroup")),
-                                        TLGroup("Item").passTo(Translation.reformatSingularNoun(match.had, false)))
+                                        TLGroup("Item").passTo(Translation.reformatSingularNoun(match.had, Article.None)))
                             }));
                         } else { // Failed transfer
                             resultFlags.none = true;
                             str.items.none.push(match.matched.type !== undefined
-                                ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, match.had > 1 ? "indefinite" : false, true)
+                                ? Translation.nameOf(Dictionary.Item, match.matched.type, match.had, match.had > 1 ? Article.Indefinite : Article.None, true)
                                 : TLUtil("concat").addArgs(
                                     TLGroup(match.matched.group)
                                         .inContext(TextContext.None)
                                         .passTo(TLUtil("colorMatchGroup")),
-                                    TLGroup("Item").passTo(Translation.reformatSingularNoun(999, false)))
+                                    TLGroup("Item").passTo(Translation.reformatSingularNoun(999, Article.None)))
                             );
                         }
                     });
@@ -634,7 +682,7 @@ export default class TransferHandler {
         this.bottomUp = (!!params.bottomUp);
 
         // Resolve target containers.
-        this.sources = this.resolveTargetting(source, true, SourceTileOptions); 
+        this.sources = this.resolveTargetting(source, true, SourceTileOptions);
         this.destinations = this.resolveTargetting(dest, false, DestinationTileOptions);
 
         // Check collision
