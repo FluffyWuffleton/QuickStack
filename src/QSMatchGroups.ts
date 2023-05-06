@@ -74,9 +74,9 @@ export function groupifyParameters(P: IMatchParam[] | Set<IMatchParam> | MatchPa
  * @returns {QSMatchableGroupKey[]}
  */
 export function getActiveGroups(type: Matchable): QSMatchableGroupKey[] {
-    if(type in ItemTypeGroup) return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys.filter(KEY => QSMatchableGroups[KEY].includes(type));
+    if(type in ItemTypeGroup) return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys?.filter(KEY => QSMatchableGroups[KEY].includes(type)) ?? [];
     const typeAndGroups = [type as ItemType, ...ItemManager.getGroups(type as ItemType)];
-    return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys.filter(KEY => typeAndGroups.some(tg => QSMatchableGroups[KEY].includes(tg)));
+    return StaticHelper.QS_INSTANCE.activeMatchGroupsKeys?.filter(KEY => typeAndGroups.some(tg => QSMatchableGroups[KEY].includes(tg))) ?? [];
 }
 
 // Returns whether a provided item type can be matched by a given matchgroup (always false if the group is not enabled).
