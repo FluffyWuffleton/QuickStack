@@ -47,6 +47,7 @@ export namespace QSSubmenu {
     export const Deposit = new UsableActionGenerator(reg => reg.add(StaticHelper.QS_INSTANCE.UAPDepositMenu, UsableAction
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
+            discoveredByDefault: true,
             displayLevel: ActionDisplayLevel.Always,
             bindable: StaticHelper.QS_INSTANCE.bindableDeposit,
             translate: (translator) => translator.name(TLMain("deposit")),
@@ -61,6 +62,7 @@ export namespace QSSubmenu {
     export const DepositAll = new UsableActionGenerator(reg => reg.add("DepositAllMenu", UsableAction
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
+            discoveredByDefault: true,
             icon: StaticHelper.QS_INSTANCE.UAPAll,
             bindable: StaticHelper.QS_INSTANCE.bindableAll,
             displayLevel: ActionDisplayLevel.Always,
@@ -77,6 +79,7 @@ export namespace QSSubmenu {
     export const DepositType = new UsableActionGenerator(reg => reg.add("DepositTypeMenu", UsableAction
         .requiring({ item: true })
         .create({
+            discoveredByDefault: true,
             icon: StaticHelper.QS_INSTANCE.UAPType,
             bindable: StaticHelper.QS_INSTANCE.bindableType,
             displayLevel: ActionDisplayLevel.Always,
@@ -118,6 +121,7 @@ export namespace QSSubmenu {
     export const Collect = new UsableActionGenerator(reg => reg.add(StaticHelper.QS_INSTANCE.UAPCollectMenu, UsableAction
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
+            discoveredByDefault: true,
             bindable: StaticHelper.QS_INSTANCE.bindableCollect,
             displayLevel: ActionDisplayLevel.Always,
             translate: (translator) => translator.name(TLMain("collect")),
@@ -134,6 +138,7 @@ export namespace QSSubmenu {
     export const CollectAll = new UsableActionGenerator(reg => reg.add("CollectAllMenu", UsableAction
         .requiring({ item: { allowNone: true, validate: () => true } })
         .create({
+            discoveredByDefault: true,
             displayLevel: ActionDisplayLevel.Always,
             bindable: StaticHelper.QS_INSTANCE.bindableAll,
             translate: (translator) => translator.name(TLMain("allTypes")),
@@ -153,6 +158,7 @@ export namespace QSSubmenu {
     export const CollectType = new UsableActionGenerator(reg => reg.add("CollectTypeMenu", UsableAction
         .requiring({ item: true })
         .create({
+            discoveredByDefault: true,
             displayLevel: ActionDisplayLevel.Always,
             bindable: StaticHelper.QS_INSTANCE.bindableType,
             icon: StaticHelper.QS_INSTANCE.UAPType,
@@ -190,6 +196,7 @@ export namespace QSSubmenu {
 export const StackAllSelfNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllSelfNear, UsableAction
     .requiring({})
     .create({
+        discoveredByDefault: true,
         slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableSelf,
@@ -204,6 +211,7 @@ export const StackAllSelfNear = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: AllSelfNear");
             if(StaticHelper.QSLSC.checkSelfNearby()) return true;
 
             return false;//{ usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
@@ -225,6 +233,7 @@ export const execSASeN = (p: Player): boolean => executeStackAction_notify(p, [{
 export const StackAllMainNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllMainNear, UsableAction
     .requiring({})
     .create({
+        discoveredByDefault: true,
         slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableMain,
@@ -239,6 +248,7 @@ export const StackAllMainNear = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: AllMainNear");
             if(StaticHelper.QSLSC.checkSelfNearby()) return true;
             return false;// { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
             //return TransferHandler.canFitAny([player.inventory], validNearby(player), player);
@@ -263,6 +273,7 @@ export const execSAMN = (p: Player): boolean => executeStackAction_notify(p, [{ 
 export const StackAllSubNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllSubNear, UsableAction
     .requiring({ item: { validate: (_, item) => ItemManager.isContainer(item) || isStorageType(item.type) } })
     .create({
+        discoveredByDefault: true,
         slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableSub,
@@ -279,6 +290,7 @@ export const StackAllSubNear = new UsableActionGenerator((reg, isMainReg: boolea
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
             if(!isHeldContainer(player, item)) return false;
+            StaticHelper.MaybeLog.info("Checking isUsable: AllSubNear");
             if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item))) return true;
             return false;// { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
@@ -303,6 +315,7 @@ export const StackAllSubNear = new UsableActionGenerator((reg, isMainReg: boolea
 export const StackTypeSelfNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPTypeSelfNear, UsableAction
     .requiring({ item: { allowOnlyItemType: () => true, validate: () => true } })
     .create({
+        discoveredByDefault: true,
         slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableSelf,
@@ -320,7 +333,8 @@ export const StackTypeSelfNear = new UsableActionGenerator((reg, isMainReg: bool
         ),
         isUsable: (player, { item, itemType }) => {
             if(GLOBALCONFIG.force_isusable) return true;
-            if(item && item.containedWithin) { // exclude 'self->near' if 'here->near' would function identically.
+            StaticHelper.MaybeLog.info("Checking isUsable: TypeSelfNear");
+            if(item && item.containedWithin && !isMainReg) { // exclude 'self->near' if 'here->near' would function identically, unless this is slotted version.
                 const iHash = item.island.items.hashContainer(item.containedWithin);
                 if(StaticHelper.QSLSC.checkSelfNearby([item.type!])
                     && [StaticHelper.QSLSC.player, ...StaticHelper.QSLSC.player.deepSubs()].some(c =>
@@ -350,6 +364,7 @@ export const StackTypeSelfNear = new UsableActionGenerator((reg, isMainReg: bool
 export const StackTypeHereNear = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPTypeHereNear, UsableAction
     .requiring({ item: true })
     .create({
+        discoveredByDefault: true,
         slottable: false,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableHere,
@@ -365,6 +380,7 @@ export const StackTypeHereNear = new UsableActionGenerator((reg, isMainReg: bool
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: TypeHereNear");
             if(!playerHasItem(player, item) || !item.containedWithin) return false;
             if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin))) return true;
             return false;// { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
@@ -389,6 +405,7 @@ export const StackTypeHereNear = new UsableActionGenerator((reg, isMainReg: bool
 export const StackAllNearSelf = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllNearSelf, UsableAction
     .requiring(isMainReg ? {} : { item: { allowNone: true, validate: () => true } })
     .create({
+        discoveredByDefault: true,
         slottable: isMainReg,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableSelf,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
@@ -403,6 +420,7 @@ export const StackAllNearSelf = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: AllNearSelf");
             if(item && !playerHasItem(player, item)) return false;
             if(StaticHelper.QSLSC.checkSelfNearby(undefined, true)) return true;
             return false;// { usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
@@ -424,6 +442,7 @@ export const execSANSe = (p: Player): boolean => executeStackAction_notify(p, [{
 export const StackAllNearMain = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllNearMain, UsableAction
     .requiring({})
     .create({
+        discoveredByDefault: true,
         slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableMain,
@@ -438,6 +457,7 @@ export const StackAllNearMain = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: AllNearMain");
             if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(player.inventory), [], true)) return true;
             return false;//{ usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
         },
@@ -450,6 +470,7 @@ export const execSANM = (p: Player): boolean => executeStackAction_notify(p, [{ 
 export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllMainSub, UsableAction
     .requiring({ item: { validate: (_, item) => ItemManager.isContainer(item) || isStorageType(item.type) } })
     .create({
+        discoveredByDefault: true,
         slottable: isMainReg,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableMain,
@@ -465,6 +486,7 @@ export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolea
         }),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: AllMainSub");
             if(!isHeldContainer(player, item)) return false;
             if(StaticHelper.QSLSC.checkSpecific(player.island.items.hashContainer(player.inventory), player.island.items.hashContainer(item))) return true;
             return false;//
@@ -476,6 +498,7 @@ export const StackAllMainSub = new UsableActionGenerator((reg, isMainReg: boolea
 export const StackAllNearSub = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add(StaticHelper.QS_INSTANCE.UAPAllNearSub, UsableAction
     .requiring({ item: { validate: (_, item) => ItemManager.isContainer(item) || isStorageType(item.type) } })
     .create({
+        discoveredByDefault: true,
         slottable: isMainReg,
         iconLocationOnItem: ItemDetailIconLocation.TopLeft, // TL: Thing done to item. BR: Item does thing.
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
@@ -491,6 +514,7 @@ export const StackAllNearSub = new UsableActionGenerator((reg, isMainReg: boolea
         }),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: AllNearSub");
             if(!isHeldContainer(player, item)) return false;
             if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item), undefined, true)) return true;
             return false;//{ usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
@@ -502,6 +526,7 @@ export const StackAllNearSub = new UsableActionGenerator((reg, isMainReg: boolea
 export const StackAllSelfHere = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add("StackAllSelfHere"/* StaticHelper.QS_INSTANCE.UAPAllSelfHere */, UsableAction
     .requiring({ item: true })
     .create({
+        discoveredByDefault: true,
         slottable: false,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableSelf,
@@ -515,6 +540,7 @@ export const StackAllSelfHere = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: AllSelfHere");
             if(playerHasItem(player, item) || !item.containedWithin) return false; // This action isn't available for player items.
             if(StaticHelper.QSLSC.checkSelfSpecific(player.island.items.hashContainer(item.containedWithin))) return true;
             return false;//{ usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
@@ -529,6 +555,7 @@ export const StackAllSelfHere = new UsableActionGenerator((reg, isMainReg: boole
 export const StackAllNearHere = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add("StackAllNearHere"/* StaticHelper.QS_INSTANCE.UAPAllNearbyHere */, UsableAction
     .requiring({ item: true })
     .create({
+        discoveredByDefault: true,
         slottable: false,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableNear,
@@ -542,6 +569,7 @@ export const StackAllNearHere = new UsableActionGenerator((reg, isMainReg: boole
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: AllNearHere");
             if(item.containedWithin === undefined) return false;
             if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin), undefined, true)) return true;
             return false;//{ usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
@@ -556,6 +584,7 @@ export const StackAllNearHere = new UsableActionGenerator((reg, isMainReg: boole
 export const StackTypeSelfHere = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add("StackTypeSelfHere"/* StaticHelper.QS_INSTANCE.UAPTypeSelfHere */, UsableAction
     .requiring({ item: true })
     .create({
+        discoveredByDefault: true,
         slottable: false,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableSelf,
@@ -571,6 +600,7 @@ export const StackTypeSelfHere = new UsableActionGenerator((reg, isMainReg: bool
         //isApplicable: () => true,
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: TypeSelfHere");
             if(playerHasItem(player, item) || !item.containedWithin) return false; // Unusable if playerHasItem. This action isn't available for player items.
             if(StaticHelper.QSLSC.checkSelfSpecific(player.island.items.hashContainer(item.containedWithin), [item.type])) return true;
             return false;//{ usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
@@ -587,6 +617,7 @@ export const StackTypeSelfHere = new UsableActionGenerator((reg, isMainReg: bool
 export const StackTypeNearHere = new UsableActionGenerator((reg, isMainReg: boolean = false) => reg.add("StackTypeNearHere"/* StaticHelper.QS_INSTANCE.UAPTypeNearbyHere */, UsableAction
     .requiring({ item: true })
     .create({
+        discoveredByDefault: true,
         slottable: false,
         displayLevel: isMainReg ? ActionDisplayLevel.Never : ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper.QS_INSTANCE.bindableNear,
@@ -601,6 +632,7 @@ export const StackTypeNearHere = new UsableActionGenerator((reg, isMainReg: bool
         ),
         isUsable: (player, { item }) => {
             if(GLOBALCONFIG.force_isusable) return true;
+            StaticHelper.MaybeLog.info("Checking isUsable: TypeNearHere");
             if(!item.containedWithin) return false;
             if(StaticHelper.QSLSC.checkSpecificNearby(player.island.items.hashContainer(item.containedWithin), [item.type], true)) return true;
             return false;//{ usable: false, message: StaticHelper.QS_INSTANCE.messageNoMatch };
