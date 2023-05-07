@@ -106,13 +106,13 @@ export class LocalStorageCache {
         return this;
     }
 
-    private locationGroupMembers(g: locationGroup.nearby): (StorageCacheDoodad | StorageCacheTile)[];
-    private locationGroupMembers(g: locationGroup.self): (StorageCachePlayer | StorageCacheItem)[];
-    private locationGroupMembers(g: locationGroup): (StorageCacheDoodad | StorageCacheTile)[] | (StorageCachePlayer | StorageCacheItem)[];
-    private locationGroupMembers(g: locationGroup): (StorageCacheDoodad | StorageCacheTile)[] | (StorageCacheItem | StorageCachePlayer)[] {
+    private locationGroupMembers(g: locationGroup.nearby, noupdate?: true): (StorageCacheDoodad | StorageCacheTile)[];
+    private locationGroupMembers(g: locationGroup.self, noupdate?: true): (StorageCachePlayer | StorageCacheItem)[];
+    private locationGroupMembers(g: locationGroup, noupdate?: true): (StorageCacheDoodad | StorageCacheTile)[] | (StorageCachePlayer | StorageCacheItem)[];
+    private locationGroupMembers(g: locationGroup, noupdate?: true): (StorageCacheDoodad | StorageCacheTile)[] | (StorageCacheItem | StorageCachePlayer)[] {
         switch(g) {
-            case locationGroup.nearby: return this._nearby;
-            case locationGroup.self: return [this._player, ...this._player.deepSubs()];
+            case locationGroup.nearby: return noupdate ? this._nearby : this.nearby;
+            case locationGroup.self: return noupdate ? [this.playerNoUpdate, ...this.playerNoUpdate.deepSubs()] : [this.player, ...this.player.deepSubs()];
         }
     }
 

@@ -16,7 +16,7 @@ import { LocalStorageCache } from "./LocalStorageCache";
 import { QSMatchableGroupKey, QSMatchableGroupsFlatType } from "./QSMatchGroups";
 import { IMoveItemOptions } from "game/item/IItemManager";
 export declare namespace GLOBALCONFIG {
-    const log_info: false;
+    const log_info: true;
     const pause_length: Delay.ShortPause;
     const pass_turn_success: false;
     const force_isusable: false;

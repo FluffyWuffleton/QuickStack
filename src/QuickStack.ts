@@ -20,7 +20,6 @@ import Translation, { Article } from "language/Translation";
 import { CheckButton } from "ui/component/CheckButton";
 import Component from "ui/component/Component";
 import Details from "ui/component/Details";
-//import { TooltipLocation } from "ui/component/IComponent";
 import Text from "ui/component/Text";
 import Bind from "ui/input/Bind";
 import { IVector3 } from "utilities/math/IVector";
