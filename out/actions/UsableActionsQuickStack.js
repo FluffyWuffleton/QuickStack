@@ -1,4 +1,4 @@
-define(["require", "exports", "game/entity/action/IAction", "game/entity/action/usable/UsableAction", "game/entity/action/usable/UsableActionRegistrar", "game/item/IItem", "language/Dictionary", "language/ITranslation", "language/Translation", "ui/screen/screens/game/component/Item", "../StaticHelper", "../TransferHandler", "./Actions", "../QSMatchGroups", "game/item/ItemManager"], function (require, exports, IAction_1, UsableAction_1, UsableActionRegistrar_1, IItem_1, Dictionary_1, ITranslation_1, Translation_1, Item_1, StaticHelper_1, TransferHandler_1, Actions_1, QSMatchGroups_1, ItemManager_1) {
+define(["require", "exports", "game/entity/action/IAction", "game/entity/action/usable/UsableAction", "game/entity/action/usable/UsableActionRegistrar", "game/item/IItem", "language/Dictionary", "language/ITranslation", "language/Translation", "ui/screen/screens/game/component/ItemComponent", "../StaticHelper", "../TransferHandler", "./Actions", "../QSMatchGroups", "game/item/ItemManager"], function (require, exports, IAction_1, UsableAction_1, UsableActionRegistrar_1, IItem_1, Dictionary_1, ITranslation_1, Translation_1, ItemComponent_1, StaticHelper_1, TransferHandler_1, Actions_1, QSMatchGroups_1, ItemManager_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.StackTypeNearHere = exports.StackTypeSelfHere = exports.StackAllNearHere = exports.StackAllSelfHere = exports.StackAllNearSub = exports.StackAllMainSub = exports.execSANM = exports.StackAllNearMain = exports.execSANSe = exports.StackAllNearSelf = exports.StackTypeHereNear = exports.StackTypeSelfNear = exports.StackAllSubNear = exports.execSAMN = exports.StackAllMainNear = exports.execSASeN = exports.StackAllSelfNear = exports.QSSubmenu = exports.UsableActionsQuickStack = void 0;
@@ -135,7 +135,7 @@ define(["require", "exports", "game/entity/action/IAction", "game/entity/action/
         displayLevel: isMainReg ? IAction_1.ActionDisplayLevel.Never : IAction_1.ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.bindableSelf,
         icon: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.UAPSelf,
-        iconLocationOnItem: Item_1.ItemDetailIconLocation.BottomRight,
+        iconLocationOnItem: ItemComponent_1.ItemDetailIconLocation.BottomRight,
         translate: (translator) => translator.name(() => isMainReg
             ? (0, StaticHelper_1.TLMain)("deposit").addArgs((0, StaticHelper_1.TLMain)("allTypes").inContext(ITranslation_1.TextContext.Lowercase), (0, StaticHelper_1.TLMain)("fromX").addArgs((0, StaticHelper_1.TLMain)("fullInventory")))
             : (0, StaticHelper_1.TLMain)("fromX").addArgs((0, StaticHelper_1.TLMain)("fullInventory"))),
@@ -159,7 +159,7 @@ define(["require", "exports", "game/entity/action/IAction", "game/entity/action/
         displayLevel: isMainReg ? IAction_1.ActionDisplayLevel.Never : IAction_1.ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.bindableMain,
         icon: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.UAPMain,
-        iconLocationOnItem: Item_1.ItemDetailIconLocation.BottomRight,
+        iconLocationOnItem: ItemComponent_1.ItemDetailIconLocation.BottomRight,
         translate: (translator) => translator.name(() => isMainReg
             ? (0, StaticHelper_1.TLMain)("deposit").addArgs((0, StaticHelper_1.TLMain)("allTypes").inContext(ITranslation_1.TextContext.Lowercase), (0, StaticHelper_1.TLMain)("fromX").addArgs((0, StaticHelper_1.TLMain)("mainInventory")))
             : (0, StaticHelper_1.TLMain)("fromX").addArgs((0, StaticHelper_1.TLMain)("mainInventory"))),
@@ -183,7 +183,7 @@ define(["require", "exports", "game/entity/action/IAction", "game/entity/action/
         displayLevel: isMainReg ? IAction_1.ActionDisplayLevel.Never : IAction_1.ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.bindableSub,
         icon: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.UAPSub,
-        iconLocationOnItem: Item_1.ItemDetailIconLocation.BottomRight,
+        iconLocationOnItem: ItemComponent_1.ItemDetailIconLocation.BottomRight,
         translate: (translator) => translator.name(({ item }) => {
             const itemStr = item?.getName(Translation_1.Article.Indefinite, 1) ?? (0, StaticHelper_1.TLMain)("thisContainer");
             return isMainReg
@@ -210,7 +210,7 @@ define(["require", "exports", "game/entity/action/IAction", "game/entity/action/
         displayLevel: isMainReg ? IAction_1.ActionDisplayLevel.Never : IAction_1.ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.bindableSelf,
         icon: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.UAPSelf,
-        iconLocationOnItem: Item_1.ItemDetailIconLocation.TopLeft,
+        iconLocationOnItem: ItemComponent_1.ItemDetailIconLocation.TopLeft,
         onlySlotItemType: isMainReg ? true : undefined,
         translate: (translator) => translator.name(({ item, itemType }) => isMainReg
             ? (0, StaticHelper_1.TLMain)("deposit").addArgs((0, StaticHelper_1.TLMain)("onlyXType")
@@ -266,7 +266,7 @@ define(["require", "exports", "game/entity/action/IAction", "game/entity/action/
         bindable: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.bindableSelf,
         displayLevel: isMainReg ? IAction_1.ActionDisplayLevel.Never : IAction_1.ActionDisplayLevel.Always,
         icon: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.UAPSelf,
-        iconLocationOnItem: Item_1.ItemDetailIconLocation.BottomRight,
+        iconLocationOnItem: ItemComponent_1.ItemDetailIconLocation.BottomRight,
         translate: (translator) => translator.name(() => isMainReg
             ? (0, StaticHelper_1.TLMain)("collect").addArgs((0, StaticHelper_1.TLMain)("allTypes").inContext(ITranslation_1.TextContext.Lowercase), (0, StaticHelper_1.TLMain)("fromXtoY").addArgs((0, StaticHelper_1.TLMain)("nearby"), ((0, StaticHelper_1.TLMain)("fullInventory"))))
             : (0, StaticHelper_1.TLMain)("fromXtoY").addArgs((0, StaticHelper_1.TLMain)("nearby"), (0, StaticHelper_1.TLMain)("fullInventory"))),
@@ -292,7 +292,7 @@ define(["require", "exports", "game/entity/action/IAction", "game/entity/action/
         displayLevel: isMainReg ? IAction_1.ActionDisplayLevel.Never : IAction_1.ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.bindableMain,
         icon: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.UAPMain,
-        iconLocationOnItem: Item_1.ItemDetailIconLocation.TopLeft,
+        iconLocationOnItem: ItemComponent_1.ItemDetailIconLocation.TopLeft,
         translate: (translator) => translator.name(() => isMainReg
             ? (0, StaticHelper_1.TLMain)("collect").addArgs((0, StaticHelper_1.TLMain)("allTypes").inContext(ITranslation_1.TextContext.Lowercase), (0, StaticHelper_1.TLMain)("fromXtoY").addArgs((0, StaticHelper_1.TLMain)("nearby"), (0, StaticHelper_1.TLMain)("mainInventory")))
             : (0, StaticHelper_1.TLMain)("fromXtoY").addArgs((0, StaticHelper_1.TLMain)("nearby"), (0, StaticHelper_1.TLMain)("mainInventory"))),
@@ -316,7 +316,7 @@ define(["require", "exports", "game/entity/action/IAction", "game/entity/action/
         displayLevel: isMainReg ? IAction_1.ActionDisplayLevel.Never : IAction_1.ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.bindableMain,
         icon: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.UAPMain,
-        iconLocationOnItem: Item_1.ItemDetailIconLocation.TopLeft,
+        iconLocationOnItem: ItemComponent_1.ItemDetailIconLocation.TopLeft,
         translate: (translator) => translator.name(({ item }) => {
             const itemStr = item?.getName(Translation_1.Article.None) ?? (0, StaticHelper_1.TLMain)("thisContainer");
             return isMainReg
@@ -340,7 +340,7 @@ define(["require", "exports", "game/entity/action/IAction", "game/entity/action/
         .create({
         discoveredByDefault: true,
         slottable: isMainReg,
-        iconLocationOnItem: Item_1.ItemDetailIconLocation.TopLeft,
+        iconLocationOnItem: ItemComponent_1.ItemDetailIconLocation.TopLeft,
         displayLevel: isMainReg ? IAction_1.ActionDisplayLevel.Never : IAction_1.ActionDisplayLevel.Always,
         bindable: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.bindableNear,
         icon: isMainReg ? undefined : StaticHelper_1.default.QS_INSTANCE.UAPNear,
