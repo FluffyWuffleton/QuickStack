@@ -31,7 +31,7 @@ export interface ITHTargetDoodads extends ITHTargetRecursive {
 export interface ITHTargetSpecific extends ITHTargetRecursive {
     container: IContainer | IContainer[];
 }
-export declare type THTargettingParam = (ITHTargetSelf) | (ITHTargetTiles) | (ITHTargetDoodads) | (ITHTargetSpecific);
+export type THTargettingParam = (ITHTargetSelf) | (ITHTargetTiles) | (ITHTargetDoodads) | (ITHTargetSpecific);
 export interface ITransferTarget {
     container: IContainer;
     cHash: ContainerHash;

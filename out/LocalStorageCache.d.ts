@@ -2,7 +2,7 @@ import Player from "game/entity/player/Player";
 import { IVector3 } from "utilities/math/IVector";
 import { MatchParamFlat } from "./QSMatchGroups";
 import { StorageCachePlayer, StorageCacheTile, StorageCacheDoodad, StorageCacheBase, StorageCacheItem } from "./StorageCacheBase";
-export declare type ABCheckedMatch = [match: MatchParamFlat, fitAtoB: boolean, fitBtoA: boolean];
+export type ABCheckedMatch = [match: MatchParamFlat, fitAtoB: boolean, fitBtoA: boolean];
 interface ICheckedRelations {
     checked: MatchParamFlat[];
     found: ABCheckedMatch[];
@@ -11,7 +11,7 @@ export declare enum locationGroup {
     self = 0,
     nearby = 1
 }
-export declare type ContainerHash = string;
+export type ContainerHash = string;
 export declare function isOnOrAdjacent(A: IVector3, B: IVector3): boolean;
 export declare class LocalStorageCache {
     private _player;

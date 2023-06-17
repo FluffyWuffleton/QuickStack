@@ -16,7 +16,7 @@ import { LocalStorageCache } from "./LocalStorageCache";
 import { QSMatchableGroupKey, QSMatchableGroupsFlatType } from "./QSMatchGroups";
 import { IMoveItemOptions } from "game/item/IItemManager";
 export declare namespace GLOBALCONFIG {
-    const log_info: true;
+    const log_info: false;
     const pause_length: Delay.ShortPause;
     const pass_turn_success: false;
     const force_isusable: false;
@@ -32,7 +32,7 @@ export declare enum QSTLUtilies {
     underline = 6,
     concat = 7
 }
-export declare type QSTLUtilitiesKey = keyof typeof QSTLUtilies;
+export type QSTLUtilitiesKey = keyof typeof QSTLUtilies;
 export declare enum QSTranslation {
     toX = 0,
     fromX = 1,
@@ -62,9 +62,9 @@ export declare enum QSTranslation {
     optionMatchSimilar = 25,
     optionMatchSimilar_desc = 26
 }
-export declare type QSTranslationKey = keyof typeof QSTranslation;
-declare type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionForbidTiles" | "optionKeepContainers" | "optionTopDown">;
-export declare type IQSGlobalData = {
+export type QSTranslationKey = keyof typeof QSTranslation;
+type QSToggleOptionKey = keyof Pick<typeof QSTranslation, "optionForbidTiles" | "optionKeepContainers" | "optionTopDown">;
+export type IQSGlobalData = {
     [k in QSToggleOptionKey]: boolean;
 } & {
     activeMatchGroups: {

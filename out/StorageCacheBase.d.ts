@@ -7,9 +7,9 @@ import { Direction } from "utilities/math/Direction";
 import { IVector3 } from "utilities/math/IVector";
 import { IMatchParam } from "./QSMatchGroups";
 import { ContainerHash } from "./LocalStorageCache";
-declare type StorageCacheEntityType = Item | Player | Doodad | Tile;
-declare type StorageCacheEntityTypeString = "Item" | "Player" | "Doodad" | "Tile";
-export declare type StorageCacheAny = StorageCacheItem | StorageCachePlayer | StorageCacheDoodad | StorageCacheTile;
+type StorageCacheEntityType = Item | Player | Doodad | Tile;
+type StorageCacheEntityTypeString = "Item" | "Player" | "Doodad" | "Tile";
+export type StorageCacheAny = StorageCacheItem | StorageCachePlayer | StorageCacheDoodad | StorageCacheTile;
 export declare abstract class StorageCacheBase<T extends StorageCacheEntityType = StorageCacheEntityType> {
     readonly entity: T;
     readonly cHash: string;

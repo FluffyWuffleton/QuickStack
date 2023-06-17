@@ -4,7 +4,7 @@
 	"version": "1.1.9",
 	"author": "Fluffy",
 	"file": "out/QuickStack",
-	"waywardVersion": "2.13.0",
+	"waywardVersion": "2.13.2-beta",
 	"allowUnlockingMilestones": true,
 	"unloadable": true,
 	"tags": [
